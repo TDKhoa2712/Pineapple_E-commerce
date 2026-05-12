@@ -1,0 +1,34 @@
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+    show-sql: false
+
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+jwt:
+  secret: ${JWT_SECRET}
+  access-token-expiration-ms: 900000
+  refresh-token-expiration-ms: 604800000
+
+app:
+  cloudinary:
+    cloud-name: ${CLOUDINARY_CLOUD_NAME}
+    api-key: ${CLOUDINARY_API_KEY}
+    api-secret: ${CLOUDINARY_API_SECRET}
+
+  cors:
+    allowed-origins: ${FRONTEND_URL}

@@ -1,6 +1,26 @@
+﻿# ==================== BACKEND ====================
 backend/.env
-backend/.idea/
-backend/*.txt
-backend/*.iml
-backend/repomix-output.xml
+backend/.env.local
+backend/application-prod.yml
+
+# Maven / Build
 backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+
+# IDE
+backend/.idea/
+*.iml
+.vscode/
+
+# Repomix & Temp files
+repomix-output.xml
+Ver-full.xml
+*.txt
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db

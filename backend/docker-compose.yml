@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pineapple_postgres
+    environment:
+      POSTGRES_DB: pineapple_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  # Optional: pgAdmin để xem DB trực quan
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pineapple_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@pineapple.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
