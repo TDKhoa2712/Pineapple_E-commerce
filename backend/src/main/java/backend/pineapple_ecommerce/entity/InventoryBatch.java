@@ -9,9 +9,11 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Entity
-@Table(name = "inventory_batches")
-@Getter
-@Setter
+@Table(name = "inventory_batches", indexes = {
+    @Index(name = "idx_batch_product_status", columnList = "product_id, status"),
+    @Index(name = "idx_batch_expiry",         columnList = "expiry_date")
+})
+@Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder(toBuilder = true)
@@ -44,16 +46,26 @@ public class InventoryBatch extends BaseEntity {
     @Column(name = "expiry_date")
     private LocalDate expiryDate;
 
-    // Đặc trưng của dứa
+    /** Độ ngọt Brix — đặc trưng của dứa */
     @Column(name = "sweetness_level", precision = 4, scale = 2)
-    private BigDecimal sweetnessLevel;  // Brix degree
+    private BigDecimal sweetnessLevel;
+
+    /**
+     * Ghi chú về lô hàng (lý do nhập, nguồn gốc đặc biệt, điều chỉnh...).
+     * NEW — 2.3 InventoryService
+     */
+    @Column(columnDefinition = "TEXT")
+    private String note;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default
     private BatchStatus status = BatchStatus.AVAILABLE;
 
-    // Helper
+    // ─────────────────────────────────────────────
+    // Helpers
+    // ─────────────────────────────────────────────
+
     public boolean hasStock(int requestedQty) {
         return this.remainingQuantity >= requestedQty;
     }

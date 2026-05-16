@@ -1,40 +1,51 @@
 package backend.pineapple_ecommerce.service;
 
 import backend.pineapple_ecommerce.dto.request.CreateInventoryBatchRequest;
+import backend.pineapple_ecommerce.dto.request.StockAdjustmentRequest;
 import backend.pineapple_ecommerce.dto.response.InventoryBatchResponse;
+import backend.pineapple_ecommerce.dto.response.InventorySummaryResponse;
+import backend.pineapple_ecommerce.dto.response.PageResponse;
+import backend.pineapple_ecommerce.dto.response.StockAdjustmentResponse;
 
 import java.util.List;
 
 /**
  * Quản lý lô hàng tồn kho.
- * Hỗ trợ mô hình multi-batch: một sản phẩm có nhiều lô với ngày thu hoạch, hạn sử dụng khác nhau.
  */
 public interface InventoryService {
 
-    /**
-     * Nhập lô hàng mới cho sản phẩm.
-     * remainingQuantity = quantity lúc khởi tạo.
-     */
     InventoryBatchResponse addBatch(CreateInventoryBatchRequest request);
 
-    /** Lấy tất cả lô hàng AVAILABLE của sản phẩm (dùng khi đặt hàng). */
     List<InventoryBatchResponse> getAvailableBatches(Long productId);
 
-    /** Lấy tất cả lô hàng của sản phẩm (bao gồm SOLD_OUT, EXPIRED) — Admin. */
     List<InventoryBatchResponse> getAllBatchesByProduct(Long productId);
 
-    /** Lấy chi tiết một lô hàng. */
     InventoryBatchResponse getBatchById(Long batchId);
 
-    /**
-     * Cập nhật trạng thái lô hàng (ví dụ: đánh dấu EXPIRED khi quá hạn).
-     * Có thể gọi từ scheduled job.
-     */
+    /** Scheduled job — đánh dấu lô hết hạn (chạy 01:00 SA mỗi ngày). */
     void markExpiredBatches();
 
     /**
-     * Tính tổng tồn kho khả dụng của sản phẩm.
-     * SUM(remainingQuantity) WHERE status = AVAILABLE.
+     * NEW — 2.3: Trigger thủ công markExpiredBatches cho Admin.
+     * Trả về số lô đã được đánh dấu.
      */
+    int markExpiredBatchesManual();
+
     int getTotalStock(Long productId);
+
+    /**
+     * NEW — 2.3: Danh sách lô sắp hết hạn trong N ngày tới.
+     */
+    List<InventoryBatchResponse> getExpiringSoon(int days);
+
+    /**
+     * NEW — 2.3: Tổng hợp tồn kho tất cả sản phẩm, phân trang.
+     */
+    PageResponse<InventorySummaryResponse> getInventorySummary(int page, int size);
+
+    /**
+     * NEW — 2.3: Điều chỉnh số lượng lô hàng kèm lý do (audit trail).
+     * adjustmentQty: dương = thêm, âm = bớt.
+     */
+    StockAdjustmentResponse adjustBatch(Long batchId, Long adminUserId, StockAdjustmentRequest request);
 }
