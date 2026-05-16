@@ -1,8 +1,11 @@
 package backend.pineapple_ecommerce.service;
 
 import backend.pineapple_ecommerce.dto.request.AddToCartRequest;
+import backend.pineapple_ecommerce.dto.request.MergeCartRequest;
 import backend.pineapple_ecommerce.dto.request.UpdateCartItemRequest;
 import backend.pineapple_ecommerce.dto.response.CartResponse;
+import backend.pineapple_ecommerce.dto.response.CartValidationResponse;
+import backend.pineapple_ecommerce.dto.response.MergeCartResponse;
 
 /**
  * Quản lý giỏ hàng của người dùng.
@@ -10,26 +13,45 @@ import backend.pineapple_ecommerce.dto.response.CartResponse;
  */
 public interface CartService {
 
-    /** Lấy giỏ hàng hiện tại của user (tạo mới nếu chưa có). */
     CartResponse getCart(Long userId);
 
-    /**
-     * Thêm sản phẩm vào giỏ.
-     * - Nếu sản phẩm đã tồn tại trong giỏ: cộng dồn số lượng.
-     * - Kiểm tra tồn kho trước khi add.
-     */
     CartResponse addToCart(Long userId, AddToCartRequest request);
 
-    /**
-     * Cập nhật số lượng một item trong giỏ.
-     * - quantity = 0: xoá item khỏi giỏ.
-     * - Kiểm tra tồn kho trước khi update.
-     */
     CartResponse updateCartItem(Long userId, Long cartItemId, UpdateCartItemRequest request);
 
-    /** Xoá một item cụ thể khỏi giỏ hàng. */
     CartResponse removeCartItem(Long userId, Long cartItemId);
 
-    /** Xoá toàn bộ items trong giỏ — gọi sau khi đặt hàng thành công. */
     void clearCart(Long userId);
+
+    // ─────────────────────────────────────────────
+    // NEW — 2.6
+    // ─────────────────────────────────────────────
+
+    /**
+     * Tổng số lượng items trong giỏ — dùng cho badge trên FE header.
+     * Tính SUM(quantity) không phải số lượng loại sản phẩm.
+     */
+    int getCartItemCount(Long userId);
+
+    /**
+     * Validate toàn bộ cart trước khi checkout.
+     * Kiểm tra từng item: tồn kho còn đủ không, sản phẩm còn active không.
+     * Trả về danh sách warnings (nếu có) và estimatedTotal.
+     */
+    CartValidationResponse validateCart(Long userId);
+
+    /**
+     * Gộp giỏ hàng khách (từ localStorage) vào giỏ hàng thật sau khi đăng nhập.
+     *
+     * Chiến lược SMART MERGE:
+     * - Nếu sản phẩm đã có → cộng dồn số lượng (không reset)
+     * - Nếu tổng vượt tồn kho → cap lại bằng tồn kho khả dụng, ghi vào skipped với reason=STOCK_CAPPED
+     * - Sản phẩm không còn active → bỏ qua, ghi reason=PRODUCT_INACTIVE
+     * - Sản phẩm hết hàng → bỏ qua, ghi reason=OUT_OF_STOCK
+     *
+     * @param userId  user vừa đăng nhập
+     * @param request danh sách items từ localStorage
+     * @return giỏ hàng đã merge + danh sách items bị bỏ qua
+     */
+    MergeCartResponse mergeGuestCart(Long userId, MergeCartRequest request);
 }
