@@ -9,10 +9,10 @@ import java.util.List;
 
 @Entity
 @Table(name = "reviews", indexes = {
-        @Index(name = "idx_reviews_product", columnList = "product_id")
+        @Index(name = "idx_reviews_product", columnList = "product_id"),
+        @Index(name = "idx_reviews_user",    columnList = "user_id")
 })
-@Getter
-@Setter
+@Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder(toBuilder = true)
@@ -36,7 +36,42 @@ public class Review extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String comment;
 
+    // ─────────────────────────────────────────────
+    // NEW FIELDS — 2.2 ReviewService
+    // ─────────────────────────────────────────────
+
+    /**
+     * Admin ẩn review vi phạm mà không cần xoá —
+     * isHidden = true → không hiển thị cho public nhưng Admin vẫn thấy.
+     */
+    @Column(name = "is_hidden", nullable = false)
+    @Builder.Default
+    private Boolean isHidden = false;
+
+    /**
+     * Số lượng vote "hữu ích" — denormalized để query nhanh.
+     * Cập nhật đồng bộ khi user vote trong ReviewServiceImpl.
+     */
+    @Column(name = "helpful_count", nullable = false)
+    @Builder.Default
+    private Integer helpfulCount = 0;
+
+    /**
+     * Số lượng vote "không hữu ích" — denormalized.
+     */
+    @Column(name = "unhelpful_count", nullable = false)
+    @Builder.Default
+    private Integer unhelpfulCount = 0;
+
+    // ─────────────────────────────────────────────
+    // Relationships
+    // ─────────────────────────────────────────────
+
     @OneToMany(mappedBy = "review", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<ReviewImage> images = new ArrayList<>();
+
+    @OneToMany(mappedBy = "review", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<ReviewVote> votes = new ArrayList<>();
 }

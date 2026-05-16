@@ -22,4 +22,7 @@ public class ReviewImage {
 
     @Column(name = "image_url", nullable = false, length = 500)
     private String imageUrl;
+
+    @Column(name = "public_id", length = 300)
+    private String publicId;
 }
