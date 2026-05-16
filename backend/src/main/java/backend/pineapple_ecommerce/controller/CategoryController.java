@@ -57,7 +57,7 @@ public class CategoryController {
     // ─────────────────────────────────────────────
 
     @Operation(summary = "Tạo danh mục mới (Admin)",
-               security = @SecurityRequirement(name = "bearerAuth"))
+            security = @SecurityRequirement(name = "bearerAuth"))
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<CategoryResponse>> create(
@@ -69,7 +69,7 @@ public class CategoryController {
     }
 
     @Operation(summary = "Cập nhật danh mục (Admin)",
-               security = @SecurityRequirement(name = "bearerAuth"))
+            security = @SecurityRequirement(name = "bearerAuth"))
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<CategoryResponse>> update(
@@ -81,7 +81,7 @@ public class CategoryController {
     }
 
     @Operation(summary = "Xoá danh mục (Admin)",
-               security = @SecurityRequirement(name = "bearerAuth"))
+            security = @SecurityRequirement(name = "bearerAuth"))
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {

@@ -10,8 +10,8 @@ import lombok.experimental.SuperBuilder;
  */
 @Entity
 @Table(name = "stock_adjustments", indexes = {
-    @Index(name = "idx_stock_adj_batch", columnList = "batch_id"),
-    @Index(name = "idx_stock_adj_created", columnList = "created_at")
+        @Index(name = "idx_stock_adj_batch", columnList = "batch_id"),
+        @Index(name = "idx_stock_adj_created", columnList = "created_at")
 })
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor

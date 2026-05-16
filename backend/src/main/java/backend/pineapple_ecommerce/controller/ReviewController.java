@@ -54,7 +54,7 @@ public class ReviewController {
     // ─────────────────────────────────────────────
 
     @Operation(summary = "Tạo đánh giá (cần đã mua & nhận hàng)",
-               security = @SecurityRequirement(name = "bearerAuth"))
+            security = @SecurityRequirement(name = "bearerAuth"))
     @PostMapping
     public ResponseEntity<ApiResponse<ReviewResponse>> createReview(
             @Valid @RequestBody CreateReviewRequest request) {
@@ -69,7 +69,7 @@ public class ReviewController {
      * NEW — 2.2: User sửa đánh giá của mình.
      */
     @Operation(summary = "Cập nhật đánh giá của tôi",
-               security = @SecurityRequirement(name = "bearerAuth"))
+            security = @SecurityRequirement(name = "bearerAuth"))
     @PutMapping("/{reviewId}")
     public ResponseEntity<ApiResponse<ReviewResponse>> updateReview(
             @PathVariable Long reviewId,
@@ -85,7 +85,7 @@ public class ReviewController {
      * Vote lại cùng loại = bỏ vote; vote khác loại = đổi vote.
      */
     @Operation(summary = "Vote review hữu ích / không hữu ích",
-               security = @SecurityRequirement(name = "bearerAuth"))
+            security = @SecurityRequirement(name = "bearerAuth"))
     @PostMapping("/{reviewId}/vote")
     public ResponseEntity<ApiResponse<Void>> voteReview(
             @PathVariable Long reviewId,
@@ -97,7 +97,7 @@ public class ReviewController {
     }
 
     @Operation(summary = "Xoá đánh giá của tôi",
-               security = @SecurityRequirement(name = "bearerAuth"))
+            security = @SecurityRequirement(name = "bearerAuth"))
     @DeleteMapping("/{reviewId}")
     public ResponseEntity<ApiResponse<Void>> deleteMyReview(@PathVariable Long reviewId) {
         Long userId = userService.getCurrentUserId();
@@ -110,7 +110,7 @@ public class ReviewController {
     // ─────────────────────────────────────────────
 
     @Operation(summary = "Lấy tất cả đánh giá (Admin) — filter keyword + rating",
-               security = @SecurityRequirement(name = "bearerAuth"))
+            security = @SecurityRequirement(name = "bearerAuth"))
     @GetMapping("/admin/all")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<PageResponse<ReviewResponse>>> getAllReviews(
@@ -128,7 +128,7 @@ public class ReviewController {
      * Toggle: gọi lại endpoint sẽ hiện lại review.
      */
     @Operation(summary = "Ẩn/Hiện review vi phạm (Admin — toggle)",
-               security = @SecurityRequirement(name = "bearerAuth"))
+            security = @SecurityRequirement(name = "bearerAuth"))
     @PatchMapping("/admin/{reviewId}/hide")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> toggleHideReview(@PathVariable Long reviewId) {
@@ -137,7 +137,7 @@ public class ReviewController {
     }
 
     @Operation(summary = "Xoá đánh giá bất kỳ (Admin)",
-               security = @SecurityRequirement(name = "bearerAuth"))
+            security = @SecurityRequirement(name = "bearerAuth"))
     @DeleteMapping("/admin/{reviewId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteAnyReview(@PathVariable Long reviewId) {

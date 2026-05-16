@@ -65,7 +65,7 @@ public class FarmController {
     // ─────────────────────────────────────────────
 
     @Operation(summary = "Trang trại của tôi (Farmer/Admin)",
-               security = @SecurityRequirement(name = "bearerAuth"))
+            security = @SecurityRequirement(name = "bearerAuth"))
     @GetMapping("/my")
     @PreAuthorize("hasAnyRole('FARMER', 'ADMIN')")
     public ResponseEntity<ApiResponse<List<FarmResponse>>> getMyFarms() {
@@ -74,7 +74,7 @@ public class FarmController {
     }
 
     @Operation(summary = "Tạo trang trại mới (Farmer/Admin) — sẽ ở trạng thái PENDING_APPROVAL",
-               security = @SecurityRequirement(name = "bearerAuth"))
+            security = @SecurityRequirement(name = "bearerAuth"))
     @PostMapping
     @PreAuthorize("hasAnyRole('FARMER', 'ADMIN')")
     public ResponseEntity<ApiResponse<FarmResponse>> create(
@@ -86,7 +86,7 @@ public class FarmController {
     }
 
     @Operation(summary = "Cập nhật trang trại (chủ trang trại hoặc Admin)",
-               security = @SecurityRequirement(name = "bearerAuth"))
+            security = @SecurityRequirement(name = "bearerAuth"))
     @PutMapping("/{farmId}")
     @PreAuthorize("hasAnyRole('FARMER', 'ADMIN')")
     public ResponseEntity<ApiResponse<FarmResponse>> update(
@@ -98,7 +98,7 @@ public class FarmController {
     }
 
     @Operation(summary = "Upload ảnh trang trại (chủ trang trại hoặc Admin)",
-               security = @SecurityRequirement(name = "bearerAuth"))
+            security = @SecurityRequirement(name = "bearerAuth"))
     @PostMapping(value = "/{farmId}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAnyRole('FARMER', 'ADMIN')")
     public ResponseEntity<ApiResponse<FarmResponse>> uploadImage(
@@ -110,7 +110,7 @@ public class FarmController {
     }
 
     @Operation(summary = "Xoá trang trại — soft delete (chủ trang trại hoặc Admin)",
-               security = @SecurityRequirement(name = "bearerAuth"))
+            security = @SecurityRequirement(name = "bearerAuth"))
     @DeleteMapping("/{farmId}")
     @PreAuthorize("hasAnyRole('FARMER', 'ADMIN')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long farmId) {
@@ -124,7 +124,7 @@ public class FarmController {
     // ─────────────────────────────────────────────
 
     @Operation(summary = "Lấy tất cả trang trại (Admin) — có filter status",
-               security = @SecurityRequirement(name = "bearerAuth"))
+            security = @SecurityRequirement(name = "bearerAuth"))
     @GetMapping("/admin")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<PageResponse<FarmResponse>>> getAllAdmin(
@@ -136,7 +136,7 @@ public class FarmController {
     }
 
     @Operation(summary = "Duyệt trang trại (Admin) — PENDING_APPROVAL → ACTIVE",
-               security = @SecurityRequirement(name = "bearerAuth"))
+            security = @SecurityRequirement(name = "bearerAuth"))
     @PatchMapping("/admin/{farmId}/approve")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<FarmResponse>> approveFarm(@PathVariable Long farmId) {
@@ -145,7 +145,7 @@ public class FarmController {
     }
 
     @Operation(summary = "Từ chối trang trại (Admin) — PENDING_APPROVAL → REJECTED",
-               security = @SecurityRequirement(name = "bearerAuth"))
+            security = @SecurityRequirement(name = "bearerAuth"))
     @PatchMapping("/admin/{farmId}/reject")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<FarmResponse>> rejectFarm(

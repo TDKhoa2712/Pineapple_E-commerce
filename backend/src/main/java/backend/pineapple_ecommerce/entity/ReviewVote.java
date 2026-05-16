@@ -11,11 +11,11 @@ import lombok.experimental.SuperBuilder;
  */
 @Entity
 @Table(
-    name = "review_votes",
-    uniqueConstraints = @UniqueConstraint(
-        name = "uq_review_votes_review_user",
-        columnNames = {"review_id", "user_id"}
-    )
+        name = "review_votes",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uq_review_votes_review_user",
+                columnNames = {"review_id", "user_id"}
+        )
 )
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor

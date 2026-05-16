@@ -10,8 +10,8 @@ import java.util.List;
 
 @Entity
 @Table(name = "farms", indexes = {
-    @Index(name = "idx_farms_owner", columnList = "owner_id"),
-    @Index(name = "idx_farms_status", columnList = "status")
+        @Index(name = "idx_farms_owner", columnList = "owner_id"),
+        @Index(name = "idx_farms_status", columnList = "status")
 })
 @Getter @Setter
 @NoArgsConstructor

@@ -10,8 +10,8 @@ import java.time.LocalDate;
 
 @Entity
 @Table(name = "inventory_batches", indexes = {
-    @Index(name = "idx_batch_product_status", columnList = "product_id, status"),
-    @Index(name = "idx_batch_expiry",         columnList = "expiry_date")
+        @Index(name = "idx_batch_product_status", columnList = "product_id, status"),
+        @Index(name = "idx_batch_expiry",         columnList = "expiry_date")
 })
 @Getter @Setter
 @NoArgsConstructor

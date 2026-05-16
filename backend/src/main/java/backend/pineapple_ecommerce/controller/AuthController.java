@@ -101,7 +101,7 @@ public class AuthController {
     // ─────────────────────────────────────────────
 
     @Operation(summary = "Thông tin tài khoản hiện tại",
-               security = @SecurityRequirement(name = "bearerAuth"))
+            security = @SecurityRequirement(name = "bearerAuth"))
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<UserResponse>> me(
             @AuthenticationPrincipal UserDetails userDetails) {
