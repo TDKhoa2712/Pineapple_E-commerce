@@ -1,59 +1,66 @@
 package backend.pineapple_ecommerce.service;
 
+import backend.pineapple_ecommerce.dto.request.BulkOrderStatusRequest;
 import backend.pineapple_ecommerce.dto.request.CreateOrderRequest;
 import backend.pineapple_ecommerce.dto.response.OrderResponse;
 import backend.pineapple_ecommerce.dto.response.PageResponse;
 import backend.pineapple_ecommerce.enums.OrderStatus;
+import backend.pineapple_ecommerce.enums.PaymentMethod;
+
+import java.time.LocalDateTime;
 
 /**
  * Quản lý vòng đời đơn hàng: tạo, xem, cập nhật trạng thái, huỷ.
  *
- * <p>Luồng trạng thái chuẩn:</p>
- * <pre>
+ * Luồng trạng thái chuẩn:
  * PENDING → CONFIRMED → PROCESSING → SHIPPING → DELIVERED
- *        ↘ CANCELLED (user có thể huỷ khi còn PENDING)
+ *        ↘ CANCELLED (user huỷ khi PENDING)
  *                                              ↘ RETURNED
- * </pre>
+ * DELIVERED → REFUND_REQUESTED → REFUNDED
  */
 public interface OrderService {
 
-    /**
-     * Tạo đơn hàng từ giỏ hàng hiện tại.
-     * <ul>
-     *   <li>Validate giỏ không rỗng.</li>
-     *   <li>Trừ tồn kho theo FIFO batch (hết hạn trước xuất trước).</li>
-     *   <li>Snapshot địa chỉ giao hàng.</li>
-     *   <li>Tính subtotal, shippingFee, totalAmount.</li>
-     *   <li>Xoá cart sau khi tạo đơn thành công.</li>
-     * </ul>
-     */
     OrderResponse createOrder(Long userId, CreateOrderRequest request);
 
-    /** Lấy chi tiết đơn hàng. Kiểm tra quyền sở hữu (user chỉ xem được đơn của mình). */
     OrderResponse getOrderById(Long orderId, Long userId);
 
-    /** Lịch sử đơn hàng của user hiện tại — phân trang. */
-    PageResponse<OrderResponse> getMyOrders(Long userId, int page, int size);
+    /**
+     * Lịch sử đơn hàng của user — phân trang.
+     * NEW: thêm filter status (nullable = tất cả).
+     */
+    PageResponse<OrderResponse> getMyOrders(Long userId, OrderStatus status, int page, int size);
 
-    /** Tất cả đơn hàng — Admin, có thể lọc theo status. */
-    PageResponse<OrderResponse> getAllOrders(OrderStatus status, int page, int size);
+    /** Compat: gọi getMyOrders với status=null */
+    default PageResponse<OrderResponse> getMyOrders(Long userId, int page, int size) {
+        return getMyOrders(userId, null, page, size);
+    }
 
     /**
-     * Admin cập nhật trạng thái đơn hàng.
-     * Ném BusinessException nếu chuyển trạng thái không hợp lệ.
+     * Admin: lấy tất cả đơn hàng với nhiều filter kết hợp.
+     * NEW: thêm userId, paymentMethod, from, to.
      */
+    PageResponse<OrderResponse> getAllOrders(
+            OrderStatus status,
+            Long userId,
+            PaymentMethod paymentMethod,
+            LocalDateTime from,
+            LocalDateTime to,
+            int page, int size);
+
+    /** Compat: gọi getAllOrders với chỉ status filter */
+    default PageResponse<OrderResponse> getAllOrders(OrderStatus status, int page, int size) {
+        return getAllOrders(status, null, null, null, null, page, size);
+    }
+
     OrderResponse updateOrderStatus(Long orderId, OrderStatus newStatus);
 
     /**
-     * User tự huỷ đơn hàng.
-     * Chỉ cho phép huỷ khi status = PENDING.
-     * Hoàn lại tồn kho đã trừ.
+     * NEW — 2.1: Bulk update trạng thái nhiều đơn cùng lúc.
+     * Bỏ qua các đơn có transition không hợp lệ, trả về số đơn cập nhật thành công.
      */
+    int bulkUpdateStatus(BulkOrderStatusRequest request);
+
     OrderResponse cancelOrder(Long orderId, Long userId);
 
-    /**
-     * User yêu cầu hoàn tiền cho đơn hàng đã thanh toán online.
-     * Trạng thái đơn hàng sẽ chuyển sang REFUND_REQUESTED.
-     */
     OrderResponse requestRefund(Long orderId, Long userId);
 }
