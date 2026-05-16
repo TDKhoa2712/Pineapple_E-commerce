@@ -28,7 +28,7 @@ public class ProductController {
     private final ProductService productService;
 
     // ─────────────────────────────────────────────
-    // PUBLIC — GET (no auth required)
+    // PUBLIC
     // ─────────────────────────────────────────────
 
     @Operation(summary = "Tìm kiếm & lọc sản phẩm (public)")
@@ -36,17 +36,28 @@ public class ProductController {
     public ResponseEntity<ApiResponse<PageResponse<ProductSummaryResponse>>> searchProducts(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) Long farmId,        // NEW — 2.4
+            @RequestParam(required = false) Boolean inStock,    // NEW — 2.4
             @RequestParam(required = false) BigDecimal minPrice,
             @RequestParam(required = false) BigDecimal maxPrice,
             @RequestParam(required = false) Boolean isOrganic,
-            @RequestParam(defaultValue = "0")  int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "desc")       String sortDir) {
+            @RequestParam(defaultValue = "0")       int page,
+            @RequestParam(defaultValue = "20")      int size,
+            @RequestParam(defaultValue = "newest")  String sortBy,
+            @RequestParam(defaultValue = "desc")    String sortDir) {
 
-        PageResponse<ProductSummaryResponse> result = productService.searchProducts(
-                keyword, categoryId, minPrice, maxPrice, isOrganic, page, size, sortBy, sortDir);
-        return ResponseEntity.ok(ApiResponse.success(result));
+        // Chuẩn hoá sortBy có chiều đi kèm
+        String resolvedSortBy  = sortBy;
+        String resolvedSortDir = sortDir;
+        if ("price_asc".equalsIgnoreCase(sortBy)) {
+            resolvedSortBy = "price"; resolvedSortDir = "asc";
+        } else if ("price_desc".equalsIgnoreCase(sortBy)) {
+            resolvedSortBy = "price"; resolvedSortDir = "desc";
+        }
+
+        return ResponseEntity.ok(ApiResponse.success(productService.searchProducts(
+                keyword, categoryId, farmId, minPrice, maxPrice, isOrganic, inStock,
+                page, size, resolvedSortBy, resolvedSortDir)));
     }
 
     @Operation(summary = "Lấy chi tiết sản phẩm theo ID (public)")
@@ -55,69 +66,63 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.success(productService.getProductById(id)));
     }
 
-    @Operation(summary = "Lấy chi tiết sản phẩm theo slug (public)")
+    /**
+     * NEW — 2.4: SEO-friendly URL. FE dùng slug thay vì ID trên product detail page.
+     * VD: GET /api/v1/products/slug/dua-viet-nam-hoa-loc
+     */
+    @Operation(summary = "Lấy chi tiết sản phẩm theo Slug (SEO-friendly)")
     @GetMapping("/slug/{slug}")
     public ResponseEntity<ApiResponse<ProductDetailResponse>> getBySlug(@PathVariable String slug) {
         return ResponseEntity.ok(ApiResponse.success(productService.getProductBySlug(slug)));
     }
 
-    // ─────────────────────────────────────────────
-    // ADMIN
-    // ─────────────────────────────────────────────
-
-    @Operation(summary = "Lấy tất cả sản phẩm phân trang (Admin)",
-               security = @SecurityRequirement(name = "bearerAuth"))
-    @GetMapping("/admin")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<PageResponse<ProductSummaryResponse>>> getAllForAdmin(
-            @RequestParam(defaultValue = "0")  int page,
-            @RequestParam(defaultValue = "20") int size) {
-
-        return ResponseEntity.ok(ApiResponse.success(productService.getAllProductsForAdmin(page, size)));
-    }
-
-    @Operation(summary = "Tạo sản phẩm mới (Admin)",
-               security = @SecurityRequirement(name = "bearerAuth"))
-    @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<ProductDetailResponse>> create(
-            @Valid @RequestBody CreateProductRequest request) {
-
-        ProductDetailResponse response = productService.createProduct(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response, "Tạo sản phẩm thành công"));
-    }
-
-    @Operation(summary = "Cập nhật sản phẩm (Admin)",
-               security = @SecurityRequirement(name = "bearerAuth"))
-    @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<ProductDetailResponse>> update(
+    /**
+     * Sản phẩm liên quan — cùng danh mục, giới hạn số lượng.
+     * Đã có trong ProductService, thêm endpoint để FE gọi được.
+     */
+    @Operation(summary = "Sản phẩm liên quan (cùng category)")
+    @GetMapping("/{id}/related")
+    public ResponseEntity<ApiResponse<List<ProductSummaryResponse>>> getRelated(
             @PathVariable Long id,
-            @Valid @RequestBody UpdateProductRequest request) {
-
-        return ResponseEntity.ok(ApiResponse.success(productService.updateProduct(id, request), "Cập nhật thành công"));
+            @RequestParam(defaultValue = "6") int limit) {
+        return ResponseEntity.ok(ApiResponse.success(productService.getRelatedProducts(id, limit)));
     }
 
-    @Operation(summary = "Xoá mềm sản phẩm (Admin)",
-               security = @SecurityRequirement(name = "bearerAuth"))
-    @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
-        productService.deleteProduct(id);
-        return ResponseEntity.ok(ApiResponse.success(null, "Xoá sản phẩm thành công"));
-    }
-
-    @Operation(summary = "Lấy tồn kho sản phẩm")
+    @Operation(summary = "Tổng tồn kho khả dụng của sản phẩm (public)")
     @GetMapping("/{id}/stock")
     public ResponseEntity<ApiResponse<Integer>> getStock(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(productService.getAvailableStock(id)));
     }
 
-    // ProductController.java — thêm 2 endpoint upload
+    // ─────────────────────────────────────────────
+    // ADMIN / FARMER
+    // ─────────────────────────────────────────────
 
-    @Operation(summary = "Upload thumbnail cho sản phẩm (Admin)")
+    @Operation(summary = "Tạo sản phẩm mới (Admin/Farmer)",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @PostMapping
+    @PreAuthorize("hasAnyRole('FARMER', 'ADMIN')")
+    public ResponseEntity<ApiResponse<ProductDetailResponse>> create(
+            @Valid @RequestBody CreateProductRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(productService.createProduct(request), "Tạo sản phẩm thành công"));
+    }
+
+    @Operation(summary = "Upload ảnh sản phẩm (Admin/Farmer)",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @PostMapping(value = "/{id}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('FARMER', 'ADMIN')")
+    public ResponseEntity<ApiResponse<List<UploadResponse>>> uploadImages(
+            @PathVariable Long id,
+            @RequestParam("files") List<MultipartFile> files) {
+        return ResponseEntity.ok(ApiResponse.success(
+                productService.uploadProductImages(id, files), "Upload ảnh thành công"));
+    }
+
+    @Operation(summary = "Upload thumbnail sản phẩm (Admin/Farmer)",
+            security = @SecurityRequirement(name = "bearerAuth"))
     @PostMapping(value = "/{id}/thumbnail", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('FARMER', 'ADMIN')")
     public ResponseEntity<ApiResponse<UploadResponse>> uploadThumbnail(
             @PathVariable Long id,
             @RequestParam("file") MultipartFile file) {
@@ -125,13 +130,36 @@ public class ProductController {
                 productService.uploadThumbnail(id, file), "Upload thumbnail thành công"));
     }
 
-    @Operation(summary = "Upload nhiều ảnh gallery cho sản phẩm (Admin)")
-    @PostMapping(value = "/{id}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Lấy tất cả sản phẩm (Admin — filter keyword + status)",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @GetMapping("/admin")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<List<UploadResponse>>> uploadImages(
-            @PathVariable Long id,
-            @RequestParam("files") List<MultipartFile> files) {
+    public ResponseEntity<ApiResponse<PageResponse<ProductSummaryResponse>>> getAllAdmin(
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String status) {
         return ResponseEntity.ok(ApiResponse.success(
-                productService.uploadProductImages(id, files), "Upload ảnh thành công"));
+                productService.getAllProductsForAdmin(page, size, keyword, status)));
+    }
+
+    @Operation(summary = "Cập nhật sản phẩm (Admin/Farmer)",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('FARMER', 'ADMIN')")
+    public ResponseEntity<ApiResponse<ProductDetailResponse>> update(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateProductRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(
+                productService.updateProduct(id, request), "Cập nhật sản phẩm thành công"));
+    }
+
+    @Operation(summary = "Xoá sản phẩm — soft delete, chuyển INACTIVE (Admin)",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
+        productService.deleteProduct(id);
+        return ResponseEntity.ok(ApiResponse.success(null, "Đã xoá sản phẩm"));
     }
 }

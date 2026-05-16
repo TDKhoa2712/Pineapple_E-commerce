@@ -2,10 +2,12 @@ package backend.pineapple_ecommerce.dto.response;
 
 import lombok.Builder;
 import lombok.Getter;
+import lombok.Setter;
 
 import java.math.BigDecimal;
 
 @Getter
+@Setter
 @Builder
 public class ProductSummaryResponse {
     private Long id;
@@ -13,11 +15,13 @@ public class ProductSummaryResponse {
     private String slug;
     private BigDecimal price;
     private BigDecimal discountPrice;
-    private BigDecimal effectivePrice;   // giá sau giảm
+    private BigDecimal effectivePrice;
     private String thumbnail;
     private Boolean isOrganic;
     private String status;
     private String categoryName;
-    private Integer totalStock;       // tổng tồn kho
+    private Integer totalStock;
     private Double averageRating;
+    // FIX: thêm reviewCount để ProductCard hiển thị số đánh giá
+    private Integer reviewCount;
 }
