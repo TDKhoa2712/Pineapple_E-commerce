@@ -28,19 +28,20 @@ import java.util.List;
 /**
  * Spring Security 6 configuration — Stateless JWT.
  *
- * Role hierarchy:
- *   ROLE_ADMIN   — toàn quyền
- *   ROLE_FARMER  — quản lý farm, inventory
- *   ROLE_USER    — mua hàng, cart, wishlist, order của chính mình
+ * FIX: corsConfigurationSource() nay đọc allowedOrigins từ CorsProperties
+ * thay vì hardcode → env variable FRONTEND_URL trong .env có tác dụng.
  */
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity           // kích hoạt @PreAuthorize, @Secured
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
-    private final UserDetailsServiceImpl userDetailsService;
+    private final UserDetailsServiceImpl  userDetailsService;
+
+    // FIX: inject CorsProperties thay vì hardcode
+    private final CorsProperties corsProperties;
 
     // ─────────────────────────────────────────────
     // Public endpoints (không cần token)
@@ -70,35 +71,24 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .csrf(AbstractHttpConfigurer::disable)           // REST API — không dùng CSRF
-            .sessionManagement(session ->
-                    session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                    // Swagger & docs
-                    .requestMatchers(SWAGGER_WHITELIST).permitAll()
-
-                    // Auth endpoints
-                    .requestMatchers(HttpMethod.POST, PUBLIC_POST).permitAll()
-
-                    // Public reads
-                    .requestMatchers(HttpMethod.GET, PUBLIC_GET).permitAll()
-
-                    // Admin only
-                    .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-
-                    // Farmer + Admin
-                    .requestMatchers(HttpMethod.GET, "/api/v1/farms/**").permitAll()
-                    .requestMatchers(HttpMethod.POST, "/api/v1/farms/**").hasAnyRole("FARMER", "ADMIN")
-                    .requestMatchers(HttpMethod.PUT, "/api/v1/farms/**").hasAnyRole("FARMER", "ADMIN")
-                    .requestMatchers(HttpMethod.DELETE, "/api/v1/farms/**").hasAnyRole("FARMER", "ADMIN")
-                    .requestMatchers("/api/v1/inventory/**").hasAnyRole("FARMER", "ADMIN")
-
-                    // Authenticated users
-                    .anyRequest().authenticated()
-            )
-            .authenticationProvider(authenticationProvider())
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(AbstractHttpConfigurer::disable)
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(SWAGGER_WHITELIST).permitAll()
+                        .requestMatchers(HttpMethod.POST, PUBLIC_POST).permitAll()
+                        .requestMatchers(HttpMethod.GET, PUBLIC_GET).permitAll()
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/farms/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/farms/**").hasAnyRole("FARMER", "ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/farms/**").hasAnyRole("FARMER", "ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/farms/**").hasAnyRole("FARMER", "ADMIN")
+                        .requestMatchers("/api/v1/inventory/**").hasAnyRole("FARMER", "ADMIN")
+                        .anyRequest().authenticated()
+                )
+                .authenticationProvider(authenticationProvider())
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
@@ -111,9 +101,7 @@ public class SecurityConfig {
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider provider =
                 new DaoAuthenticationProvider(userDetailsService);
-
         provider.setPasswordEncoder(passwordEncoder());
-
         return provider;
     }
 
@@ -131,7 +119,9 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(List.of("http://localhost:3000", "http://localhost:5173"));
+
+        // FIX: đọc từ CorsProperties — hoạt động đúng với mọi profile (dev/prod)
+        config.setAllowedOriginPatterns(corsProperties.getAllowedOrigins());
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
