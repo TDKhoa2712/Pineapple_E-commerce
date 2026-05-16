@@ -1,9 +1,12 @@
 package backend.pineapple_ecommerce.controller;
 
 import backend.pineapple_ecommerce.dto.request.CreateFarmRequest;
+import backend.pineapple_ecommerce.dto.request.RejectFarmRequest;
 import backend.pineapple_ecommerce.dto.response.ApiResponse;
 import backend.pineapple_ecommerce.dto.response.FarmResponse;
 import backend.pineapple_ecommerce.dto.response.PageResponse;
+import backend.pineapple_ecommerce.dto.response.ProductSummaryResponse;
+import backend.pineapple_ecommerce.enums.FarmStatus;
 import backend.pineapple_ecommerce.service.FarmService;
 import backend.pineapple_ecommerce.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -12,9 +15,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -28,15 +33,14 @@ public class FarmController {
     private final UserService userService;
 
     // ─────────────────────────────────────────────
-    // PUBLIC — GET
+    // PUBLIC
     // ─────────────────────────────────────────────
 
-    @Operation(summary = "Lấy tất cả trang trại phân trang (public)")
+    @Operation(summary = "Lấy tất cả trang trại ACTIVE phân trang (public)")
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<FarmResponse>>> getAll(
             @RequestParam(defaultValue = "0")  int page,
             @RequestParam(defaultValue = "20") int size) {
-
         return ResponseEntity.ok(ApiResponse.success(farmService.getAllFarms(page, size)));
     }
 
@@ -46,11 +50,21 @@ public class FarmController {
         return ResponseEntity.ok(ApiResponse.success(farmService.getFarmById(farmId)));
     }
 
+    @Operation(summary = "Lấy sản phẩm của farm (public)")
+    @GetMapping("/{farmId}/products")
+    public ResponseEntity<ApiResponse<PageResponse<ProductSummaryResponse>>> getFarmProducts(
+            @PathVariable Long farmId,
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(ApiResponse.success(
+                farmService.getFarmProducts(farmId, page, size)));
+    }
+
     // ─────────────────────────────────────────────
-    // FARMER — quản lý trang trại của mình
+    // FARMER
     // ─────────────────────────────────────────────
 
-    @Operation(summary = "Trang trại của tôi (Farmer)",
+    @Operation(summary = "Trang trại của tôi (Farmer/Admin)",
                security = @SecurityRequirement(name = "bearerAuth"))
     @GetMapping("/my")
     @PreAuthorize("hasAnyRole('FARMER', 'ADMIN')")
@@ -59,17 +73,16 @@ public class FarmController {
         return ResponseEntity.ok(ApiResponse.success(farmService.getMyFarms(ownerId)));
     }
 
-    @Operation(summary = "Tạo trang trại mới (Farmer/Admin)",
+    @Operation(summary = "Tạo trang trại mới (Farmer/Admin) — sẽ ở trạng thái PENDING_APPROVAL",
                security = @SecurityRequirement(name = "bearerAuth"))
     @PostMapping
     @PreAuthorize("hasAnyRole('FARMER', 'ADMIN')")
     public ResponseEntity<ApiResponse<FarmResponse>> create(
             @Valid @RequestBody CreateFarmRequest request) {
-
         Long ownerId = userService.getCurrentUserId();
         FarmResponse response = farmService.createFarm(ownerId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(response, "Tạo trang trại thành công"));
+                .body(ApiResponse.success(response, "Tạo trang trại thành công. Vui lòng chờ Admin duyệt."));
     }
 
     @Operation(summary = "Cập nhật trang trại (chủ trang trại hoặc Admin)",
@@ -79,13 +92,24 @@ public class FarmController {
     public ResponseEntity<ApiResponse<FarmResponse>> update(
             @PathVariable Long farmId,
             @Valid @RequestBody CreateFarmRequest request) {
-
         Long requesterId = userService.getCurrentUserId();
         return ResponseEntity.ok(ApiResponse.success(
                 farmService.updateFarm(farmId, requesterId, request), "Cập nhật thành công"));
     }
 
-    @Operation(summary = "Xoá trang trại (chủ trang trại hoặc Admin)",
+    @Operation(summary = "Upload ảnh trang trại (chủ trang trại hoặc Admin)",
+               security = @SecurityRequirement(name = "bearerAuth"))
+    @PostMapping(value = "/{farmId}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('FARMER', 'ADMIN')")
+    public ResponseEntity<ApiResponse<FarmResponse>> uploadImage(
+            @PathVariable Long farmId,
+            @RequestParam("file") MultipartFile file) {
+        Long requesterId = userService.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.success(
+                farmService.uploadFarmImage(farmId, requesterId, file), "Upload ảnh thành công"));
+    }
+
+    @Operation(summary = "Xoá trang trại — soft delete (chủ trang trại hoặc Admin)",
                security = @SecurityRequirement(name = "bearerAuth"))
     @DeleteMapping("/{farmId}")
     @PreAuthorize("hasAnyRole('FARMER', 'ADMIN')")
@@ -93,5 +117,41 @@ public class FarmController {
         Long requesterId = userService.getCurrentUserId();
         farmService.deleteFarm(farmId, requesterId);
         return ResponseEntity.ok(ApiResponse.success(null, "Đã xoá trang trại"));
+    }
+
+    // ─────────────────────────────────────────────
+    // ADMIN
+    // ─────────────────────────────────────────────
+
+    @Operation(summary = "Lấy tất cả trang trại (Admin) — có filter status",
+               security = @SecurityRequirement(name = "bearerAuth"))
+    @GetMapping("/admin")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<PageResponse<FarmResponse>>> getAllAdmin(
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) FarmStatus status) {
+        return ResponseEntity.ok(ApiResponse.success(
+                farmService.getAllFarmsAdmin(page, size, status)));
+    }
+
+    @Operation(summary = "Duyệt trang trại (Admin) — PENDING_APPROVAL → ACTIVE",
+               security = @SecurityRequirement(name = "bearerAuth"))
+    @PatchMapping("/admin/{farmId}/approve")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<FarmResponse>> approveFarm(@PathVariable Long farmId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                farmService.approveFarm(farmId), "Đã duyệt trang trại"));
+    }
+
+    @Operation(summary = "Từ chối trang trại (Admin) — PENDING_APPROVAL → REJECTED",
+               security = @SecurityRequirement(name = "bearerAuth"))
+    @PatchMapping("/admin/{farmId}/reject")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<FarmResponse>> rejectFarm(
+            @PathVariable Long farmId,
+            @Valid @RequestBody RejectFarmRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(
+                farmService.rejectFarm(farmId, request.getReason()), "Đã từ chối trang trại"));
     }
 }
