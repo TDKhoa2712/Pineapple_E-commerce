@@ -1,15 +1,22 @@
 package backend.pineapple_ecommerce.service.impl;
 
+import backend.pineapple_ecommerce.dto.request.AdminResetPasswordRequest;
+import backend.pineapple_ecommerce.dto.request.ChangePasswordRequest;
 import backend.pineapple_ecommerce.dto.request.UpdateProfileRequest;
+import backend.pineapple_ecommerce.dto.request.UpdateUserRolesRequest;
+import backend.pineapple_ecommerce.dto.request.UpdateUserStatusRequest;
 import backend.pineapple_ecommerce.dto.response.PageResponse;
 import backend.pineapple_ecommerce.dto.response.UploadResponse;
 import backend.pineapple_ecommerce.dto.response.UserResponse;
+import backend.pineapple_ecommerce.entity.Role;
 import backend.pineapple_ecommerce.entity.User;
+import backend.pineapple_ecommerce.enums.RoleName;
 import backend.pineapple_ecommerce.enums.UploadFolder;
 import backend.pineapple_ecommerce.enums.UserStatus;
 import backend.pineapple_ecommerce.exception.BusinessException;
 import backend.pineapple_ecommerce.exception.ResourceNotFoundException;
 import backend.pineapple_ecommerce.mapper.UserMapper;
+import backend.pineapple_ecommerce.repository.RoleRepository;
 import backend.pineapple_ecommerce.repository.UserRepository;
 import backend.pineapple_ecommerce.service.CloudinaryService;
 import backend.pineapple_ecommerce.service.UserService;
@@ -17,12 +24,15 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.HashSet;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -30,29 +40,20 @@ import org.springframework.web.multipart.MultipartFile;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository    userRepository;
+    private final RoleRepository    roleRepository;
     private final UserMapper        userMapper;
     private final CloudinaryService cloudinaryService;
+    private final PasswordEncoder   passwordEncoder;
 
     // ─────────────────────────────────────────────
-    // GET PROFILE
+    // USER — TỰ QUẢN LÝ TÀI KHOẢN
     // ─────────────────────────────────────────────
 
     @Override
     @Transactional(readOnly = true)
     public UserResponse getMyProfile() {
-        Long userId = getCurrentUserId();
-        return userMapper.toResponse(findUserById(userId));
+        return userMapper.toResponse(findUserById(getCurrentUserId()));
     }
-
-    @Override
-    @Transactional(readOnly = true)
-    public UserResponse getUserById(Long userId) {
-        return userMapper.toResponse(findUserById(userId));
-    }
-
-    // ─────────────────────────────────────────────
-    // UPDATE PROFILE (text fields only)
-    // ─────────────────────────────────────────────
 
     @Override
     @Transactional
@@ -79,83 +80,166 @@ public class UserServiceImpl implements UserService {
         return userMapper.toResponse(saved);
     }
 
-    // ─────────────────────────────────────────────
-    // UPLOAD / REPLACE AVATAR
-    // ─────────────────────────────────────────────
-
-    /**
-     * Upload avatar mới cho user.
-     *
-     * <p>Flow:
-     * <ol>
-     *   <li>Upload file mới lên Cloudinary (folder AVATAR).</li>
-     *   <li>Xoá ảnh cũ khỏi Cloudinary nếu {@code avatarPublicId} tồn tại.</li>
-     *   <li>Lưu URL và publicId mới vào DB.</li>
-     * </ol>
-     *
-     * Lưu ý: bước upload xảy ra TRƯỚC khi xoá ảnh cũ, đảm bảo
-     * không mất ảnh nếu upload thất bại (exception từ uploadImage sẽ
-     * propagate ra trước khi ta xoá ảnh cũ).
-     */
     @Override
     @Transactional
     public UserResponse uploadAvatar(Long userId, MultipartFile file) {
         User user = findUserById(userId);
 
-        // 1. Upload ảnh mới — ném BusinessException nếu file không hợp lệ
         UploadResponse uploaded = cloudinaryService.uploadImage(file, UploadFolder.AVATAR);
 
-        // 2. Xoá ảnh cũ (nếu có) — không ném exception để tránh block luồng chính
         String oldPublicId = user.getAvatarPublicId();
         if (oldPublicId != null && !oldPublicId.isBlank()) {
             cloudinaryService.deleteImage(oldPublicId);
             log.info("Deleted old avatar publicId={} for userId={}", oldPublicId, userId);
         }
 
-        // 3. Cập nhật DB
         user.setAvatar(uploaded.getUrl());
         user.setAvatarPublicId(uploaded.getPublicId());
 
         User saved = userRepository.save(user);
-        log.info("Avatar updated for userId={}, publicId={}", userId, uploaded.getPublicId());
+        log.info("Avatar updated for userId={}", userId);
         return userMapper.toResponse(saved);
     }
 
     // ─────────────────────────────────────────────
-    // ADMIN: LIST ALL USERS
+    // ĐỔI MẬT KHẨU (user tự thực hiện)
+    // ─────────────────────────────────────────────
+
+    @Override
+    @Transactional
+    public void changePassword(Long userId, ChangePasswordRequest request) {
+        User user = findUserById(userId);
+
+        // 1. Xác nhận mật khẩu cũ
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            throw new BusinessException("Mật khẩu hiện tại không chính xác");
+        }
+
+        // 2. newPassword và confirmNewPassword phải khớp
+        if (!request.getNewPassword().equals(request.getConfirmNewPassword())) {
+            throw new BusinessException("Mật khẩu mới và xác nhận mật khẩu không khớp");
+        }
+
+        // 3. Mật khẩu mới không được trùng mật khẩu cũ
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
+            throw new BusinessException("Mật khẩu mới không được trùng với mật khẩu hiện tại");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+        log.info("User {} changed their password", userId);
+    }
+
+    // ─────────────────────────────────────────────
+    // ADMIN — XEM USER
     // ─────────────────────────────────────────────
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<UserResponse> getAllUsers(int page, int size) {
+    public UserResponse getUserById(Long userId) {
+        return userMapper.toResponse(findUserById(userId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<UserResponse> getAllUsers(int page, int size,
+                                                  UserStatus status, String keyword) {
         Page<UserResponse> result = userRepository
-                .findAll(PageRequest.of(page, size, Sort.by("createdAt").descending()))
+                .findByStatusAndKeyword(status, keyword, PageRequest.of(page, size))
                 .map(userMapper::toResponse);
         return PageResponse.of(result);
     }
 
     // ─────────────────────────────────────────────
-    // ADMIN: TOGGLE STATUS
+    // ADMIN — CẬP NHẬT TRẠNG THÁI
     // ─────────────────────────────────────────────
 
     @Override
     @Transactional
-    public void toggleUserStatus(Long userId) {
-        User user = findUserById(userId);
+    public UserResponse updateUserStatus(Long targetUserId, Long adminId,
+                                         UpdateUserStatusRequest request) {
+        // Admin không thể tự khoá chính mình
+        if (targetUserId.equals(adminId)) {
+            throw new BusinessException("Bạn không thể thay đổi trạng thái tài khoản của chính mình");
+        }
 
-        UserStatus next = switch (user.getStatus()) {
-            case ACTIVE   -> UserStatus.INACTIVE;
-            case INACTIVE -> UserStatus.ACTIVE;
-            case BANNED   -> UserStatus.ACTIVE;
-        };
+        User user = findUserById(targetUserId);
+        UserStatus oldStatus = user.getStatus();
+        user.setStatus(request.getStatus());
 
-        user.setStatus(next);
-        userRepository.save(user);
-        log.info("Admin toggled user {} status to {}", userId, next);
+        User saved = userRepository.save(user);
+        log.info("Admin {} changed user {} status: {} → {} | reason: {}",
+                adminId, targetUserId, oldStatus, request.getStatus(),
+                request.getReason() != null ? request.getReason() : "N/A");
+
+        return userMapper.toResponse(saved);
     }
 
     // ─────────────────────────────────────────────
-    // getCurrentUserId — đọc từ SecurityContext
+    // ADMIN — PHÂN QUYỀN ROLE
+    // ─────────────────────────────────────────────
+
+    @Override
+    @Transactional
+    public UserResponse updateUserRoles(Long targetUserId, Long adminId,
+                                        UpdateUserRolesRequest request) {
+        // Admin không thể tự gỡ role ADMIN của chính mình
+        if (targetUserId.equals(adminId) && !request.getRoles().contains(RoleName.ROLE_ADMIN)) {
+            throw new BusinessException("Bạn không thể tự gỡ quyền ADMIN của chính mình");
+        }
+
+        User user = findUserById(targetUserId);
+
+        // Resolve các Role entity từ DB
+        Set<Role> newRoles = new HashSet<>();
+
+        // ROLE_USER luôn được đảm bảo — ngay cả khi admin không gửi lên
+        Role userRole = roleRepository.findByName(RoleName.ROLE_USER)
+                .orElseThrow(() -> new ResourceNotFoundException("Role", "name", RoleName.ROLE_USER));
+        newRoles.add(userRole);
+
+        // Thêm các role admin chỉ định
+        for (RoleName roleName : request.getRoles()) {
+            if (roleName == RoleName.ROLE_USER) continue; // Đã thêm ở trên
+
+            Role role = roleRepository.findByName(roleName)
+                    .orElseThrow(() -> new ResourceNotFoundException("Role", "name", roleName));
+            newRoles.add(role);
+        }
+
+        Set<String> oldRoleNames = user.getRoles().stream()
+                .map(r -> r.getName().name())
+                .collect(java.util.stream.Collectors.toSet());
+
+        user.getRoles().clear();
+        user.getRoles().addAll(newRoles);
+
+        User saved = userRepository.save(user);
+
+        Set<String> newRoleNames = newRoles.stream()
+                .map(r -> r.getName().name())
+                .collect(java.util.stream.Collectors.toSet());
+        log.info("Admin {} updated roles for user {}: {} → {}",
+                adminId, targetUserId, oldRoleNames, newRoleNames);
+
+        return userMapper.toResponse(saved);
+    }
+
+    // ─────────────────────────────────────────────
+    // ADMIN — ĐẶT LẠI MẬT KHẨU
+    // ─────────────────────────────────────────────
+
+    @Override
+    @Transactional
+    public void adminResetPassword(Long targetUserId, AdminResetPasswordRequest request) {
+        User user = findUserById(targetUserId);
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+        log.info("Admin reset password for userId={}", targetUserId);
+    }
+
+    // ─────────────────────────────────────────────
+    // getCurrentUserId
     // ─────────────────────────────────────────────
 
     @Override

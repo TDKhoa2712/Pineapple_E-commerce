@@ -24,17 +24,17 @@ public class OrderSpecification {
 
     public static Specification<Order> hasStatus(OrderStatus status) {
         return (root, query, cb) ->
-            status == null ? null : cb.equal(root.get("status"), status);
+                status == null ? null : cb.equal(root.get("status"), status);
     }
 
     public static Specification<Order> hasUserId(Long userId) {
         return (root, query, cb) ->
-            userId == null ? null : cb.equal(root.get("user").get("id"), userId);
+                userId == null ? null : cb.equal(root.get("user").get("id"), userId);
     }
 
     public static Specification<Order> hasPaymentMethod(PaymentMethod method) {
         return (root, query, cb) ->
-            method == null ? null : cb.equal(root.get("paymentMethod"), method);
+                method == null ? null : cb.equal(root.get("paymentMethod"), method);
     }
 
     public static Specification<Order> createdBetween(LocalDateTime from, LocalDateTime to) {
