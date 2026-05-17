@@ -8,9 +8,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-
     show-sql: false
-
     properties:
       hibernate:
         format_sql: true
@@ -31,8 +29,17 @@ app:
     api-secret: ${CLOUDINARY_API_SECRET}
     secure: true
 
+  # =========================
+  # EMAIL BUSINESS CONFIG
+  # =========================
+  mail:
+    from-address: ${MAIL_FROM_ADDRESS}
+    from-name: "Pineapple E-commerce"
+    base-url: "http://localhost:3000"
+    support-email: "support@pineapple.vn"
+
   vnpay:
     tmn-code: ${VNPAY_TMN_CODE}
     hash-secret: ${VNPAY_HASH_SECRET}
     pay-url: ${VNP_URL}
-    return-url: "http://localhost:3000/payment/success" # Đổi port frontend nếu cần redirect về FE
+    return-url: "http://localhost:3000/payment/success"

@@ -12,9 +12,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
-
     show-sql: false
-
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -32,3 +30,12 @@ app:
 
   cors:
     allowed-origins: ${FRONTEND_URL}
+
+  # =========================
+  # EMAIL BUSINESS CONFIG (Production)
+  # =========================
+  mail:
+    from-address: ${MAIL_FROM_ADDRESS:pineappleecommerce.example@gmail.com}
+    from-name: "Pineapple E-commerce"
+    base-url: "https://yourdomain.com"          # Thay bằng domain thật tạm thời chưa
+    support-email: "support@pineapple.vn"

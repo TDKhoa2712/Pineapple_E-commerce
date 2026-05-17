@@ -9,6 +9,7 @@ import backend.pineapple_ecommerce.entity.RefreshToken;
 import backend.pineapple_ecommerce.entity.Role;
 import backend.pineapple_ecommerce.entity.User;
 import backend.pineapple_ecommerce.enums.RoleName;
+import backend.pineapple_ecommerce.event.EmailEvents;
 import backend.pineapple_ecommerce.exception.BusinessException;
 import backend.pineapple_ecommerce.exception.ResourceNotFoundException;
 import backend.pineapple_ecommerce.exception.UnauthorizedException;
@@ -21,6 +22,7 @@ import backend.pineapple_ecommerce.service.AuthService;
 import backend.pineapple_ecommerce.service.RefreshTokenService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -56,6 +58,9 @@ public class AuthServiceImpl implements AuthService {
     private final RefreshTokenService refreshTokenService;
     private final UserDetailsService  userDetailsService;
 
+    // Publisher để phát domain event
+    private final ApplicationEventPublisher eventPublisher;
+
     // ─────────────────────────────────────────────
     // REGISTER
     // ─────────────────────────────────────────────
@@ -85,6 +90,11 @@ public class AuthServiceImpl implements AuthService {
         cartRepository.save(cart);
 
         log.info("User registered: {}", savedUser.getEmail());
+
+        // Publish event — email gửi sau COMMIT, không block response
+        eventPublisher.publishEvent(
+                new EmailEvents.UserRegisteredEvent(savedUser.getEmail(), savedUser.getFullName()));
+
         return buildAuthResponse(savedUser);
     }
 
@@ -124,7 +134,7 @@ public class AuthServiceImpl implements AuthService {
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
         String newAccessToken   = jwtService.generateAccessToken(userDetails);
-        RefreshToken newRefresh = refreshTokenService.createRefreshToken(user); // rotate
+        RefreshToken newRefresh = refreshTokenService.createRefreshToken(user);
 
         Set<String> roles = user.getRoles().stream()
                 .map(r -> r.getName().name())
@@ -149,13 +159,11 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void logout(String refreshTokenValue) {
-        // Tìm token → lấy userId → xoá
         try {
             RefreshToken rt = refreshTokenService.verifyRefreshToken(refreshTokenValue);
             refreshTokenService.revokeByUserId(rt.getUser().getId());
             log.info("User {} logged out", rt.getUser().getEmail());
         } catch (BusinessException e) {
-            // Token không hợp lệ/hết hạn → vẫn coi là logout thành công
             log.warn("Logout with invalid token: {}", e.getMessage());
         }
     }
@@ -167,7 +175,7 @@ public class AuthServiceImpl implements AuthService {
     private AuthResponse buildAuthResponse(User user) {
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
 
-        String accessToken      = jwtService.generateAccessToken(userDetails);
+        String accessToken        = jwtService.generateAccessToken(userDetails);
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
 
         Set<String> roles = user.getRoles().stream()

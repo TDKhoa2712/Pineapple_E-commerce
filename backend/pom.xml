@@ -12,7 +12,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.14</version>
+        <version>3.5.7</version>
         <relativePath/>
     </parent>
     <!-- ========================= -->
@@ -39,6 +39,8 @@
         <springdoc.version>2.8.13</springdoc.version>
 
         <cloudinary.version>2.0.0</cloudinary.version>
+
+        <mail.version>4.0.6</mail.version>
     </properties>
 
     <!-- ========================= -->
@@ -175,11 +177,26 @@
             <version>5.3.0</version>
         </dependency>
 
-        <!--        EnableRetry        -->
+        <!-- Mail -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+            <version>${mail.version}</version>
+        </dependency>
+
+        <!-- Thymeleaf -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-thymeleaf</artifactId>
+        </dependency>
+
+        <!-- Retry -->
         <dependency>
             <groupId>org.springframework.retry</groupId>
             <artifactId>spring-retry</artifactId>
         </dependency>
+
+        <!-- Required for Spring Retry AOP -->
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-aspects</artifactId>

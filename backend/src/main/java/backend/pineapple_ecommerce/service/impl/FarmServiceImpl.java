@@ -10,6 +10,7 @@ import backend.pineapple_ecommerce.entity.Product;
 import backend.pineapple_ecommerce.entity.User;
 import backend.pineapple_ecommerce.enums.FarmStatus;
 import backend.pineapple_ecommerce.enums.UploadFolder;
+import backend.pineapple_ecommerce.event.EmailEvents;
 import backend.pineapple_ecommerce.exception.BusinessException;
 import backend.pineapple_ecommerce.exception.ResourceNotFoundException;
 import backend.pineapple_ecommerce.exception.UnauthorizedException;
@@ -23,6 +24,7 @@ import backend.pineapple_ecommerce.service.CloudinaryService;
 import backend.pineapple_ecommerce.service.FarmService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -45,6 +47,7 @@ public class FarmServiceImpl implements FarmService {
     private final FarmMapper               farmMapper;
     private final ProductMapper            productMapper;
     private final CloudinaryService        cloudinaryService;
+    private final ApplicationEventPublisher eventPublisher;
 
     // ─────────────────────────────────────────────
     // CREATE
@@ -150,12 +153,20 @@ public class FarmServiceImpl implements FarmService {
         if (farm.getStatus() != FarmStatus.PENDING_APPROVAL) {
             throw new BusinessException(
                     "Chỉ có thể duyệt farm ở trạng thái PENDING_APPROVAL. " +
-                    "Trạng thái hiện tại: " + farm.getStatus());
+                            "Trạng thái hiện tại: " + farm.getStatus());
         }
 
         farm.setStatus(FarmStatus.ACTIVE);
         Farm saved = farmRepository.save(farm);
         log.info("Farm approved: id={}", farmId);
+
+        // Publish event — email gửi sau COMMIT
+        eventPublisher.publishEvent(new EmailEvents.FarmApprovalEvent(
+                saved.getOwner().getEmail(),
+                saved.getName(),
+                true,
+                null));
+
         return farmMapper.toResponse(saved);
     }
 
@@ -168,13 +179,21 @@ public class FarmServiceImpl implements FarmService {
         if (farm.getStatus() != FarmStatus.PENDING_APPROVAL) {
             throw new BusinessException(
                     "Chỉ có thể từ chối farm ở trạng thái PENDING_APPROVAL. " +
-                    "Trạng thái hiện tại: " + farm.getStatus());
+                            "Trạng thái hiện tại: " + farm.getStatus());
         }
 
         farm.setStatus(FarmStatus.REJECTED);
         farm.setRejectionReason(reason);
         Farm saved = farmRepository.save(farm);
         log.info("Farm rejected: id={}, reason={}", farmId, reason);
+
+        // Publish event — email gửi sau COMMIT
+        eventPublisher.publishEvent(new EmailEvents.FarmApprovalEvent(
+                saved.getOwner().getEmail(),
+                saved.getName(),
+                false,
+                reason));
+
         return farmMapper.toResponse(saved);
     }
 

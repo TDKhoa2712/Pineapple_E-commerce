@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Cập nhật đơn hàng</title>
+  <style>
+    body { margin:0; padding:0; background:#f5f5f0; font-family: 'Segoe UI', Arial, sans-serif; }
+    .wrapper { max-width:600px; margin:32px auto; background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.08); }
+    .header { background:#1e3a5f; padding:32px 40px; }
+    .header h1 { color:#fff; margin:0 0 4px; font-size:22px; font-weight:600; }
+    .header p  { color:rgba(255,255,255,0.8); margin:0; font-size:13px; }
+    .body { padding:32px 40px; }
+    .text { color:#4a4a4a; font-size:15px; line-height:1.7; margin:0 0 20px; }
+    .status-card { background:#f0faf4; border:2px solid #2d7a4f; border-radius:12px; padding:24px; text-align:center; margin:24px 0; }
+    .status-label { font-size:13px; color:#888; margin-bottom:12px; }
+    .status-value { font-size:26px; font-weight:700; color:#2d7a4f; }
+    .order-meta { background:#f8f8f6; border-radius:8px; padding:16px 20px; margin:20px 0; }
+    .meta-row { display:flex; justify-content:space-between; font-size:14px; color:#555; padding:4px 0; }
+    .meta-label { color:#888; }
+    .meta-value { font-weight:500; color:#333; }
+    .btn { display:inline-block; background:#1e3a5f; color:#fff; text-decoration:none; padding:12px 28px; border-radius:8px; font-size:14px; font-weight:600; margin-top:8px; }
+    .footer { background:#f9f9f7; padding:24px 40px; text-align:center; border-top:1px solid #eee; }
+    .footer p { color:#888; font-size:12px; margin:4px 0; }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- Header -->
+  <div class="header">
+    <h1>📦 Cập nhật đơn hàng</h1>
+    <p>Đơn #<span th:text="${order.id}">12345</span> · Pineapple E-commerce</p>
+  </div>
+
+  <!-- Body -->
+  <div class="body">
+
+    <p class="text">
+      Có một cập nhật mới về đơn hàng của bạn.
+      Trạng thái hiện tại:
+    </p>
+
+    <!-- Status display -->
+    <div class="status-card">
+      <div class="status-label">Trạng thái đơn hàng</div>
+      <div class="status-value" th:text="${newStatus}">Đang giao hàng</div>
+    </div>
+
+    <!-- Order meta -->
+    <div class="order-meta">
+      <div class="meta-row">
+        <span class="meta-label">Mã đơn hàng</span>
+        <span class="meta-value">#<span th:text="${order.id}">12345</span></span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-label">Tổng tiền</span>
+        <span class="meta-value" th:text="${#numbers.formatDecimal(order.totalAmount, 0, 'COMMA', 0, 'POINT')} + 'đ'">100.000đ</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-label">Địa chỉ giao</span>
+        <span class="meta-value" th:text="${order.shippingAddress}">123 Nguyễn Văn A</span>
+      </div>
+    </div>
+
+    <a href="https://localhost:3000/orders" class="btn">Theo dõi đơn hàng</a>
+
+    <p class="text" style="font-size:13px; color:#888; margin-top:24px;">
+      Nếu bạn có thắc mắc, hãy liên hệ
+      <a href="mailto:support@pineapple.vn" style="color:#1e3a5f;">support@pineapple.vn</a>
+    </p>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <p><strong style="color:#1e3a5f;">🍍 Pineapple E-commerce</strong></p>
+    <p>© 2025 Pineapple. All rights reserved.</p>
+  </div>
+
+</div>
+</body>
+</html>

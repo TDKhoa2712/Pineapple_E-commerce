@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Kết quả xét duyệt Farm</title>
+  <style>
+    body { margin:0; padding:0; background:#f5f5f0; font-family: 'Segoe UI', Arial, sans-serif; }
+    .wrapper { max-width:600px; margin:32px auto; background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.08); }
+    .header-approved { background:linear-gradient(135deg,#2d7a4f,#1e5c38); padding:36px 40px; text-align:center; }
+    .header-rejected { background:linear-gradient(135deg,#c0392b,#922b21); padding:36px 40px; text-align:center; }
+    .header h1 { color:#fff; margin:0 0 8px; font-size:24px; font-weight:700; }
+    .header p  { color:rgba(255,255,255,0.85); margin:0; font-size:14px; }
+    .body { padding:40px; }
+    .text { color:#4a4a4a; font-size:15px; line-height:1.7; margin:0 0 20px; }
+    .farm-card { border:2px solid #e0e0e0; border-radius:10px; padding:20px 24px; margin:20px 0; }
+    .farm-label { font-size:12px; color:#888; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; }
+    .farm-name { font-size:20px; font-weight:700; color:#1a1a1a; }
+    .result-box-approved { background:#f0faf4; border:2px solid #2d7a4f; border-radius:12px; padding:24px; text-align:center; margin:24px 0; }
+    .result-box-rejected { background:#fff5f5; border:2px solid #e74c3c; border-radius:12px; padding:24px; text-align:center; margin:24px 0; }
+    .result-icon { font-size:48px; display:block; margin-bottom:12px; }
+    .result-title-approved { font-size:20px; font-weight:700; color:#2d7a4f; }
+    .result-title-rejected { font-size:20px; font-weight:700; color:#c0392b; }
+    .reason-box { background:#fff8f0; border-left:4px solid #e67e22; border-radius:0 8px 8px 0; padding:16px 20px; margin:20px 0; }
+    .reason-box p { margin:0; color:#784212; font-size:14px; line-height:1.7; }
+    .next-steps { margin:24px 0; }
+    .step { display:flex; align-items:flex-start; gap:12px; margin-bottom:14px; }
+    .step-icon { font-size:20px; min-width:28px; }
+    .step-text { font-size:14px; color:#444; line-height:1.6; }
+    .btn-approved { display:inline-block; background:#2d7a4f; color:#fff; text-decoration:none; padding:12px 28px; border-radius:8px; font-size:14px; font-weight:600; margin-top:8px; }
+    .btn-rejected { display:inline-block; background:#e74c3c; color:#fff; text-decoration:none; padding:12px 28px; border-radius:8px; font-size:14px; font-weight:600; margin-top:8px; }
+    .footer { background:#f9f9f7; padding:24px 40px; text-align:center; border-top:1px solid #eee; }
+    .footer p { color:#888; font-size:12px; margin:4px 0; }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- Header: Approved -->
+  <div th:if="${approved}" class="header-approved">
+    <h1>🎉 Farm đã được duyệt!</h1>
+    <p>Chúc mừng bạn gia nhập hệ thống Pineapple Marketplace</p>
+  </div>
+
+  <!-- Header: Rejected -->
+  <div th:unless="${approved}" class="header-rejected">
+    <h1>Kết quả xét duyệt Farm</h1>
+    <p>Pineapple E-commerce · Thông báo từ đội ngũ quản trị</p>
+  </div>
+
+  <!-- Body -->
+  <div class="body">
+
+    <!-- Farm card -->
+    <div class="farm-card">
+      <div class="farm-label">Trang trại</div>
+      <div class="farm-name" th:text="${farmName}">Farm Xanh Sạch</div>
+    </div>
+
+    <!-- APPROVED -->
+    <div th:if="${approved}">
+      <div class="result-box-approved">
+        <span class="result-icon">✅</span>
+        <div class="result-title-approved">Trang trại đã được phê duyệt</div>
+      </div>
+
+      <p class="text">
+        Farm của bạn đã được đội ngũ Pineapple xem xét và chấp thuận.
+        Bạn có thể bắt đầu hoạt động ngay bây giờ!
+      </p>
+
+      <p class="text" style="font-weight:600; color:#333;">Các bước tiếp theo:</p>
+      <div class="next-steps">
+        <div class="step">
+          <span class="step-icon">📦</span>
+          <div class="step-text">Thêm sản phẩm đầu tiên vào danh mục trang trại của bạn</div>
+        </div>
+        <div class="step">
+          <span class="step-icon">🖼️</span>
+          <div class="step-text">Cập nhật ảnh đại diện và mô tả hấp dẫn cho trang trại</div>
+        </div>
+        <div class="step">
+          <span class="step-icon">📈</span>
+          <div class="step-text">Theo dõi đơn hàng và doanh thu từ bảng điều khiển</div>
+        </div>
+      </div>
+
+      <a href="https://localhost:3000/farmer/dashboard" class="btn-approved">Vào trang quản lý Farm</a>
+    </div>
+
+    <!-- REJECTED -->
+    <div th:unless="${approved}">
+      <div class="result-box-rejected">
+        <span class="result-icon">❌</span>
+        <div class="result-title-rejected">Trang trại chưa được phê duyệt</div>
+      </div>
+
+      <p class="text">
+        Rất tiếc, farm của bạn chưa đáp ứng đủ điều kiện để tham gia Pineapple Marketplace
+        tại thời điểm này. Dưới đây là lý do:
+      </p>
+
+      <div class="reason-box" th:if="${rejectionReason != null and !rejectionReason.isEmpty()}">
+        <p><strong>Lý do từ chối:</strong><br/><span th:text="${rejectionReason}">Thiếu thông tin chứng nhận hữu cơ</span></p>
+      </div>
+
+      <p class="text" style="font-weight:600; color:#333;">Bạn có thể làm gì tiếp theo:</p>
+      <div class="next-steps">
+        <div class="step">
+          <span class="step-icon">📝</span>
+          <div class="step-text">Xem lại thông tin farm và bổ sung các tài liệu còn thiếu</div>
+        </div>
+        <div class="step">
+          <span class="step-icon">📞</span>
+          <div class="step-text">Liên hệ hỗ trợ nếu bạn cần giải đáp thêm</div>
+        </div>
+        <div class="step">
+          <span class="step-icon">🔄</span>
+          <div class="step-text">Gửi lại đề nghị xét duyệt sau khi đã cập nhật thông tin</div>
+        </div>
+      </div>
+
+      <a href="https://localhost:3000/farmer/farms" class="btn-rejected">Cập nhật thông tin Farm</a>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <p><strong style="color:#2d7a4f;">🍍 Pineapple E-commerce</strong></p>
+    <p>Cần hỗ trợ? Liên hệ
+      <a href="mailto:support@pineapple.vn" style="color:#2d7a4f; text-decoration:none;">support@pineapple.vn</a>
+    </p>
+    <p>© 2025 Pineapple. All rights reserved.</p>
+  </div>
+
+</div>
+</body>
+</html>
