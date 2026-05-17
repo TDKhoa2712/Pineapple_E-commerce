@@ -24,3 +24,7 @@ logs/
 # OS
 .DS_Store
 Thumbs.db
+
+# ==================== FRONTEND ====================
+frontend/node_modules/
+frontend
