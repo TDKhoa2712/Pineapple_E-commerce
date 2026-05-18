@@ -1,36 +1,36 @@
 package backend.pineapple_ecommerce.entity;
 
+import backend.pineapple_ecommerce.enums.OtpType;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
 
 /**
- * Lưu OTP dùng để reset mật khẩu.
+ * Lưu OTP dùng cho cả Password Reset và Email Verification.
  *
- * <p>Thiết kế:
+ * <p>Thay đổi so với phiên bản cũ:
  * <ul>
- *   <li>Một user tại một thời điểm chỉ có một OTP active (xoá cũ trước khi tạo mới)</li>
- *   <li>OTP hết hạn sau 10 phút (expiresAt)</li>
- *   <li>Sau khi dùng, đánh dấu used = true thay vì xoá ngay (audit trail)</li>
- *   <li>Scheduler dọn dẹp OTP đã hết hạn/đã dùng định kỳ nếu cần</li>
+ *   <li>Thêm field {@code type} (OtpType enum) — phân biệt mục đích OTP</li>
+ *   <li>Index {@code idx_otp_user_type} trên (user_id, type) — query nhanh hơn</li>
+ *   <li>Backward-compatible: code cũ dùng PASSWORD_RESET vẫn hoạt động bình thường</li>
  * </ul>
  *
- * <p>DDL tương ứng (auto-generated bởi JPA):
- * <pre>
- * CREATE TABLE otp_tokens (
- *   id         BIGINT AUTO_INCREMENT PRIMARY KEY,
- *   user_id    BIGINT NOT NULL,
- *   otp        VARCHAR(6) NOT NULL,
- *   expires_at DATETIME NOT NULL,
- *   used       BOOLEAN NOT NULL DEFAULT FALSE,
- *   created_at DATETIME NOT NULL,
- *   CONSTRAINT fk_otp_user FOREIGN KEY (user_id) REFERENCES users(id)
- * );
- * </pre>
+ * <p>Thiết kế bảo mật:
+ * <ul>
+ *   <li>Một user + một type tại một thời điểm chỉ có một OTP active</li>
+ *   <li>OTP hết hạn sau 10 phút</li>
+ *   <li>Sau khi dùng, đánh dấu used = true (audit trail)</li>
+ *   <li>Scheduler dọn dẹp định kỳ qua {@code deleteExpiredAndUsed()}</li>
+ * </ul>
  */
 @Entity
-@Table(name = "otp_tokens")
+@Table(
+        name = "otp_tokens",
+        indexes = {
+                @Index(name = "idx_otp_user_type", columnList = "user_id, type")
+        }
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -58,6 +58,15 @@ public class OtpToken {
     @Column(nullable = false)
     @Builder.Default
     private Boolean used = false;
+
+    /**
+     * Mục đích của OTP: PASSWORD_RESET hoặc EMAIL_VERIFICATION.
+     * Default PASSWORD_RESET để backward-compatible với code cũ.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    @Builder.Default
+    private OtpType type = OtpType.PASSWORD_RESET;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
