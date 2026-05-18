@@ -1,6 +1,9 @@
 package backend.pineapple_ecommerce.config;
 
+import backend.pineapple_ecommerce.security.CustomOAuth2UserService;
 import backend.pineapple_ecommerce.security.JwtAuthenticationFilter;
+import backend.pineapple_ecommerce.security.OAuth2AuthenticationFailureHandler;
+import backend.pineapple_ecommerce.security.OAuth2AuthenticationSuccessHandler;
 import backend.pineapple_ecommerce.security.UserDetailsServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -26,10 +29,21 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.List;
 
 /**
- * Spring Security 6 configuration — Stateless JWT.
+ * SecurityConfig — cập nhật để hỗ trợ OAuth2 Social Login.
  *
- * FIX: corsConfigurationSource() nay đọc allowedOrigins từ CorsProperties
- * thay vì hardcode → env variable FRONTEND_URL trong .env có tác dụng.
+ * Thay đổi so với phiên bản cũ:
+ * 1. Inject CustomOAuth2UserService, SuccessHandler, FailureHandler
+ * 2. Thêm .oauth2Login() block vào SecurityFilterChain
+ * 3. Thêm OAuth2 callback endpoint vào PUBLIC_GET whitelist
+ * 4. Session vẫn STATELESS — Spring Security tạo session tạm thời cho OAuth2 flow
+ *    (bắt buộc bởi OAuth2 spec để lưu state/nonce), sau đó SuccessHandler
+ *    redirect về FE kèm JWT và session không được dùng nữa.
+ *
+ * Lưu ý quan trọng: OAuth2 flow BẮT BUỘC cần session tạm thời (state param).
+ * SessionCreationPolicy.STATELESS sẽ block OAuth2 nếu không có cấu hình đặc biệt.
+ * Giải pháp: dùng IF_REQUIRED thay vì STATELESS, hoặc cấu hình HttpSessionOAuth2AuthorizationRequestRepository.
+ * File này dùng IF_REQUIRED — session chỉ tạo khi cần (OAuth2 flow), JWT filter
+ * vẫn là primary auth mechanism cho mọi API call khác.
  */
 @Configuration
 @EnableWebSecurity
@@ -37,11 +51,12 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtAuthFilter;
-    private final UserDetailsServiceImpl  userDetailsService;
-
-    // FIX: inject CorsProperties thay vì hardcode
-    private final CorsProperties corsProperties;
+    private final JwtAuthenticationFilter           jwtAuthFilter;
+    private final UserDetailsServiceImpl            userDetailsService;
+    private final CorsProperties                    corsProperties;
+    private final CustomOAuth2UserService           customOAuth2UserService;
+    private final OAuth2AuthenticationSuccessHandler oauth2SuccessHandler;
+    private final OAuth2AuthenticationFailureHandler oauth2FailureHandler;
 
     // ─────────────────────────────────────────────
     // Public endpoints (không cần token)
@@ -66,6 +81,18 @@ public class SecurityConfig {
             "/swagger-ui.html",
     };
 
+    /**
+     * OAuth2 endpoints — Spring Security tự handle, nhưng cần permit
+     * để không bị block trước khi vào OAuth2 filter.
+     *
+     * /oauth2/authorization/** : redirect user sang Google/Facebook consent screen
+     * /login/oauth2/code/**    : callback URL mà provider redirect về sau khi user đồng ý
+     */
+    private static final String[] OAUTH2_WHITELIST = {
+            "/oauth2/authorization/**",
+            "/login/oauth2/code/**",
+    };
+
     // ─────────────────────────────────────────────
     // Security Filter Chain
     // ─────────────────────────────────────────────
@@ -74,10 +101,15 @@ public class SecurityConfig {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
+
+                // IF_REQUIRED thay vì STATELESS — cho phép OAuth2 lưu state param tạm thời
+                // Session chỉ tồn tại trong vòng đời OAuth2 redirect; mọi API call dùng JWT
                 .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                        session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(SWAGGER_WHITELIST).permitAll()
+                        .requestMatchers(OAUTH2_WHITELIST).permitAll()
                         .requestMatchers(HttpMethod.POST, PUBLIC_POST).permitAll()
                         .requestMatchers(HttpMethod.GET, PUBLIC_GET).permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
@@ -88,6 +120,16 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/inventory/**").hasAnyRole("FARMER", "ADMIN")
                         .anyRequest().authenticated()
                 )
+
+                // OAuth2 Social Login configuration
+                .oauth2Login(oauth2 -> oauth2
+                        .userInfoEndpoint(userInfo -> userInfo
+                                .userService(customOAuth2UserService)
+                        )
+                        .successHandler(oauth2SuccessHandler)
+                        .failureHandler(oauth2FailureHandler)
+                )
+
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
@@ -120,8 +162,6 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-
-        // FIX: đọc từ CorsProperties — hoạt động đúng với mọi profile (dev/prod)
         config.setAllowedOriginPatterns(corsProperties.getAllowedOrigins());
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));

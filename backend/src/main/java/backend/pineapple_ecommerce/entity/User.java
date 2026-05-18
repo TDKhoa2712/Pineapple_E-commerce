@@ -1,5 +1,6 @@
 package backend.pineapple_ecommerce.entity;
 
+import backend.pineapple_ecommerce.enums.AuthProvider;
 import backend.pineapple_ecommerce.enums.UserStatus;
 import jakarta.persistence.*;
 import lombok.*;
@@ -7,8 +8,27 @@ import lombok.experimental.SuperBuilder;
 
 import java.util.*;
 
+/**
+ * User entity — bổ sung OAuth2 fields:
+ *   - provider     : nguồn xác thực (LOCAL / GOOGLE / FACEBOOK)
+ *   - providerId   : ID do OAuth2 provider cấp (sub của Google, id của Facebook)
+ *   - password     : nullable — user OAuth2 không có password
+ *
+ * Index bổ sung:
+ *   - idx_users_email          (đã unique → tự có index)
+ *   - idx_users_provider_id    (composite provider + provider_id) — tìm user OAuth2 nhanh
+ *
+ * Lưu ý: KHÔNG thêm @Column(unique) cho providerId vì mỗi provider có không gian ID
+ * riêng; composite index (provider, providerId) đủ để đảm bảo tính duy nhất.
+ */
 @Entity
-@Table(name = "users")
+@Table(
+        name = "users",
+        indexes = {
+                @Index(name = "idx_users_email",       columnList = "email"),
+                @Index(name = "idx_users_provider_id", columnList = "provider, provider_id")
+        }
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -23,7 +43,11 @@ public class User extends BaseEntity {
     @Column(nullable = false, unique = true, length = 100)
     private String email;
 
-    @Column(nullable = false)
+    /**
+     * Nullable: user đăng ký qua OAuth2 không có password.
+     * Khi cần thay đổi: validation ở service layer, không ở entity.
+     */
+    @Column(nullable = true)
     private String password;
 
     @Column(name = "full_name", length = 100)
@@ -32,25 +56,41 @@ public class User extends BaseEntity {
     @Column(length = 15)
     private String phone;
 
-    /** URL ảnh đại diện (https, do Cloudinary cấp). */
+    /** URL ảnh đại diện (https, do Cloudinary hoặc provider cấp). */
     @Column(length = 500)
     private String avatar;
 
     /**
-     * Public ID tương ứng trên Cloudinary.
-     * VD: "pineapple-ecommerce/avatars/550e8400-e29b-..."
-     * Dùng để xoá ảnh cũ trước khi upload ảnh mới,
-     * tránh để lại ảnh rác trên Cloudinary.
+     * Public ID trên Cloudinary (chỉ có khi user tự upload ảnh).
+     * Null với user OAuth2 chưa thay ảnh (ảnh lấy từ Google/Facebook).
      */
     @Column(name = "avatar_public_id", length = 300)
     private String avatarPublicId;
+
+    // ─── OAuth2 fields ───────────────────────────────────────────────────
+
+    /**
+     * Nguồn xác thực: LOCAL (mặc định), GOOGLE, FACEBOOK.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private AuthProvider provider = AuthProvider.LOCAL;
+
+    /**
+     * ID do OAuth2 provider cấp (Google sub / Facebook id).
+     * Null với user LOCAL.
+     * Kết hợp với provider để tạo composite index tìm nhanh.
+     */
+    @Column(name = "provider_id", length = 255)
+    private String providerId;
+
+    // ─── Status & Roles ──────────────────────────────────────────────────
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default
     private UserStatus status = UserStatus.ACTIVE;
-
-    // === Relationships ===
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
