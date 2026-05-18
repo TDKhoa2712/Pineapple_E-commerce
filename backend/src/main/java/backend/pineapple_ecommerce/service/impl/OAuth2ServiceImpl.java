@@ -95,7 +95,7 @@ public class OAuth2ServiceImpl implements OAuth2Service {
         // Dùng CustomUserDetails — nhất quán với JWT flow
         CustomUserDetails userDetails = CustomUserDetails.of(user);
 
-        String       accessToken  = jwtService.generateAccessToken(userDetails);
+        String accessToken  = jwtService.generateAccessToken(userDetails);
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
 
         Set<String> roles = user.getRoles().stream()
