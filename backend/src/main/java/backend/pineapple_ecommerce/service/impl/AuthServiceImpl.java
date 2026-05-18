@@ -4,21 +4,21 @@ import backend.pineapple_ecommerce.dto.request.LoginRequest;
 import backend.pineapple_ecommerce.dto.request.RefreshTokenRequest;
 import backend.pineapple_ecommerce.dto.request.RegisterRequest;
 import backend.pineapple_ecommerce.dto.response.AuthResponse;
-import backend.pineapple_ecommerce.entity.Cart;
 import backend.pineapple_ecommerce.entity.RefreshToken;
 import backend.pineapple_ecommerce.entity.Role;
 import backend.pineapple_ecommerce.entity.User;
+import backend.pineapple_ecommerce.enums.AuthProvider;
 import backend.pineapple_ecommerce.enums.RoleName;
 import backend.pineapple_ecommerce.event.EmailEvents;
 import backend.pineapple_ecommerce.exception.BusinessException;
 import backend.pineapple_ecommerce.exception.ResourceNotFoundException;
 import backend.pineapple_ecommerce.exception.UnauthorizedException;
 import backend.pineapple_ecommerce.mapper.UserMapper;
-import backend.pineapple_ecommerce.repository.CartRepository;
 import backend.pineapple_ecommerce.repository.RoleRepository;
 import backend.pineapple_ecommerce.repository.UserRepository;
 import backend.pineapple_ecommerce.security.JwtService;
 import backend.pineapple_ecommerce.service.AuthService;
+import backend.pineapple_ecommerce.service.EmailVerificationService;
 import backend.pineapple_ecommerce.service.RefreshTokenService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,33 +32,19 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/**
- * AuthServiceImpl — thay thế toàn bộ placeholder bằng logic JWT thực.
- *
- * Thay đổi so với phiên bản cũ:
- *  - Inject JwtService, RefreshTokenService, UserDetailsService
- *  - register(): tạo Cart + sinh JWT thật (không còn PLACEHOLDER)
- *  - login(): dùng passwordEncoder.matches rồi sinh JWT (bỏ AuthenticationManager
- *    để tránh circular dependency; Spring Security đã xác thực qua filter)
- *  - refreshToken(): delegate sang RefreshTokenService + JwtService
- *  - logout(): delegate sang RefreshTokenService.revokeByUserId()
- *  - Xoá AuthService cũ ở config/service/ (đó là file bị đặt nhầm package)
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
-    private final UserRepository      userRepository;
-    private final RoleRepository      roleRepository;
-    private final CartRepository      cartRepository;
-    private final UserMapper          userMapper;
-    private final PasswordEncoder     passwordEncoder;
-    private final JwtService          jwtService;
-    private final RefreshTokenService refreshTokenService;
-    private final UserDetailsService  userDetailsService;
-
-    // Publisher để phát domain event
+    private final UserRepository           userRepository;
+    private final RoleRepository           roleRepository;
+    private final UserMapper               userMapper;
+    private final PasswordEncoder          passwordEncoder;
+    private final JwtService               jwtService;
+    private final RefreshTokenService      refreshTokenService;
+    private final UserDetailsService       userDetailsService;
+    private final EmailVerificationService emailVerificationService;
     private final ApplicationEventPublisher eventPublisher;
 
     // ─────────────────────────────────────────────
@@ -78,6 +64,7 @@ public class AuthServiceImpl implements AuthService {
 
         User user = userMapper.toEntity(request);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setEmailVerified(false);
 
         Role userRole = roleRepository.findByName(RoleName.ROLE_USER)
                 .orElseThrow(() -> new ResourceNotFoundException("Role", "name", RoleName.ROLE_USER));
@@ -85,17 +72,19 @@ public class AuthServiceImpl implements AuthService {
 
         User savedUser = userRepository.save(user);
 
-        // Khởi tạo Cart trống cho user mới
-        Cart cart = Cart.builder().user(savedUser).build();
-        cartRepository.save(cart);
+        log.info("[Auth] User registered (pending verification): {}", savedUser.getEmail());
 
-        log.info("User registered: {}", savedUser.getEmail());
+        // Gửi OTP xác thực email
+        emailVerificationService.sendVerificationOtp(savedUser.getEmail());
 
-        // Publish event — email gửi sau COMMIT, không block response
-        eventPublisher.publishEvent(
-                new EmailEvents.UserRegisteredEvent(savedUser.getEmail(), savedUser.getFullName()));
-
-        return buildAuthResponse(savedUser);
+        // Trả về response không có JWT
+        return AuthResponse.builder()
+                .userId(savedUser.getId())
+                .email(savedUser.getEmail())
+                .fullName(savedUser.getFullName())
+                .emailVerified(false)
+                .message("Đăng ký thành công! Vui lòng kiểm tra email để nhập mã xác thực.")
+                .build();
     }
 
     // ─────────────────────────────────────────────
@@ -118,7 +107,38 @@ public class AuthServiceImpl implements AuthService {
             default       -> { /* ACTIVE */ }
         }
 
-        log.info("User logged in: {}", user.getEmail());
+        if (AuthProvider.LOCAL.equals(user.getProvider())
+                && !Boolean.TRUE.equals(user.getEmailVerified())) {
+            throw new UnauthorizedException(
+                    "Email chưa được xác thực. Vui lòng kiểm tra hộp thư và nhập mã OTP.");
+        }
+
+        log.info("[Auth] User logged in: {}", user.getEmail());
+        return buildAuthResponse(user);
+    }
+
+    @Override
+    @Transactional
+    public AuthResponse loginAfterVerification(String email) {
+        User user = userRepository.findByEmailWithRoles(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
+
+        if (!AuthProvider.LOCAL.equals(user.getProvider())) {
+            throw new BusinessException("Chỉ áp dụng cho tài khoản LOCAL");
+        }
+        if (!Boolean.TRUE.equals(user.getEmailVerified())) {
+            throw new BusinessException("Email chưa được xác thực");
+        }
+        if (user.getStatus() != backend.pineapple_ecommerce.enums.UserStatus.ACTIVE) {
+            throw new UnauthorizedException("Tài khoản không hợp lệ");
+        }
+
+        log.info("[Auth] JWT cấp sau email verification cho: {}", email);
+
+        // Publish welcome event
+        eventPublisher.publishEvent(
+                new EmailEvents.UserRegisteredEvent(user.getEmail(), user.getFullName()));
+
         return buildAuthResponse(user);
     }
 
@@ -162,9 +182,9 @@ public class AuthServiceImpl implements AuthService {
         try {
             RefreshToken rt = refreshTokenService.verifyRefreshToken(refreshTokenValue);
             refreshTokenService.revokeByUserId(rt.getUser().getId());
-            log.info("User {} logged out", rt.getUser().getEmail());
+            log.info("[Auth] User {} logged out", rt.getUser().getEmail());
         } catch (BusinessException e) {
-            log.warn("Logout with invalid token: {}", e.getMessage());
+            log.warn("[Auth] Logout with invalid token: {}", e.getMessage());
         }
     }
 
@@ -191,6 +211,7 @@ public class AuthServiceImpl implements AuthService {
                 .email(user.getEmail())
                 .fullName(user.getFullName())
                 .roles(roles)
+                .emailVerified(user.getEmailVerified())
                 .build();
     }
 }

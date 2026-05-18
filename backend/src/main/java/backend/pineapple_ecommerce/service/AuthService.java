@@ -7,35 +7,38 @@ import backend.pineapple_ecommerce.dto.response.AuthResponse;
 
 /**
  * Xử lý toàn bộ nghiệp vụ xác thực: đăng ký, đăng nhập, refresh token, đăng xuất.
- *
- * THAY ĐỔI: logout(String refreshToken) — nhận refreshToken thay vì không tham số,
- * để service có thể tự tra cứu userId và thu hồi token mà không cần inject SecurityContext.
  */
 public interface AuthService {
 
     /**
      * Đăng ký tài khoản mới.
      * Kiểm tra email/phone trùng, mã hoá mật khẩu, gán role USER, khởi tạo Cart.
-     * Trả về JWT ngay sau khi đăng ký thành công.
+     * Gửi OTP xác thực email. KHÔNG trả JWT ngay.
      */
     AuthResponse register(RegisterRequest request);
 
     /**
      * Đăng nhập bằng email + password.
-     * Trả về accessToken (short-lived) + refreshToken (long-lived).
+     * LOCAL user phải có emailVerified = true mới được cấp JWT.
+     * OAuth2 user (Google/FB) bỏ qua kiểm tra này.
      */
     AuthResponse login(LoginRequest request);
 
     /**
+     * Cấp JWT cho user sau khi xác thực OTP thành công (không cần password).
+     * Chỉ được gọi từ {@code AuthController.verifyEmail()} sau khi OTP đã được validate.
+     *
+     * @param email email của user đã vừa verify OTP thành công
+     */
+    AuthResponse loginAfterVerification(String email);
+
+    /**
      * Làm mới accessToken bằng refreshToken hợp lệ.
-     * Refresh token sẽ được rotate (tạo mới) sau mỗi lần gọi.
      */
     AuthResponse refreshToken(RefreshTokenRequest request);
 
     /**
-     * Đăng xuất: vô hiệu hoá refreshToken khỏi DB.
-     *
-     * @param refreshToken chuỗi refresh token cần thu hồi
+     * Đăng xuất — thu hồi refreshToken.
      */
     void logout(String refreshToken);
 }

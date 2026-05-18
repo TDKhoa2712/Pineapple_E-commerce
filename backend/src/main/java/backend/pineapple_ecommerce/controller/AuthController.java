@@ -1,8 +1,6 @@
 package backend.pineapple_ecommerce.controller;
 
-import backend.pineapple_ecommerce.dto.request.LoginRequest;
-import backend.pineapple_ecommerce.dto.request.RefreshTokenRequest;
-import backend.pineapple_ecommerce.dto.request.RegisterRequest;
+import backend.pineapple_ecommerce.dto.request.*;
 import backend.pineapple_ecommerce.dto.response.ApiResponse;
 import backend.pineapple_ecommerce.dto.response.AuthResponse;
 import backend.pineapple_ecommerce.dto.response.UserResponse;
@@ -10,11 +8,13 @@ import backend.pineapple_ecommerce.entity.User;
 import backend.pineapple_ecommerce.mapper.UserMapper;
 import backend.pineapple_ecommerce.repository.UserRepository;
 import backend.pineapple_ecommerce.service.AuthService;
+import backend.pineapple_ecommerce.service.EmailVerificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -23,28 +23,28 @@ import org.springframework.web.bind.annotation.*;
 
 /**
  * Authentication endpoints.
- *
- * THAY ĐỔI so với phiên bản cũ:
- *  - logout: truyền refreshToken (từ request body) thay vì userId
- *  - me: dùng UserMapper để trả UserResponse chuẩn thay vì Map thô
- *  - refreshToken: gọi đúng tên method authService.refreshToken()
- *    (interface cũ dùng tên "refresh" nhưng interface mới dùng "refreshToken")
  */
-@Tag(name = "Authentication", description = "Đăng ký, đăng nhập, refresh token, logout")
+@Slf4j
+@Tag(name = "Authentication", description = "Đăng ký, đăng nhập, xác thực email, refresh token, logout")
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 public class AuthController {
 
-    private final AuthService authService;
-    private final UserRepository userRepository;
-    private final UserMapper     userMapper;
+    private final AuthService              authService;
+    private final EmailVerificationService emailVerificationService;
+    private final UserRepository           userRepository;
+    private final UserMapper               userMapper;
 
     // ─────────────────────────────────────────────
     // Register
     // ─────────────────────────────────────────────
 
-    @Operation(summary = "Đăng ký tài khoản mới")
+    @Operation(
+            summary = "Đăng ký tài khoản mới",
+            description = "Tạo tài khoản LOCAL. Sau khi thành công, OTP sẽ được gửi tới email. " +
+                    "Response KHÔNG chứa JWT — gọi /verify-email để nhận JWT."
+    )
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<AuthResponse>> register(
             @Valid @RequestBody RegisterRequest request) {
@@ -52,14 +52,60 @@ public class AuthController {
         AuthResponse response = authService.register(request);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(ApiResponse.success(response, "Đăng ký thành công"));
+                .body(ApiResponse.success(response, "Đăng ký thành công. Vui lòng xác thực email."));
+    }
+
+    // ─────────────────────────────────────────────
+    // Verify Email (NEW)
+    // ─────────────────────────────────────────────
+
+    @Operation(
+            summary = "Xác thực email bằng OTP",
+            description = "Người dùng nhập OTP nhận qua email. Sau khi xác thực thành công, " +
+                    "response sẽ trả JWT đầy đủ (accessToken + refreshToken)."
+    )
+    @PostMapping("/verify-email")
+    public ResponseEntity<ApiResponse<AuthResponse>> verifyEmail(
+            @Valid @RequestBody VerifyEmailRequest request) {
+        log.info("verify email run controller 1");
+        // 1. Xác thực OTP, set emailVerified = true
+        emailVerificationService.verifyEmail(request.getEmail(), request.getOtp());
+        log.info("verify email run controller 2");
+
+        // 2. Tự động login — cấp JWT ngay sau khi verify thành công
+        //    Dùng lại buildAuthResponse nội bộ qua login không cần password
+        //    (user đã được trust sau khi verify OTP)
+        AuthResponse authResponse = authService.loginAfterVerification(request.getEmail());
+
+        return ResponseEntity.ok(ApiResponse.success(authResponse, "Email xác thực thành công!"));
+    }
+
+    // ─────────────────────────────────────────────
+    // Resend Verification OTP (NEW)
+    // ─────────────────────────────────────────────
+
+    @Operation(
+            summary = "Gửi lại OTP xác thực email",
+            description = "Gửi lại OTP cho email chưa xác thực. " +
+                    "Rate limit: tối đa 3 lần trong 10 phút."
+    )
+    @PostMapping("/resend-verification")
+    public ResponseEntity<ApiResponse<Void>> resendVerification(
+            @Valid @RequestBody ResendVerificationRequest request) {
+
+        emailVerificationService.resendVerificationOtp(request.getEmail());
+        return ResponseEntity.ok(
+                ApiResponse.success(null, "Mã OTP mới đã được gửi tới email của bạn."));
     }
 
     // ─────────────────────────────────────────────
     // Login
     // ─────────────────────────────────────────────
 
-    @Operation(summary = "Đăng nhập")
+    @Operation(
+            summary = "Đăng nhập",
+            description = "LOCAL user phải xác thực email trước khi đăng nhập được."
+    )
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<AuthResponse>> login(
             @Valid @RequestBody LoginRequest request) {
@@ -77,7 +123,6 @@ public class AuthController {
     public ResponseEntity<ApiResponse<AuthResponse>> refresh(
             @Valid @RequestBody RefreshTokenRequest request) {
 
-        // FIX: gọi refreshToken() thay vì refresh()
         AuthResponse response = authService.refreshToken(request);
         return ResponseEntity.ok(ApiResponse.success(response, "Token đã được làm mới"));
     }
@@ -91,23 +136,20 @@ public class AuthController {
     public ResponseEntity<ApiResponse<Void>> logout(
             @Valid @RequestBody RefreshTokenRequest request) {
 
-        // FIX: truyền refreshToken string thay vì userId
         authService.logout(request.getRefreshToken());
         return ResponseEntity.ok(ApiResponse.success(null, "Đăng xuất thành công"));
     }
 
     // ─────────────────────────────────────────────
-    // Me — thông tin user hiện tại
+    // Me
     // ─────────────────────────────────────────────
 
-    @Operation(summary = "Thông tin tài khoản hiện tại",
-            security = @SecurityRequirement(name = "bearerAuth"))
+    @Operation(summary = "Thông tin user hiện tại", security = @SecurityRequirement(name = "bearerAuth"))
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<UserResponse>> me(
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        // FIX: trả UserResponse qua UserMapper thay vì Map thô
-        User user = userRepository.findByEmailWithRoles(userDetails.getUsername())
+        User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow();
         return ResponseEntity.ok(ApiResponse.success(userMapper.toResponse(user)));
     }
