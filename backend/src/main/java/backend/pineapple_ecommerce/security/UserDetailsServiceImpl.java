@@ -43,52 +43,15 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         User user = userRepository.findByEmailWithRoles(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
 
-        return buildUserDetails(user);
+        return CustomUserDetails.of(user);
     }
 
     /**
-     * Dùng cho JWT flow (login LOCAL).
-     * Password có thể là empty string nếu user OAuth2 cố gắng loadUser.
+     * Dùng cho OAuth2 flow — giữ lại attributes từ Google/Facebook.
+     * Gọi từ CustomOAuth2UserService sau khi đã find/create User entity.
      */
-    public static UserDetails buildUserDetails(User user) {
-        Collection<GrantedAuthority> authorities = user.getRoles().stream()
-                .map(role -> new SimpleGrantedAuthority(role.getName().name()))
-                .collect(Collectors.toList());
-
-        // OAuth2 user không có password → dùng empty string
-        // Spring Security không dùng field này để authenticate trong JWT/OAuth2 flow
-        String passwordForSecurity = user.getPassword() != null ? user.getPassword() : "";
-
-        return org.springframework.security.core.userdetails.User
-                .withUsername(user.getEmail())
-                .password(passwordForSecurity)
-                .authorities(authorities)
-                .accountLocked(user.getStatus() == UserStatus.BANNED)
-                .disabled(user.getStatus() == UserStatus.INACTIVE)
-                .build();
-    }
-
-    /**
-     * Dùng cho OAuth2 flow — trả về OAuth2User để Spring Security
-     * có thể store vào SecurityContext đúng type.
-     * Giữ nguyên attributes từ provider (cần cho SuccessHandler).
-     */
-    public static OAuth2User buildUserDetails(User user, Map<String, Object> attributes) {
-        Collection<GrantedAuthority> authorities = user.getRoles().stream()
-                .map(role -> new SimpleGrantedAuthority(role.getName().name()))
-                .collect(Collectors.toList());
-
-        // nameAttributeKey = "email" — dùng email làm principal name, nhất quán với JWT
-        return new DefaultOAuth2User(authorities, attributes, determineNameAttributeKey(attributes));
-    }
-
-    /**
-     * Xác định key nào trong attributes dùng làm principal name.
-     * Google dùng "sub", Facebook dùng "id", nhưng chúng ta muốn dùng "email".
-     */
-    private static String determineNameAttributeKey(Map<String, Object> attributes) {
-        if (attributes.containsKey("sub")) return "sub";   // Google
-        if (attributes.containsKey("id"))  return "id";    // Facebook
-        return "email";
+    @Transactional(readOnly = true)
+    public CustomUserDetails loadUserByUsernameOAuth2(User user, Map<String, Object> attributes) {
+        return CustomUserDetails.of(user, attributes);
     }
 }

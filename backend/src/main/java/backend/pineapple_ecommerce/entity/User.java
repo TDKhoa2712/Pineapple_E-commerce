@@ -43,10 +43,7 @@ public class User extends BaseEntity {
     @Column(nullable = false, unique = true, length = 100)
     private String email;
 
-    /**
-     * Nullable: user đăng ký qua OAuth2 không có password.
-     * Khi cần thay đổi: validation ở service layer, không ở entity.
-     */
+    /** Nullable — OAuth2 user không có password. */
     @Column(nullable = true)
     private String password;
 
@@ -56,34 +53,30 @@ public class User extends BaseEntity {
     @Column(length = 15)
     private String phone;
 
-    /** URL ảnh đại diện (https, do Cloudinary hoặc provider cấp). */
     @Column(length = 500)
     private String avatar;
 
-    /**
-     * Public ID trên Cloudinary (chỉ có khi user tự upload ảnh).
-     * Null với user OAuth2 chưa thay ảnh (ảnh lấy từ Google/Facebook).
-     */
     @Column(name = "avatar_public_id", length = 300)
     private String avatarPublicId;
 
-    // ─── OAuth2 fields ───────────────────────────────────────────────────
+    // ─── OAuth2 fields ──────────────────────────────────────────────────
 
-    /**
-     * Nguồn xác thực: LOCAL (mặc định), GOOGLE, FACEBOOK.
-     */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default
     private AuthProvider provider = AuthProvider.LOCAL;
 
-    /**
-     * ID do OAuth2 provider cấp (Google sub / Facebook id).
-     * Null với user LOCAL.
-     * Kết hợp với provider để tạo composite index tìm nhanh.
-     */
     @Column(name = "provider_id", length = 255)
     private String providerId;
+
+    /**
+     * Email đã được xác minh chưa.
+     * - OAuth2 user: true ngay từ đầu (Google/Facebook đã xác minh)
+     * - LOCAL user: false mặc định, có thể set true qua email verification flow
+     */
+    @Column(name = "email_verified", nullable = false)
+    @Builder.Default
+    private Boolean emailVerified = false;
 
     // ─── Status & Roles ──────────────────────────────────────────────────
 
@@ -116,7 +109,6 @@ public class User extends BaseEntity {
     @Builder.Default
     private List<Wishlist> wishlistItems = new ArrayList<>();
 
-    // Helper
     public void addRole(Role role) {
         this.roles.add(role);
     }

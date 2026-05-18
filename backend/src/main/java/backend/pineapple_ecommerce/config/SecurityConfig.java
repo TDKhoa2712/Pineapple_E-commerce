@@ -51,16 +51,17 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter           jwtAuthFilter;
-    private final UserDetailsServiceImpl            userDetailsService;
-    private final CorsProperties                    corsProperties;
-    private final CustomOAuth2UserService           customOAuth2UserService;
+    private final JwtAuthenticationFilter            jwtAuthFilter;
+    private final UserDetailsServiceImpl             userDetailsService;
+    private final CorsProperties                     corsProperties;
+    private final CustomOAuth2UserService            customOAuth2UserService;
     private final OAuth2AuthenticationSuccessHandler oauth2SuccessHandler;
     private final OAuth2AuthenticationFailureHandler oauth2FailureHandler;
 
     // ─────────────────────────────────────────────
-    // Public endpoints (không cần token)
+    // Public endpoints
     // ─────────────────────────────────────────────
+
     private static final String[] PUBLIC_GET = {
             "/api/v1/products/**",
             "/api/v1/categories/**",
@@ -81,29 +82,33 @@ public class SecurityConfig {
             "/swagger-ui.html",
     };
 
-    /**
-     * OAuth2 endpoints — Spring Security tự handle, nhưng cần permit
-     * để không bị block trước khi vào OAuth2 filter.
-     *
-     * /oauth2/authorization/** : redirect user sang Google/Facebook consent screen
-     * /login/oauth2/code/**    : callback URL mà provider redirect về sau khi user đồng ý
-     */
     private static final String[] OAUTH2_WHITELIST = {
             "/oauth2/authorization/**",
             "/login/oauth2/code/**",
     };
 
     // ─────────────────────────────────────────────
+    // OAuth2 Authorization Request Repository
+    // Khai báo explicit để dễ swap sang Cookie/Redis implementation
+    // ─────────────────────────────────────────────
+
+    @Bean
+    public HttpSessionOAuth2AuthorizationRequestRepository authorizationRequestRepository() {
+        return new HttpSessionOAuth2AuthorizationRequestRepository();
+    }
+
+    // ─────────────────────────────────────────────
     // Security Filter Chain
     // ─────────────────────────────────────────────
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
 
-                // IF_REQUIRED thay vì STATELESS — cho phép OAuth2 lưu state param tạm thời
-                // Session chỉ tồn tại trong vòng đời OAuth2 redirect; mọi API call dùng JWT
+                // IF_REQUIRED: session chỉ tạo khi cần (OAuth2 state param)
+                // Mọi API call vẫn stateless qua JWT
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
 
@@ -121,8 +126,14 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
 
-                // OAuth2 Social Login configuration
                 .oauth2Login(oauth2 -> oauth2
+                        // Explicit khai báo repo — nhất quán state giữa request và callback
+                        .authorizationEndpoint(auth -> auth
+                                .authorizationRequestRepository(authorizationRequestRepository())
+                        )
+                        .redirectionEndpoint(redirect -> redirect
+                                .baseUri("/login/oauth2/code/*")
+                        )
                         .userInfoEndpoint(userInfo -> userInfo
                                 .userService(customOAuth2UserService)
                         )
@@ -172,3 +183,4 @@ public class SecurityConfig {
         return source;
     }
 }
+
