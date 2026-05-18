@@ -102,6 +102,47 @@ public class EmailServiceImpl implements EmailService {
         }
     }
 
+    @Override
+    @Async("emailTaskExecutor")
+    @Retryable(retryFor = MailException.class, maxAttempts = 3,
+            backoff = @Backoff(delay = 2000, multiplier = 2))
+    public void sendEmailVerificationOtp(String toEmail, String otp) {
+        try {
+            Context ctx = new Context(Locale.forLanguageTag("vi"));
+            ctx.setVariable("otp", otp);
+            ctx.setVariable("expiryMinutes", 10);
+
+            send(toEmail,
+                    "[Pineapple] Mã xác thực email của bạn",
+                    "email/email-verification-otp",   // Thymeleaf template
+                    ctx,
+                    buildEmailVerificationPlainText(otp));
+
+            log.info("[Email] Email verification OTP sent to {}", toEmail);
+        } catch (Exception ex) {
+            log.error("[Email] Failed to send verification OTP to {}: {}", toEmail, ex.getMessage(), ex);
+        }
+    }
+
+    @Recover
+    public void recoverEmailVerificationOtp(MailException ex, String toEmail, String otp) {
+        log.error("[Email] All retries failed for verification OTP to {}: {}", toEmail, ex.getMessage());
+    }
+
+    private String buildEmailVerificationPlainText(String otp) {
+        return """
+                Xác thực email Pineapple E-commerce
+                ────────────────────────────────────
+                Mã xác thực của bạn: %s
+                
+                Mã có hiệu lực trong 10 phút.
+                Nếu bạn không tạo tài khoản, hãy bỏ qua email này.
+                
+                Trân trọng,
+                Pineapple E-commerce
+                """.formatted(otp);
+    }
+
     // ─────────────────────────────────────────────
     // ORDER CONFIRMATION
     // ─────────────────────────────────────────────

@@ -2,6 +2,7 @@ package backend.pineapple_ecommerce.service.impl;
 
 import backend.pineapple_ecommerce.entity.OtpToken;
 import backend.pineapple_ecommerce.entity.User;
+import backend.pineapple_ecommerce.enums.OtpType;
 import backend.pineapple_ecommerce.exception.BusinessException;
 import backend.pineapple_ecommerce.repository.OtpTokenRepository;
 import backend.pineapple_ecommerce.repository.UserRepository;
@@ -61,7 +62,7 @@ public class PasswordResetServiceImpl implements PasswordResetService {
         User user = userOpt.get();
 
         // Xoá OTP cũ trước khi tạo mới
-        otpTokenRepository.deleteAllByUserId(user.getId());
+        otpTokenRepository.deleteAllByUserIdAndType(user.getId(), OtpType.PASSWORD_RESET);
 
         String otp = generateOtp();
 
@@ -91,7 +92,7 @@ public class PasswordResetServiceImpl implements PasswordResetService {
                 .orElseThrow(() -> new BusinessException("Email không hợp lệ"));
 
         OtpToken token = otpTokenRepository
-                .findValidOtp(user.getId(), otp, LocalDateTime.now())
+                .findValidOtp(user.getId(), otp, OtpType.PASSWORD_RESET, LocalDateTime.now())
                 .orElseThrow(() -> new BusinessException(
                         "Mã OTP không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu mã mới."));
 
