@@ -43,7 +43,7 @@ public class CustomUserDetails implements UserDetails, OAuth2User {
     // ── Core user data ────────────────────────────────────────────────────
 
     @Getter
-    private final Long   userId;
+    private final Long userId;
 
     @Getter
     private final String email;

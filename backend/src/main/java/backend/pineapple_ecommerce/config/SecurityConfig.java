@@ -69,6 +69,7 @@ public class SecurityConfig {
             "/api/v1/categories/**",
             "/api/v1/reviews/**",
             "/api/v1/payments/vnpay-return",
+            "/api/v1/payments/vnpay-ipn",
     };
 
     private static final String[] PUBLIC_POST = {
