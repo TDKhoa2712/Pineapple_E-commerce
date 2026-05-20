@@ -8,5 +8,6 @@ import lombok.Data;
 public class VNPayQueryResult {
     private String responseCode;
     private String transactionStatus;
+    private String rawResponse;
     private String message;
 }

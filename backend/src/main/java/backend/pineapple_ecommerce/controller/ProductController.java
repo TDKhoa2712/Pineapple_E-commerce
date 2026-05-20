@@ -13,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -134,6 +135,7 @@ public class ProductController {
             security = @SecurityRequirement(name = "bearerAuth"))
     @GetMapping("/admin")
     @PreAuthorize("hasRole('ADMIN')")
+
     public ResponseEntity<ApiResponse<PageResponse<ProductSummaryResponse>>> getAllAdmin(
             @RequestParam(defaultValue = "0")  int page,
             @RequestParam(defaultValue = "20") int size,

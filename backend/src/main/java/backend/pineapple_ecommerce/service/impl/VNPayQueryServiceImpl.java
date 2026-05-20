@@ -108,6 +108,7 @@ public class VNPayQueryServiceImpl implements VNPayQueryService {
                     .responseCode(responseCode)
                     .transactionStatus(txnStatus)
                     .message(message)
+                    .rawResponse(response.toString())
                     .build();
 
         } catch (Exception e) {

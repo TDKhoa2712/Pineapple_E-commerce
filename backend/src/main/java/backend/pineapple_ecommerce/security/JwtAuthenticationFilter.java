@@ -49,8 +49,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             String email = jwtService.extractUsername(jwt);
 
-            // Chỉ xử lý nếu chưa authenticated
-            if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            if (email != null) { // Xóa bỏ điều kiện kiểm tra Authentication == null
                 UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
                 if (jwtService.isTokenValid(jwt, userDetails)) {
@@ -61,6 +60,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     userDetails.getAuthorities()
                             );
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
+                    // Cố tình Ghi đè (Overwrite) SecurityContext hiện tại bằng dữ liệu mới nhất
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
             }
