@@ -46,4 +46,7 @@ public class Payment extends BaseEntity {
 
     @Column(name = "raw_response", columnDefinition = "TEXT")
     private String rawResponse;  // Lưu response từ payment gateway
+
+    @Column(nullable = false, columnDefinition = "int default 0")
+    private int reconcileCount = 0;
 }

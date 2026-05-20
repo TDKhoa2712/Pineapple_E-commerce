@@ -80,6 +80,17 @@ public class PaymentServiceImpl implements PaymentService {
 
         String paymentUrl = null;
 
+        // Chỉ tạo txnRef mới khi chưa có hoặc đã hết hạn 15 phút
+        if (payment.getTransactionCode() == null
+                || payment.getCreatedAt().isBefore(
+                LocalDateTime.now().minusMinutes(15))) {
+            String txnRef = "PNP_" + orderId + "_"
+                    + System.currentTimeMillis();
+            payment.setTransactionCode(txnRef);
+            payment.setCreatedAt(LocalDateTime.now()); // reset thời gian
+        }
+        // Nếu txnRef vẫn còn hạn → dùng lại, build URL với txnRef đó
+
         if (order.getPaymentMethod() == PaymentMethod.VNPAY) {
             String txnRef = "PNP_" + orderId + "_" + System.currentTimeMillis();
             payment.setTransactionCode(txnRef);
@@ -137,7 +148,8 @@ public class PaymentServiceImpl implements PaymentService {
 
         // ── Bước 2: Kiểm tra đơn hàng tồn tại ───────────────────────────────
         String txnRef = request.getParameter("vnp_TxnRef");
-        Optional<Payment> paymentOpt = paymentRepository.findByTransactionCode(txnRef);
+        // SỬ DỤNG HÀM FOR UPDATE ĐỂ LOCK
+        Optional<Payment> paymentOpt = paymentRepository.findByTransactionCodeForUpdate(txnRef);
 
         if (paymentOpt.isEmpty()) {
             log.warn("[IPN] Không tìm thấy payment — txnRef={}", txnRef);
@@ -160,9 +172,10 @@ public class PaymentServiceImpl implements PaymentService {
             return ipnResponse("04", "Invalid Amount");
         }
 
-        // ── Bước 4: Idempotency — đã xử lý rồi thì trả thành công, không ghi đè ──
-        if (payment.getStatus() == PaymentStatus.PAID) {
-            log.info("[IPN] Đơn đã thanh toán trước đó — txnRef={} (bỏ qua retry)", txnRef);
+        // ── Bước 4: Idempotency (Tránh lưu đè nếu Job hoặc IPN cũ đã xử lý) ─────────
+        if (payment.getStatus() != PaymentStatus.UNPAID) {
+            log.info("[IPN] Đơn đã được xử lý trước đó (Status: {}) — txnRef={}", payment.getStatus(), txnRef);
+            // VNPAY yêu cầu trả 00 ngay cả khi đã xử lý rồi, để họ ngừng retry
             return ipnResponse("00", "Confirm Success");
         }
 

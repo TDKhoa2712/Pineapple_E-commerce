@@ -83,6 +83,9 @@ public class VNPayUtil {
                 .filter(e -> e.getValue() != null && !e.getValue().isEmpty())
                 .map(e -> {
                     //  KHÔNG encode, value encode US_ASCII (giữ nguyên "+")
+                    // QUAN TRỌNG: Dùng US_ASCII (không phải UTF-8) để giữ nguyên ký tự "+"
+                    // VNPay sandbox encode space thành "+" — nếu đổi sang UTF-8 sẽ ra "%20"
+                    // làm sai chữ ký HMAC so với phía VNPay tính
                     String encodedValue = URLEncoder.encode(e.getValue(), StandardCharsets.US_ASCII);
                     return e.getKey() + "=" + encodedValue;
                 })
