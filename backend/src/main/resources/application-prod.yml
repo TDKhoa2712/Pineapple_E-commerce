@@ -39,3 +39,11 @@ app:
     from-name: "Pineapple E-commerce"
     base-url: "https://yourdomain.com"          # Thay bằng domain thật tạm thời chưa
     support-email: "support@pineapple.vn"
+
+  vnpay:
+    tmn-code: ${VNPAY_TMN_CODE}
+    hash-secret: ${VNPAY_HASH_SECRET}
+    pay-url: ${VNP_URL}
+    return-url: "https://yourdomain.com/api/v1/payments/vnpay-return"
+    ipn-url: "https://yourdomain.com/api/v1/payments/vnpay-ipn"
+    frontend-result-url: "https://yourdomain.com/payment/result"

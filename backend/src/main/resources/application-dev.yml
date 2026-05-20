@@ -50,6 +50,17 @@ jwt:
   access-token-expiration-ms: 900000
   refresh-token-expiration-ms: 604800000
 
+logging:
+  level:
+    # Bật log chi tiết (DEBUG/TRACE) cho toàn bộ lõi Spring Security
+    org.springframework.security: DEBUG
+
+    # Bật log cho package dự án để theo dõi các filter tùy chỉnh (như JwtAuthFilter)
+    backend.pineapple_ecommerce: DEBUG
+
+    # Bật log cho framework web để xem rõ luồng request/response
+    org.springframework.web: INFO
+
 app:
   cors:
     allowed-origins: ${FRONTEND_URL}
@@ -73,4 +84,6 @@ app:
     tmn-code: ${VNPAY_TMN_CODE}
     hash-secret: ${VNPAY_HASH_SECRET}
     pay-url: ${VNP_URL}
-    return-url: "http://localhost:3000/payment/success"
+    return-url: "https://uproar-reference-outrank.ngrok-free.dev/api/v1/payments/vnpay-return"
+    ipn-url: "https://uproar-reference-outrank.ngrok-free.dev/api/v1/payments/vnpay-ipn"
+    frontend-result-url: "http://localhost:3000/payment/result"
