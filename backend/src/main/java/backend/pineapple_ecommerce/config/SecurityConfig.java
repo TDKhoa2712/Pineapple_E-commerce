@@ -70,6 +70,9 @@ public class SecurityConfig {
             "/api/v1/reviews/**",
             "/api/v1/payments/vnpay-return",
             "/api/v1/payments/vnpay-ipn",
+            "/api/v1/shipping/provinces",
+           "/api/v1/shipping/districts",
+           "/api/v1/shipping/wards",
     };
 
     private static final String[] PUBLIC_POST = {
@@ -79,6 +82,8 @@ public class SecurityConfig {
             "/api/v1/auth/password-reset/**",
             "/api/v1/auth/verify-email",
             "/api/v1/auth/resend-verification",
+            "/api/v1/shipping/calculate-fee",
+            "/api/v1/webhooks/ghn",
     };
 
     private static final String[] SWAGGER_WHITELIST = {

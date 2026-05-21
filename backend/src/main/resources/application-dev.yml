@@ -88,3 +88,8 @@ app:
     ipn-url: "https://uproar-reference-outrank.ngrok-free.dev/api/v1/payments/vnpay-ipn"
     api-url: "https://sandbox.vnpayment.vn/merchant_webapi/api/transaction"
     frontend-result-url: "http://localhost:3000/payment/result"
+
+  ghn:
+    token: ${GHN_TOKEN}
+    shop-id: ${GHN_SHOP_ID}
+    base-url: https://dev-online-gateway.ghn.vn/shiip/public-api
