@@ -83,7 +83,7 @@ public class SecurityConfig {
             "/api/v1/auth/verify-email",
             "/api/v1/auth/resend-verification",
             "/api/v1/shipping/calculate-fee",
-            "/api/v1/webhooks/ghn",
+            "/api/v1/webhooks/shipping/**",
     };
 
     private static final String[] SWAGGER_WHITELIST = {
