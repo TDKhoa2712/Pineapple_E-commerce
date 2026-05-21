@@ -15,8 +15,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 
 @Slf4j
 @Tag(name = "Payments", description = "Xử lý thanh toán VNPAY/MoMo")
@@ -44,26 +42,31 @@ public class PaymentController {
     }
 
     // ─────────────────────────────────────────────────────────────
-    // ĐƯỜNG DẪN 1: RETURN URL — CHỈ REDIRECT VỀ FRONTEND
+    // ĐƯỜNG DẪN 1: RETURN URL — VERIFY CHỮ KÝ → REDIRECT VỀ FRONTEND
+    //
+    // VNPay redirect trình duyệt khách về đây sau khi thanh toán.
+    // Trước đây chỉ redirect blind mà không verify chữ ký —
+    // attacker có thể forge "vnp_ResponseCode=00" để FE hiển thị
+    // "thanh toán thành công" giả mạo.
+    //
+    // Sau khi sửa: service verify HMAC trước khi đọc bất kỳ param nào.
+    // DB không được chạm ở đây — IPN đã cập nhật trước đó.
     // ─────────────────────────────────────────────────────────────
 
     @Operation(
-            summary = "VNPAY Return URL (redirect về Frontend)",
-            description = "VNPAY redirect trình duyệt khách về đây sau khi thanh toán. "
-                    + "Endpoint này CHỈ redirect về Frontend, không ghi DB."
+            summary = "VNPay Return URL (verify chữ ký → redirect về Frontend)",
+            description = "VNPay redirect trình duyệt khách về đây. " +
+                    "Endpoint verify HMAC-SHA512 trước khi redirect — không ghi DB."
     )
     @GetMapping("/vnpay-return")
     public void vnpayReturn(HttpServletRequest request,
                             HttpServletResponse response) throws IOException {
 
-        Map<String, String> params = extractParams(request);
-        String responseCode = params.get("vnp_ResponseCode");
-        String txnRef = params.getOrDefault("vnp_TxnRef", "");
-
-        log.info("[Return URL] txnRef={}, responseCode={}", txnRef, responseCode);
-
-        // Chỉ redirect — không chạm database
-        String redirectUrl = paymentService.buildReturnRedirectUrl(responseCode, txnRef);
+        // Truyền toàn bộ request vào service để service tự verify chữ ký.
+        // KHÔNG đọc params ở đây rồi truyền raw string — service cần
+        // toàn bộ request để verify HMAC.
+        String redirectUrl = paymentService.buildReturnRedirectUrl(request);
+        log.info("[Return URL] Redirecting to: {}", redirectUrl);
         response.sendRedirect(redirectUrl);
     }
 
@@ -72,9 +75,10 @@ public class PaymentController {
     // ─────────────────────────────────────────────────────────────
 
     @Operation(
-            summary = "VNPAY IPN Webhook (server-to-server)",
-            description = "VNPAY gọi ngầm để thông báo kết quả thanh toán. "
-                    + "Đây là nơi DUY NHẤT cập nhật trạng thái đơn hàng."
+            summary = "VNPay IPN Webhook (server-to-server)",
+            description = "VNPay gọi ngầm để thông báo kết quả. " +
+                    "Verify HMAC → kiểm tra số tiền → idempotency → cập nhật DB. " +
+                    "Luôn trả HTTP 200 với RspCode trong body."
     )
     @GetMapping("/vnpay-ipn")
     public ResponseEntity<?> handleIpn(HttpServletRequest request) {
@@ -93,19 +97,5 @@ public class PaymentController {
             @PathVariable Long orderId) {
         return ResponseEntity.ok(
                 ApiResponse.success(paymentService.getPaymentByOrderId(orderId)));
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // HELPER
-    // ─────────────────────────────────────────────────────────────
-
-    private Map<String, String> extractParams(HttpServletRequest request) {
-        Map<String, String> fields = new HashMap<>();
-        for (Map.Entry<String, String[]> entry : request.getParameterMap().entrySet()) {
-            if (entry.getValue() != null && entry.getValue().length > 0) {
-                fields.put(entry.getKey(), entry.getValue()[0]);
-            }
-        }
-        return fields;
     }
 }
