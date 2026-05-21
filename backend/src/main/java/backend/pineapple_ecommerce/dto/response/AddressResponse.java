@@ -3,6 +3,8 @@ package backend.pineapple_ecommerce.dto.response;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.util.Map; // Nhớ import java.util.Map
+
 @Getter
 @Builder
 public class AddressResponse {
@@ -14,6 +16,9 @@ public class AddressResponse {
     private String ward;
     private String detail;
     private Boolean isDefault;
+
+    // Thêm field này để ánh xạ Map từ Mapper và trả về JSON object cho Frontend
+    private Map<String, Object> carrierMetadata;
 
     // Helper: full address string
     public String getFullAddress() {

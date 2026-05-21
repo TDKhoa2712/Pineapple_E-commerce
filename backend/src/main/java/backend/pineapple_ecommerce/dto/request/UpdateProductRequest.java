@@ -25,7 +25,9 @@ public class UpdateProductRequest {
     @DecimalMin(value = "0.0", inclusive = false)
     private BigDecimal discountPrice;
 
-    private BigDecimal weight;
+    @DecimalMin(value = "0.0", inclusive = false, message = "Trọng lượng phải > 0")
+    @Digits(integer = 6, fraction = 2)
+    private BigDecimal weight;   // gram
     private BigDecimal calories;
     private String brand;
     private String origin;

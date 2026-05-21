@@ -1,69 +1,59 @@
 package backend.pineapple_ecommerce.dto.request;
 
+import backend.pineapple_ecommerce.enums.CarrierCode;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 
 /**
- * Request tính phí giao hàng GHN.
- * Gọi tới: POST /v2/shipping-order/fee
+ * Request tính phí giao hàng — provider-agnostic.
  *
- * <p>Luồng sử dụng:
- * 1. Frontend gọi GET /api/v1/shipping/address?province=... để lấy to_district_id, to_ward_code
- * 2. Frontend gọi POST /api/v1/shipping/calculate-fee với districtId + wardCode + weight
- * 3. Backend gọi GHN và trả phí về cho frontend hiển thị trước khi checkout
+ * <p>Thay đổi so với phiên bản cũ:
+ * <ul>
+ *   <li>Đổi {@code toDistrictId} từ Integer → String (một số carrier dùng string ID)
+ *   <li>Thêm field {@code carrier} để chỉ định carrier (optional)
+ *   <li>Đổi {@code serviceTypeId} → {@code serviceType} kiểu String (flexible cho mọi carrier)
+ * </ul>
  */
 @Getter
 @Setter
 public class CalculateShippingFeeRequest {
 
     /**
-     * District ID của địa chỉ nhận hàng.
-     * Lấy từ API: GET /api/v1/shipping/districts?provinceId=...
+     * ID quận/huyện của địa chỉ nhận hàng.
+     * GHN: số nguyên dạng string "1454" | GHTK: không dùng
      */
-    @NotNull(message = "District ID không được để trống")
-    private Integer toDistrictId;
+    @NotBlank(message = "District ID không được để trống")
+    private String toDistrictId;
 
     /**
-     * Ward code của địa chỉ nhận hàng.
-     * Lấy từ API: GET /api/v1/shipping/wards?districtId=...
+     * Mã phường/xã của địa chỉ nhận hàng.
+     * GHN: "21307" | GHTK: không dùng
      */
     @NotBlank(message = "Ward code không được để trống")
     private String toWardCode;
 
-    /**
-     * Tổng khối lượng đơn hàng (gram).
-     * Nếu không truyền, hệ thống tự tính từ sản phẩm trong giỏ hàng.
-     */
+    /** Tổng khối lượng (gram). Mặc định 500g. */
     @Min(value = 1, message = "Khối lượng tối thiểu 1 gram")
-    private Integer weight = 500; // Mặc định 500g nếu sản phẩm chưa có weight
+    private Integer weight = 500;
 
-    /** Chiều dài (cm) — optional */
     private Integer length = 20;
-
-    /** Chiều rộng (cm) — optional */
-    private Integer width = 20;
-
-    /** Chiều cao (cm) — optional */
+    private Integer width  = 20;
     private Integer height = 10;
 
-    /**
-     * Giá trị khai báo bảo hiểm (VNĐ).
-     * GHN dùng để tính phí bảo hiểm và bồi thường nếu hàng bị mất/hư.
-     * Tối đa 5,000,000 VNĐ.
-     */
+    /** Giá trị bảo hiểm (VNĐ) */
     private Integer insuranceValue = 0;
 
     /**
-     * Service type ID.
-     * 2 = E-commerce Delivery (mặc định)
-     * 5 = Traditional Delivery
+     * Loại dịch vụ của carrier.
+     * GHN: "2" (E-commerce) | "5" (Traditional)
+     * GHTK: "road" | "fly"
+     * Null = dùng default của carrier.
      */
-    private Integer serviceTypeId = 2;
+    private String serviceTypeId;
 
-    /** Coupon code GHN (nếu có) */
+    /** Coupon code (nếu có) */
     private String coupon;
 }

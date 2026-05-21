@@ -1,10 +1,35 @@
 package backend.pineapple_ecommerce.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.Map;
+
+/**
+ * Request tạo/cập nhật địa chỉ giao hàng.
+ *
+ * <p>Thay đổi so với phiên bản cũ:
+ * <ul>
+ *   <li>Bỏ {@code ghnDistrictId}, {@code ghnWardCode}
+ *   <li>Thêm {@code carrierMetadata} (JSON string) — lưu ID địa chỉ theo từng carrier
+ * </ul>
+ *
+ * <p>Frontend gửi {@code carrierMetadata} khi user chọn địa chỉ từ dropdown carrier:
+ * <pre>
+ * {
+ *   "receiverName": "Nguyen Van A",
+ *   "phone": "0901234567",
+ *   "province": "Hồ Chí Minh",
+ *   "district": "Quận 1",
+ *   "ward": "Phường Bến Nghé",
+ *   "detail": "123 Lê Lợi",
+ *   "carrierMetadata": "{\"GHN\":{\"districtId\":\"1442\",\"wardCode\":\"20308\"}}"
+ * }
+ * </pre>
+ */
 @Getter
 @Setter
 public class CreateAddressRequest {
@@ -30,7 +55,6 @@ public class CreateAddressRequest {
 
     private Boolean isDefault = false;
 
-    private Integer ghnDistrictId;
-
-    private String ghnWardCode;
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Map<String, Object> carrierMetadata;
 }

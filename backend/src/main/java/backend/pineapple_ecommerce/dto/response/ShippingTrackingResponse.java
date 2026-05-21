@@ -1,5 +1,6 @@
 package backend.pineapple_ecommerce.dto.response;
 
+import backend.pineapple_ecommerce.enums.CarrierCode;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -8,40 +9,54 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * Thông tin tracking vận đơn trả về cho user.
- * Tổng hợp từ entity GhnShipment + order info.
+ * Thông tin tracking vận đơn trả về cho user/admin.
+ *
+ * <p>Thay đổi so với phiên bản cũ:
+ * <ul>
+ *   <li>Thêm {@code carrierCode}, {@code carrierName}
+ *   <li>Đổi {@code ghnOrderCode} → {@code externalOrderCode} (generic)
+ *   <li>Thêm {@code rawStatus} trong StatusLogEntry (để debug)
+ * </ul>
  */
 @Getter
 @Builder
 public class ShippingTrackingResponse {
 
-    // ── Thông tin vận đơn ──────────────────────────────
-    private Long orderId;
-    private String ghnOrderCode;           // Mã vận đơn GHN để user tra cứu trên app GHN
-    private String currentStatus;          // Code GHN: "delivering", "delivered", ...
-    private String currentStatusLabel;     // Tiếng Việt: "Đang giao hàng", "Giao thành công"
+    private Long      orderId;
 
-    // ── Thông tin giao hàng ───────────────────────────
-    private BigDecimal shippingFee;
-    private BigDecimal totalFee;
-    private LocalDateTime expectedDeliveryTime;
-    private String failReason;             // Lý do giao thất bại (nếu có)
-
-    // ── Lịch sử trạng thái ───────────────────────────
-    private List<StatusLogEntry> statusHistory;
-
-    // ── Thời gian ─────────────────────────────────────
-    private LocalDateTime createdOnGhnAt;
-    private LocalDateTime lastSyncAt;
+    /** Carrier xử lý vận đơn này */
+    private CarrierCode carrierCode;
+    private String      carrierName;
 
     /**
-     * Một mốc lịch sử trạng thái vận đơn.
+     * Mã vận đơn của carrier (tracking code).
+     * User dùng mã này để tra cứu trên app/website của carrier.
+     * GHN: "FFFNL9HH" | GHTK: "S12345678.1.2" | ...
      */
+    private String externalOrderCode;
+
+    /** Trạng thái normalize (enum name): "DELIVERED", "OUT_FOR_DELIVERY", ... */
+    private String currentStatus;
+
+    /** Nhãn trạng thái tiếng Việt: "Giao hàng thành công" */
+    private String currentStatusLabel;
+
+    private BigDecimal     shippingFee;
+    private BigDecimal     totalFee;
+    private LocalDateTime  expectedDeliveryTime;
+    private String         failReason;
+
+    private List<StatusLogEntry> statusHistory;
+
+    private LocalDateTime createdOnCarrierAt;
+    private LocalDateTime lastSyncAt;
+
     @Getter
     @Builder
     public static class StatusLogEntry {
-        private String status;
-        private String statusLabel;
+        private String        status;       // enum name
+        private String        statusLabel;  // tiếng Việt
+        private String        rawStatus;    // trạng thái gốc từ carrier
         private LocalDateTime updatedAt;
     }
 }

@@ -28,8 +28,9 @@ public class CreateProductRequest {
     @DecimalMin(value = "0.0", inclusive = false, message = "Giá khuyến mãi phải lớn hơn 0")
     private BigDecimal discountPrice;
 
-    @DecimalMin(value = "0.0", inclusive = false)
-    private BigDecimal weight;
+    @DecimalMin(value = "0.0", inclusive = false, message = "Trọng lượng phải > 0")
+    @Digits(integer = 6, fraction = 2)
+    private BigDecimal weight;   // gram
 
     @DecimalMin(value = "0.0", inclusive = false)
     private BigDecimal calories;
