@@ -48,7 +48,7 @@ public class Product extends BaseEntity {
 
     // Thông tin sản phẩm dứa
     @Column(precision = 8, scale = 2)
-    private BigDecimal weight;          // gram
+    private BigDecimal weight;          // Đơn vị: GRAM (ví dụ: 320.5 = 320.5 gram)
 
     @Column(precision = 6, scale = 2)
     private BigDecimal calories;        // kcal/100g

@@ -3,7 +3,29 @@ package backend.pineapple_ecommerce.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
+/**
+ * Địa chỉ giao hàng của người dùng.
+ *
+ * <p>Thay đổi so với phiên bản cũ:
+ * <ul>
+ *   <li>Bỏ {@code ghnDistrictId}, {@code ghnWardCode} (hard-couple với GHN)
+ *   <li>Thêm {@code carrierMetadata} (JSON) — lưu ID địa chỉ của từng carrier
+ * </ul>
+ *
+ * <p>Cấu trúc {@code carrierMetadata}:
+ * <pre>
+ * {
+ *   "GHN":         { "districtId": 1454, "wardCode": "21307" },
+ *   "GHTK":        { "province": "Hồ Chí Minh", "district": "Quận 1" },
+ *   "VIETTEL_POST":{ "provinceCode": "HCM", "districtCode": "Q1" }
+ * }
+ * </pre>
+ *
+ * <p>Khi thêm carrier mới, chỉ cần thêm key mới vào JSON — không cần migration DB.
+ */
 @Entity
 @Table(name = "addresses")
 @Getter
@@ -43,9 +65,7 @@ public class Address extends BaseEntity {
     @Builder.Default
     private Boolean isDefault = false;
 
-    @Column(name = "ghn_district_id")
-    private Integer ghnDistrictId;
-
-    @Column(name = "ghn_ward_code", length = 20)
-    private String ghnWardCode;
+    @Column(name = "carrier_metadata", columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
+    private String carrierMetadata;
 }

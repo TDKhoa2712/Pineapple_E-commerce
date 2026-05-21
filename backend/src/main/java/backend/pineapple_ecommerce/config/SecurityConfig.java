@@ -127,6 +127,7 @@ public class SecurityConfig {
                         .requestMatchers(OAUTH2_WHITELIST).permitAll()
                         .requestMatchers(HttpMethod.POST, PUBLIC_POST).permitAll()
                         .requestMatchers(HttpMethod.GET, PUBLIC_GET).permitAll()
+                        .requestMatchers("/api/v1/webhooks/ghn").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/farms/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/farms/**").hasAnyRole("FARMER", "ADMIN")
