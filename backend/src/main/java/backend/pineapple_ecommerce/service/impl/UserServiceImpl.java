@@ -19,6 +19,7 @@ import backend.pineapple_ecommerce.mapper.UserMapper;
 import backend.pineapple_ecommerce.repository.RoleRepository;
 import backend.pineapple_ecommerce.repository.UserRepository;
 import backend.pineapple_ecommerce.service.CloudinaryService;
+import backend.pineapple_ecommerce.service.RefreshTokenService;
 import backend.pineapple_ecommerce.service.UserService;
 import backend.pineapple_ecommerce.util.FileValidator;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +47,7 @@ public class UserServiceImpl implements UserService {
     private final CloudinaryService cloudinaryService;
     private final PasswordEncoder   passwordEncoder;
     private final FileValidator fileValidator;
+    private final RefreshTokenService refreshTokenService;
 
     // ─────────────────────────────────────────────
     // USER — TỰ QUẢN LÝ TÀI KHOẢN
@@ -132,6 +134,8 @@ public class UserServiceImpl implements UserService {
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
+
+        refreshTokenService.revokeByUserId(user.getId());
         log.info("User {} changed their password", userId);
     }
 
@@ -240,6 +244,7 @@ public class UserServiceImpl implements UserService {
         User user = findUserById(targetUserId);
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
+        refreshTokenService.revokeByUserId(user.getId());
         log.info("Admin reset password for userId={}", targetUserId);
     }
 

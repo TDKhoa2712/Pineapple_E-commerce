@@ -8,6 +8,7 @@ import backend.pineapple_ecommerce.repository.OtpTokenRepository;
 import backend.pineapple_ecommerce.repository.UserRepository;
 import backend.pineapple_ecommerce.service.EmailService;
 import backend.pineapple_ecommerce.service.PasswordResetService;
+import backend.pineapple_ecommerce.service.RefreshTokenService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -42,6 +43,7 @@ public class PasswordResetServiceImpl implements PasswordResetService {
     private final OtpTokenRepository otpTokenRepository;
     private final EmailService      emailService;
     private final PasswordEncoder   passwordEncoder;
+    private final RefreshTokenService  refreshTokenService;
 
     // ─────────────────────────────────────────────
     // INITIATE RESET
@@ -103,6 +105,8 @@ public class PasswordResetServiceImpl implements PasswordResetService {
         // Vô hiệu hoá OTP sau khi dùng
         token.setUsed(true);
         otpTokenRepository.save(token);
+
+        refreshTokenService.revokeByUserId(user.getId());
 
         log.info("[PasswordReset] Password reset successfully for userId={}", user.getId());
     }
