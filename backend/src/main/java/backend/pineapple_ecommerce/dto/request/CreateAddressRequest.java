@@ -29,4 +29,8 @@ public class CreateAddressRequest {
     private String detail;
 
     private Boolean isDefault = false;
+
+    private Integer ghnDistrictId;
+
+    private String ghnWardCode;
 }
