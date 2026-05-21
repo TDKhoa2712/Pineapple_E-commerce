@@ -92,4 +92,11 @@ app:
   ghn:
     token: ${GHN_TOKEN}
     shop-id: ${GHN_SHOP_ID}
+    webhook-secret: ${GHN_WEBHOOK_SECRET}
     base-url: https://dev-online-gateway.ghn.vn/shiip/public-api
+
+  # Thêm khi tích hợp GHTK
+  # ghtk:
+  #   token: ${GHTK_TOKEN}
+  #   partner-id: ${GHTK_PARTNER_ID}
+  #   base-url: https://services.giaohangtietkiem.vn
