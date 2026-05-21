@@ -50,4 +50,11 @@ public interface OrderRepository extends JpaRepository<Order, Long>,
     /** Lấy tất cả orderIds theo danh sách — dùng cho bulk update */
     @Query("SELECT o FROM Order o WHERE o.id IN :ids")
     java.util.List<Order> findAllByIdIn(@Param("ids") java.util.List<Long> ids);
+
+    /**
+     * Tìm đơn hàng dựa trên ClientOrderCode (Mã đơn hàng hệ thống gửi cho GHN)
+     */
+    Optional<Order> findById(Long id);
+
+
 }

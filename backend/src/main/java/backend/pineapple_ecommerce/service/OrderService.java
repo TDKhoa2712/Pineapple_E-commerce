@@ -6,6 +6,7 @@ import backend.pineapple_ecommerce.dto.response.OrderResponse;
 import backend.pineapple_ecommerce.dto.response.PageResponse;
 import backend.pineapple_ecommerce.enums.OrderStatus;
 import backend.pineapple_ecommerce.enums.PaymentMethod;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
