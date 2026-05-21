@@ -6,7 +6,6 @@ import backend.pineapple_ecommerce.dto.response.PageResponse;
 import backend.pineapple_ecommerce.dto.response.ProductSummaryResponse;
 import backend.pineapple_ecommerce.dto.response.UploadResponse;
 import backend.pineapple_ecommerce.entity.Farm;
-import backend.pineapple_ecommerce.entity.Product;
 import backend.pineapple_ecommerce.entity.User;
 import backend.pineapple_ecommerce.enums.FarmStatus;
 import backend.pineapple_ecommerce.enums.UploadFolder;
@@ -22,6 +21,7 @@ import backend.pineapple_ecommerce.repository.ProductRepository;
 import backend.pineapple_ecommerce.repository.UserRepository;
 import backend.pineapple_ecommerce.service.CloudinaryService;
 import backend.pineapple_ecommerce.service.FarmService;
+import backend.pineapple_ecommerce.util.FileValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -48,6 +48,7 @@ public class FarmServiceImpl implements FarmService {
     private final ProductMapper            productMapper;
     private final CloudinaryService        cloudinaryService;
     private final ApplicationEventPublisher eventPublisher;
+    private final FileValidator fileValidator;
 
     // ─────────────────────────────────────────────
     // CREATE
@@ -207,19 +208,26 @@ public class FarmServiceImpl implements FarmService {
         Farm farm = findActiveById(farmId);
         verifyOwnership(farm, requesterId);
 
-        // Xoá ảnh cũ trên Cloudinary nếu có
+        // Validate file upload
+        fileValidator.validateImage(image);
+
         String oldPublicId = farm.getImagePublicId();
 
+        // Upload ảnh mới
         UploadResponse uploaded = cloudinaryService.uploadImage(image, UploadFolder.FARM);
+
+        // Cập nhật thông tin ảnh mới
         farm.setImageUrl(uploaded.getUrl());
         farm.setImagePublicId(uploaded.getPublicId());
+
         Farm saved = farmRepository.save(farm);
 
+        // Xóa ảnh cũ trên Cloudinary (nếu có)
         if (oldPublicId != null && !oldPublicId.isBlank()) {
             cloudinaryService.deleteImage(oldPublicId);
         }
 
-        log.info("Farm image uploaded: farmId={}", farmId);
+        log.info("Farm image uploaded successfully: farmId={}, publicId={}", farmId, uploaded.getPublicId());
         return farmMapper.toResponse(saved);
     }
 

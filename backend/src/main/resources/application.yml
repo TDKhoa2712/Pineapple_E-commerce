@@ -5,10 +5,14 @@ spring:
   config:
     import: optional:file:.env[.properties]
 
+  # =========================
+  # FILE UPLOAD CONFIGURATION (BẢO MẬT)
+  # =========================
   servlet:
     multipart:
-      max-file-size: 10MB
-      max-request-size: 10MB
+      max-file-size: 5MB           # Giảm từ 10MB xuống 5MB
+      max-request-size: 10MB       # Giới hạn tổng request (ví dụ: upload nhiều file)
+      enabled: true
 
   jackson:
     default-property-inclusion: non_null
@@ -73,14 +77,8 @@ springdoc:
     path: /swagger-ui.html
     operations-sorter: method
 
-
 logging:
   level:
-    # Bật log chi tiết (DEBUG/TRACE) cho toàn bộ lõi Spring Security
     org.springframework.security: DEBUG
-
-    # Bật log cho package dự án để theo dõi các filter tùy chỉnh (như JwtAuthFilter)
     backend.pineapple_ecommerce: DEBUG
-
-    # Bật log cho framework web để xem rõ luồng request/response
     org.springframework.web: INFO

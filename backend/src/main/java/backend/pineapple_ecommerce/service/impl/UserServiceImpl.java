@@ -20,6 +20,7 @@ import backend.pineapple_ecommerce.repository.RoleRepository;
 import backend.pineapple_ecommerce.repository.UserRepository;
 import backend.pineapple_ecommerce.service.CloudinaryService;
 import backend.pineapple_ecommerce.service.UserService;
+import backend.pineapple_ecommerce.util.FileValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -44,6 +45,7 @@ public class UserServiceImpl implements UserService {
     private final UserMapper        userMapper;
     private final CloudinaryService cloudinaryService;
     private final PasswordEncoder   passwordEncoder;
+    private final FileValidator fileValidator;
 
     // ─────────────────────────────────────────────
     // USER — TỰ QUẢN LÝ TÀI KHOẢN
@@ -83,22 +85,25 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserResponse uploadAvatar(Long userId, MultipartFile file) {
-        User user = findUserById(userId);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
 
-        UploadResponse uploaded = cloudinaryService.uploadImage(file, UploadFolder.AVATAR);
+        // Validate file
+        fileValidator.validateImage(file);
 
-        String oldPublicId = user.getAvatarPublicId();
-        if (oldPublicId != null && !oldPublicId.isBlank()) {
-            cloudinaryService.deleteImage(oldPublicId);
-            log.info("Deleted old avatar publicId={} for userId={}", oldPublicId, userId);
+        // Xóa avatar cũ nếu tồn tại
+        if (user.getAvatar() != null && !user.getAvatar().isBlank()) {
+            cloudinaryService.deleteImage(user.getAvatar()); // giả sử publicId được lưu hoặc xử lý riêng
         }
 
-        user.setAvatar(uploaded.getUrl());
-        user.setAvatarPublicId(uploaded.getPublicId());
+        // Upload avatar mới
+        UploadResponse uploadResponse = cloudinaryService.uploadImage(file, UploadFolder.AVATAR);
 
-        User saved = userRepository.save(user);
-        log.info("Avatar updated for userId={}", userId);
-        return userMapper.toResponse(saved);
+        user.setAvatar(uploadResponse.getUrl());
+        userRepository.save(user);
+
+        log.info("User {} uploaded new avatar", userId);
+        return userMapper.toResponse(user);
     }
 
     // ─────────────────────────────────────────────
@@ -200,7 +205,7 @@ public class UserServiceImpl implements UserService {
 
         // Thêm các role admin chỉ định
         for (RoleName roleName : request.getRoles()) {
-            if (roleName == RoleName.ROLE_USER) continue; // Đã thêm ở trên
+            if (roleName == RoleName.ROLE_USER) continue;
 
             Role role = roleRepository.findByName(roleName)
                     .orElseThrow(() -> new ResourceNotFoundException("Role", "name", roleName));

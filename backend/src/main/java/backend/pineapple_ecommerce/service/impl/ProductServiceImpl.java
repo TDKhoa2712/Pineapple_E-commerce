@@ -12,6 +12,7 @@ import backend.pineapple_ecommerce.mapper.ProductMapper;
 import backend.pineapple_ecommerce.repository.*;
 import backend.pineapple_ecommerce.service.CloudinaryService;
 import backend.pineapple_ecommerce.service.ProductService;
+import backend.pineapple_ecommerce.util.FileValidator;
 import backend.pineapple_ecommerce.util.SlugUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +36,7 @@ public class ProductServiceImpl implements ProductService {
     private final ReviewRepository         reviewRepository;
     private final ProductMapper            productMapper;
     private final CloudinaryService        cloudinaryService;
+    private final FileValidator fileValidator;
 
     // ─────────────────────────────────────────────
     // CREATE
@@ -61,45 +63,57 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
-    public List<UploadResponse> uploadProductImages(Long productId, List<MultipartFile> images) {
+    public List<UploadResponse> uploadProductImages(Long productId, List<MultipartFile> files) {
         Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new ResourceNotFoundException("Product", productId));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm"));
 
-        List<UploadResponse> uploaded = cloudinaryService.uploadImages(images, UploadFolder.PRODUCT);
-
-        List<String> oldPublicIds = product.getImages().stream()
-                .map(ProductImage::getPublicId)
-                .filter(pid -> pid != null && !pid.isBlank())
-                .toList();
-
-        product.getImages().clear();
-        product.getImages().addAll(buildProductImages(uploaded, product));
-        productRepository.save(product);
-
-        if (!oldPublicIds.isEmpty()) {
-            cloudinaryService.deleteImages(oldPublicIds);
+        if (files == null || files.isEmpty()) {
+            throw new BusinessException("Vui lòng chọn ít nhất một ảnh");
         }
-        log.info("Uploaded {} images for productId={}", uploaded.size(), productId);
-        return uploaded;
+
+        // Validate tất cả file
+        for (MultipartFile file : files) {
+            fileValidator.validateImage(file);
+        }
+
+        // Upload multiple
+        List<UploadResponse> uploadResponses = cloudinaryService.uploadImages(files, UploadFolder.PRODUCT);
+
+        // Lưu vào ProductImage
+        for (UploadResponse resp : uploadResponses) {
+            ProductImage image = ProductImage.builder()
+                    .product(product)
+                    .imageUrl(resp.getUrl())
+                    .publicId(resp.getPublicId())
+                    .build();
+            product.getImages().add(image);
+        }
+
+        productRepository.save(product);
+        return uploadResponses;
     }
 
     @Override
     @Transactional
     public UploadResponse uploadThumbnail(Long productId, MultipartFile file) {
         Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new ResourceNotFoundException("Product", productId));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm"));
 
-        UploadResponse uploaded = cloudinaryService.uploadImage(file, UploadFolder.PRODUCT);
-        String oldPublicId = product.getThumbnailPublicId();
+        // Validate file
+        fileValidator.validateImage(file);
 
-        product.setThumbnail(uploaded.getUrl());
-        product.setThumbnailPublicId(uploaded.getPublicId());
+        // Upload thumbnail
+        UploadResponse uploadResponse = cloudinaryService.uploadImage(file, UploadFolder.PRODUCT);
+
+        // Xóa thumbnail cũ nếu có
+        if (product.getThumbnail() != null && !product.getThumbnail().isBlank()) {
+            cloudinaryService.deleteImage(product.getThumbnail());
+        }
+
+        product.setThumbnail(uploadResponse.getUrl());
         productRepository.save(product);
 
-        if (oldPublicId != null && !oldPublicId.isBlank()) {
-            cloudinaryService.deleteImage(oldPublicId);
-        }
-        return uploaded;
+        return uploadResponse;
     }
 
     // ─────────────────────────────────────────────
