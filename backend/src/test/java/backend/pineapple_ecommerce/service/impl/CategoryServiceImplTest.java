@@ -1,13 +1,14 @@
 package backend.pineapple_ecommerce.service.impl;
 
-import backend.pineapple_ecommerce.dto.request.CreateCategoryRequest;
-import backend.pineapple_ecommerce.dto.response.CategoryResponse;
-import backend.pineapple_ecommerce.entity.Category;
-import backend.pineapple_ecommerce.entity.Product;
-import backend.pineapple_ecommerce.exception.BusinessException;
-import backend.pineapple_ecommerce.exception.ResourceNotFoundException;
-import backend.pineapple_ecommerce.mapper.CategoryMapper;
-import backend.pineapple_ecommerce.repository.CategoryRepository;
+import backend.pineapple_ecommerce.modules.category.dto.request.CreateCategoryRequest;
+import backend.pineapple_ecommerce.modules.category.dto.response.CategoryResponse;
+import backend.pineapple_ecommerce.modules.category.models.Category;
+import backend.pineapple_ecommerce.modules.category.service.CategoryServiceImpl;
+import backend.pineapple_ecommerce.modules.product.models.Product;
+import backend.pineapple_ecommerce.common.exception.BusinessException;
+import backend.pineapple_ecommerce.common.exception.ResourceNotFoundException;
+import backend.pineapple_ecommerce.modules.category.mapper.CategoryMapper;
+import backend.pineapple_ecommerce.modules.category.repository.CategoryRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

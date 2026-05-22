@@ -1,6 +1,6 @@
 package backend.pineapple_ecommerce.event;
 
-import backend.pineapple_ecommerce.service.EmailService;
+import backend.pineapple_ecommerce.infrastructure.email.EmailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

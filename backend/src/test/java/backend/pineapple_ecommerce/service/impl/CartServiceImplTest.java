@@ -1,27 +1,27 @@
 package backend.pineapple_ecommerce.service.impl;
 
-import backend.pineapple_ecommerce.dto.request.AddToCartRequest;
-import backend.pineapple_ecommerce.dto.request.UpdateCartItemRequest;
-import backend.pineapple_ecommerce.dto.response.CartResponse;
-import backend.pineapple_ecommerce.entity.Cart;
-import backend.pineapple_ecommerce.entity.CartItem;
-import backend.pineapple_ecommerce.entity.Product;
-import backend.pineapple_ecommerce.entity.User;
-import backend.pineapple_ecommerce.enums.ProductStatus;
-import backend.pineapple_ecommerce.exception.BusinessException;
-import backend.pineapple_ecommerce.exception.ResourceNotFoundException;
-import backend.pineapple_ecommerce.mapper.CartMapper;
-import backend.pineapple_ecommerce.repository.CartItemRepository;
-import backend.pineapple_ecommerce.repository.CartRepository;
-import backend.pineapple_ecommerce.repository.InventoryBatchRepository;
-import backend.pineapple_ecommerce.repository.ProductRepository;
-import backend.pineapple_ecommerce.repository.UserRepository;
+import backend.pineapple_ecommerce.modules.cart.mapper.CartMapper;
+import backend.pineapple_ecommerce.modules.cart.models.Cart;
+import backend.pineapple_ecommerce.modules.cart.models.CartItem;
+import backend.pineapple_ecommerce.modules.cart.dto.request.AddToCartRequest;
+import backend.pineapple_ecommerce.modules.cart.dto.request.UpdateCartItemRequest;
+import backend.pineapple_ecommerce.modules.cart.dto.response.CartResponse;
+import backend.pineapple_ecommerce.modules.cart.repository.CartItemRepository;
+import backend.pineapple_ecommerce.modules.cart.repository.CartRepository;
+import backend.pineapple_ecommerce.modules.cart.service.CartServiceImpl;
+import backend.pineapple_ecommerce.modules.product.models.Product;
+import backend.pineapple_ecommerce.modules.user.models.User;
+import backend.pineapple_ecommerce.common.enums.ProductStatus;
+import backend.pineapple_ecommerce.common.exception.BusinessException;
+import backend.pineapple_ecommerce.common.exception.ResourceNotFoundException;
+import backend.pineapple_ecommerce.modules.inventory.repository.InventoryBatchRepository;
+import backend.pineapple_ecommerce.modules.product.repository.ProductRepository;
+import backend.pineapple_ecommerce.modules.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -39,12 +39,12 @@ import static org.mockito.Mockito.*;
 @DisplayName("CartServiceImpl")
 class CartServiceImplTest {
 
-    @Mock private CartRepository           cartRepository;
-    @Mock private CartItemRepository       cartItemRepository;
+    @Mock private CartRepository cartRepository;
+    @Mock private CartItemRepository cartItemRepository;
     @Mock private ProductRepository        productRepository;
     @Mock private UserRepository           userRepository;
     @Mock private InventoryBatchRepository inventoryBatchRepository;
-    @Mock private CartMapper               cartMapper;
+    @Mock private CartMapper cartMapper;
 
     @InjectMocks
     private CartServiceImpl cartService;

@@ -1,5 +1,6 @@
 package backend.pineapple_ecommerce.security;
 
+import backend.pineapple_ecommerce.modules.user.service.UserDetailsServiceImpl;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
