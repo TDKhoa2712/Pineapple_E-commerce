@@ -1,14 +1,14 @@
 ﻿# ==================== BACKEND ====================
-backend/.env
-backend/.env.local
-backend/application-prod.yml
+.env
+.env.local
+application-prod.yml
 
 # Maven / Build
-backend/target/
-backend/.mvn/wrapper/maven-wrapper.jar
+target/
+.mvn/wrapper/maven-wrapper.jar
 
 # IDE
-backend/.idea/
+.idea/
 *.iml
 .vscode/
 
@@ -27,6 +27,9 @@ Thumbs.db
 
 # ==================== FRONTEND ====================
 frontend/node_modules/
-frontend
-backend/BE.xml
-backend/VNPay_account
+frontend/
+
+# ==================== SENSITIVE & CONFIG ====================
+BE.xml
+VNPay_account
+VNPay_account/
