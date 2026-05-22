@@ -1,16 +1,16 @@
 //package backend.pineapple_ecommerce.service.impl;
 //
-//import backend.pineapple_ecommerce.dto.request.CreateOrderRequest;
-//import backend.pineapple_ecommerce.dto.response.OrderResponse;
-//import backend.pineapple_ecommerce.dto.response.PageResponse;
+//import backend.pineapple_ecommerce.api.dto.order.request.CreateOrderRequest;
+//import backend.pineapple_ecommerce.api.dto.order.response.OrderResponse;
+//import backend.pineapple_ecommerce.common.dto.response.PageResponse;
 //import backend.pineapple_ecommerce.entity.*;
 //import backend.pineapple_ecommerce.enums.*;
 //import backend.pineapple_ecommerce.exception.BusinessException;
 //import backend.pineapple_ecommerce.exception.ResourceNotFoundException;
 //import backend.pineapple_ecommerce.exception.UnauthorizedException;
-//import backend.pineapple_ecommerce.mapper.OrderMapper;
+//import backend.pineapple_ecommerce.modules.order.OrderMapper;
 //import backend.pineapple_ecommerce.repository.*;
-//import backend.pineapple_ecommerce.service.CartService;
+//import backend.pineapple_ecommerce.modules.cart.CartService;
 //import org.junit.jupiter.api.BeforeEach;
 //import org.junit.jupiter.api.DisplayName;
 //import org.junit.jupiter.api.Nested;

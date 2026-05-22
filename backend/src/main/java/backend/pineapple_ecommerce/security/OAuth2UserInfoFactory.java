@@ -1,7 +1,9 @@
 package backend.pineapple_ecommerce.security;
 
-import backend.pineapple_ecommerce.enums.AuthProvider;
-import backend.pineapple_ecommerce.exception.BusinessException;
+import backend.pineapple_ecommerce.common.enums.AuthProvider;
+import backend.pineapple_ecommerce.common.exception.BusinessException;
+import backend.pineapple_ecommerce.modules.auth.models.FacebookOAuth2UserInfo;
+import backend.pineapple_ecommerce.modules.auth.models.GoogleOAuth2UserInfo;
 
 import java.util.Map;
 

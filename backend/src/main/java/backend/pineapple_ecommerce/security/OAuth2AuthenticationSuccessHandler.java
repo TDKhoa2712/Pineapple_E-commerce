@@ -1,19 +1,16 @@
 package backend.pineapple_ecommerce.security;
 
-import backend.pineapple_ecommerce.config.CorsProperties;
-import backend.pineapple_ecommerce.dto.response.AuthResponse;
-import backend.pineapple_ecommerce.entity.RefreshToken;
-import backend.pineapple_ecommerce.entity.User;
-import backend.pineapple_ecommerce.repository.UserRepository;
-import backend.pineapple_ecommerce.service.OAuth2Service;
-import backend.pineapple_ecommerce.service.RefreshTokenService;
+import backend.pineapple_ecommerce.common.config.CorsProperties;
+import backend.pineapple_ecommerce.modules.auth.dto.response.AuthResponse;
+import backend.pineapple_ecommerce.modules.user.models.User;
+import backend.pineapple_ecommerce.modules.user.repository.UserRepository;
+import backend.pineapple_ecommerce.modules.auth.service.OAuth2Service;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -22,7 +19,6 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.io.IOException;
 import java.net.URI;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Xử lý sau khi OAuth2 authentication thành công:

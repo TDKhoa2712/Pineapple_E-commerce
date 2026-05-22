@@ -1,5 +1,6 @@
 package backend.pineapple_ecommerce.util;
 
+import backend.pineapple_ecommerce.common.util.SlugUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;

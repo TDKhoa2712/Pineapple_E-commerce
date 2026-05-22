@@ -1,6 +1,6 @@
 package backend.pineapple_ecommerce.security;
 
-import backend.pineapple_ecommerce.config.JwtProperties;
+import backend.pineapple_ecommerce.common.config.JwtProperties;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;

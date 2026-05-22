@@ -1,7 +1,7 @@
 package backend.pineapple_ecommerce.security;
 
-import backend.pineapple_ecommerce.entity.User;
-import backend.pineapple_ecommerce.enums.UserStatus;
+import backend.pineapple_ecommerce.modules.user.models.User;
+import backend.pineapple_ecommerce.common.enums.UserStatus;
 import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;

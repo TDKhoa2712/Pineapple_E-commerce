@@ -1,6 +1,6 @@
 package backend.pineapple_ecommerce.event;
 
-import backend.pineapple_ecommerce.dto.response.OrderResponse;
+import backend.pineapple_ecommerce.modules.order.dto.response.OrderResponse;
 import lombok.Getter;
 
 /**

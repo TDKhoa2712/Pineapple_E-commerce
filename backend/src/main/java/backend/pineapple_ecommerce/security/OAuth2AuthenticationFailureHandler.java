@@ -1,6 +1,6 @@
 package backend.pineapple_ecommerce.security;
 
-import backend.pineapple_ecommerce.config.CorsProperties;
+import backend.pineapple_ecommerce.common.config.CorsProperties;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
