@@ -7,6 +7,7 @@ import backend.pineapple_ecommerce.dto.request.UpdateUserRolesRequest;
 import backend.pineapple_ecommerce.dto.request.UpdateUserStatusRequest;
 import backend.pineapple_ecommerce.dto.response.PageResponse;
 import backend.pineapple_ecommerce.dto.response.UserResponse;
+import backend.pineapple_ecommerce.entity.User;
 import backend.pineapple_ecommerce.enums.UserStatus;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -70,4 +71,8 @@ public interface UserService {
      * Helper nội bộ: resolve userId đang đăng nhập từ SecurityContext.
      */
     Long getCurrentUserId();
+
+    UserResponse getUserByEmail(String email);
+
+    User getEntityUser(Long userId);
 }

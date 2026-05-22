@@ -6,6 +6,7 @@ import backend.pineapple_ecommerce.dto.response.InventoryBatchResponse;
 import backend.pineapple_ecommerce.dto.response.InventorySummaryResponse;
 import backend.pineapple_ecommerce.dto.response.PageResponse;
 import backend.pineapple_ecommerce.dto.response.StockAdjustmentResponse;
+import backend.pineapple_ecommerce.entity.InventoryBatch;
 
 import java.util.List;
 
@@ -25,27 +26,54 @@ public interface InventoryService {
     /** Scheduled job — đánh dấu lô hết hạn (chạy 01:00 SA mỗi ngày). */
     void markExpiredBatches();
 
-    /**
-     * NEW — 2.3: Trigger thủ công markExpiredBatches cho Admin.
-     * Trả về số lô đã được đánh dấu.
-     */
     int markExpiredBatchesManual();
 
     int getTotalStock(Long productId);
 
-    /**
-     * NEW — 2.3: Danh sách lô sắp hết hạn trong N ngày tới.
-     */
     List<InventoryBatchResponse> getExpiringSoon(int days);
 
-    /**
-     * NEW — 2.3: Tổng hợp tồn kho tất cả sản phẩm, phân trang.
-     */
     PageResponse<InventorySummaryResponse> getInventorySummary(int page, int size);
 
-    /**
-     * NEW — 2.3: Điều chỉnh số lượng lô hàng kèm lý do (audit trail).
-     * adjustmentQty: dương = thêm, âm = bớt.
-     */
     StockAdjustmentResponse adjustBatch(Long batchId, Long adminUserId, StockAdjustmentRequest request);
+
+    // ─────────────────────────────────────────────
+    // Order-domain operations
+    // ─────────────────────────────────────────────
+
+    /**
+     * Trừ tồn kho theo chiến lược FIFO (First In First Out / gần hết hạn trước).
+     * Trả về batch chính được dùng cho OrderItem.
+     *
+     * <p>Dùng pessimistic lock — đảm bảo không oversell khi nhiều đơn đặt cùng lúc.
+     * Chỉ gọi từ bên trong @Transactional của OrderService.
+     *
+     * @param productId  sản phẩm cần trừ tồn kho
+     * @param quantity   số lượng cần trừ
+     * @return batch đầu tiên được trừ (dùng để lưu vào OrderItem.batch)
+     * @throws backend.pineapple_ecommerce.exception.BusinessException nếu tồn kho không đủ
+     */
+    InventoryBatch deductStockFifo(Long productId, int quantity);
+
+    /**
+     * Hoàn lại tồn kho khi đơn hàng bị huỷ hoặc yêu cầu hoàn tiền.
+     *
+     * <p>Chỉ hoàn cho các OrderItem có batch != null.
+     * Nếu batch đang SOLD_OUT → chuyển về AVAILABLE sau khi hoàn.
+     *
+     * @param orderItems danh sách item của đơn hàng cần hoàn kho
+     */
+    void restoreStockForOrder(List<backend.pineapple_ecommerce.entity.OrderItem> orderItems);
+
+    // ─────────────────────────────────────────────
+    // Farm-domain query
+    // ─────────────────────────────────────────────
+
+    /**
+     * Lấy danh sách productId phân biệt có ít nhất 1 batch AVAILABLE của farm.
+     * Dùng bởi FarmService để hiển thị sản phẩm của farm.
+     *
+     * @param farmId ID của farm
+     * @return list productId, rỗng nếu farm chưa có sản phẩm nào
+     */
+    List<Long> getDistinctProductIdsByFarm(Long farmId);
 }

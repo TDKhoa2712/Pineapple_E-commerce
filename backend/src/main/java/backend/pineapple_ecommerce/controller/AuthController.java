@@ -4,11 +4,9 @@ import backend.pineapple_ecommerce.dto.request.*;
 import backend.pineapple_ecommerce.dto.response.ApiResponse;
 import backend.pineapple_ecommerce.dto.response.AuthResponse;
 import backend.pineapple_ecommerce.dto.response.UserResponse;
-import backend.pineapple_ecommerce.entity.User;
-import backend.pineapple_ecommerce.mapper.UserMapper;
-import backend.pineapple_ecommerce.repository.UserRepository;
 import backend.pineapple_ecommerce.service.AuthService;
 import backend.pineapple_ecommerce.service.EmailVerificationService;
+import backend.pineapple_ecommerce.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -33,8 +31,7 @@ public class AuthController {
 
     private final AuthService              authService;
     private final EmailVerificationService emailVerificationService;
-    private final UserRepository           userRepository;
-    private final UserMapper               userMapper;
+    private final UserService userService;
 
     // ─────────────────────────────────────────────
     // Register
@@ -149,8 +146,7 @@ public class AuthController {
     public ResponseEntity<ApiResponse<UserResponse>> me(
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        User user = userRepository.findByEmail(userDetails.getUsername())
-                .orElseThrow();
-        return ResponseEntity.ok(ApiResponse.success(userMapper.toResponse(user)));
+        return ResponseEntity.ok(ApiResponse.success(userService.getUserByEmail(userDetails.getUsername())));
+
     }
 }

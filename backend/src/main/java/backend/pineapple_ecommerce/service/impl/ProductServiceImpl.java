@@ -277,6 +277,14 @@ public class ProductServiceImpl implements ProductService {
         return stock != null ? stock : 0;
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProductSummaryResponse> getProductsByIds(List<Long> ids) {
+        return productRepository.findAllById(ids).stream()
+                .map(product -> enrichSummaryResponse(productMapper.toSummaryResponse(product), product))
+                .toList();
+    }
+
     // ─────────────────────────────────────────────
     // PRIVATE HELPERS
     // ─────────────────────────────────────────────

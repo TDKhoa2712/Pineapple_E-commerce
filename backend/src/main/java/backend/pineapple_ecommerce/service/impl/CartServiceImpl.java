@@ -287,6 +287,12 @@ public class CartServiceImpl implements CartService {
                 .build();
     }
 
+    @Override
+    public Cart getCheckoutItems(Long userId) {
+        return cartRepository.findByUserIdWithItems(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cart", "userId", userId));
+    }
+
     // ─────────────────────────────────────────────
     // PRIVATE HELPERS
     // ─────────────────────────────────────────────

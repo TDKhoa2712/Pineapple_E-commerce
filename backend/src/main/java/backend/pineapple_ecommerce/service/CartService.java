@@ -6,6 +6,10 @@ import backend.pineapple_ecommerce.dto.request.UpdateCartItemRequest;
 import backend.pineapple_ecommerce.dto.response.CartResponse;
 import backend.pineapple_ecommerce.dto.response.CartValidationResponse;
 import backend.pineapple_ecommerce.dto.response.MergeCartResponse;
+import backend.pineapple_ecommerce.entity.Cart;
+import backend.pineapple_ecommerce.entity.CartItem;
+
+import java.util.List;
 
 /**
  * Quản lý giỏ hàng của người dùng.
@@ -23,35 +27,28 @@ public interface CartService {
 
     void clearCart(Long userId);
 
-    // ─────────────────────────────────────────────
-    // NEW — 2.6
-    // ─────────────────────────────────────────────
-
-    /**
-     * Tổng số lượng items trong giỏ — dùng cho badge trên FE header.
-     * Tính SUM(quantity) không phải số lượng loại sản phẩm.
-     */
     int getCartItemCount(Long userId);
 
-    /**
-     * Validate toàn bộ cart trước khi checkout.
-     * Kiểm tra từng item: tồn kho còn đủ không, sản phẩm còn active không.
-     * Trả về danh sách warnings (nếu có) và estimatedTotal.
-     */
     CartValidationResponse validateCart(Long userId);
 
-    /**
-     * Gộp giỏ hàng khách (từ localStorage) vào giỏ hàng thật sau khi đăng nhập.
-     *
-     * Chiến lược SMART MERGE:
-     * - Nếu sản phẩm đã có → cộng dồn số lượng (không reset)
-     * - Nếu tổng vượt tồn kho → cap lại bằng tồn kho khả dụng, ghi vào skipped với reason=STOCK_CAPPED
-     * - Sản phẩm không còn active → bỏ qua, ghi reason=PRODUCT_INACTIVE
-     * - Sản phẩm hết hàng → bỏ qua, ghi reason=OUT_OF_STOCK
-     *
-     * @param userId  user vừa đăng nhập
-     * @param request danh sách items từ localStorage
-     * @return giỏ hàng đã merge + danh sách items bị bỏ qua
-     */
     MergeCartResponse mergeGuestCart(Long userId, MergeCartRequest request);
+
+    // ─────────────────────────────────────────────
+    // Order-domain bridge
+    // ─────────────────────────────────────────────
+
+    /**
+     * Lấy danh sách CartItem kèm Product để OrderService dùng khi tạo đơn hàng.
+     *
+     * <p>Tách biệt khỏi {@link #getCart} (trả DTO) vì OrderService cần entity
+     * thực sự để truy cập Product.getEffectivePrice(), Product.getName()... mà không
+     * phải inject thêm CartRepository hay ProductRepository vào OrderService.
+     *
+     * <p>Ném {@link backend.pineapple_ecommerce.exception.BusinessException}
+     * nếu giỏ hàng rỗng — tránh tạo đơn trống.
+     *
+     * @param userId user đang checkout
+     * @return danh sách CartItem đã eager-load Product, không rỗng
+     */
+    Cart getCheckoutItems(Long userId);
 }

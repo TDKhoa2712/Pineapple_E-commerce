@@ -266,6 +266,18 @@ public class UserServiceImpl implements UserService {
                 .getId();
     }
 
+    @Override
+    public UserResponse getUserByEmail(String email) {
+        log.info("Get user by email: {}", email);
+        return userRepository.findByEmail(email).map(userMapper::toResponse)
+                .orElseThrow(()-> new ResourceNotFoundException("User", "email", email));
+    }
+
+    @Override
+    public User getEntityUser(Long userId) {
+        return findUserById(userId);
+    }
+
     // ─────────────────────────────────────────────
     // INTERNAL HELPER
     // ─────────────────────────────────────────────

@@ -8,6 +8,7 @@ import backend.pineapple_ecommerce.dto.response.PageResponse;
 import backend.pineapple_ecommerce.dto.response.StockAdjustmentResponse;
 import backend.pineapple_ecommerce.entity.Farm;
 import backend.pineapple_ecommerce.entity.InventoryBatch;
+import backend.pineapple_ecommerce.entity.OrderItem;
 import backend.pineapple_ecommerce.entity.Product;
 import backend.pineapple_ecommerce.entity.StockAdjustment;
 import backend.pineapple_ecommerce.entity.User;
@@ -45,6 +46,10 @@ public class InventoryServiceImpl implements InventoryService {
     private final FarmRepository            farmRepository;
     private final UserRepository            userRepository;
     private final InventoryBatchMapper      inventoryBatchMapper;
+
+    // ─────────────────────────────────────────────
+    // Batch management (existing)
+    // ─────────────────────────────────────────────
 
     @Override
     @Transactional
@@ -163,7 +168,7 @@ public class InventoryServiceImpl implements InventoryService {
 
         if (qtyAfter < 0) {
             throw new BusinessException(String.format(
-                "Ton kho hien tai %d, dieu chinh %d se am", qtyBefore, request.getAdjustmentQty()));
+                    "Ton kho hien tai %d, dieu chinh %d se am", qtyBefore, request.getAdjustmentQty()));
         }
 
         batch.setRemainingQuantity(qtyAfter);
@@ -184,5 +189,71 @@ public class InventoryServiceImpl implements InventoryService {
                 .adjustmentQty(request.getAdjustmentQty()).reason(request.getReason())
                 .qtyBefore(qtyBefore).qtyAfter(qtyAfter)
                 .adjustedByName(admin.getFullName()).createdAt(saved.getCreatedAt()).build();
+    }
+
+    // ─────────────────────────────────────────────
+    // Order-domain operations
+    // ─────────────────────────────────────────────
+
+    /**
+     * Trừ tồn kho FIFO với pessimistic lock, ném BusinessException nếu không đủ hàng.
+     * Được gọi từ OrderServiceImpl bên trong @Transactional — không cần @Transactional riêng.
+     */
+    @Override
+    public InventoryBatch deductStockFifo(Long productId, int quantity) {
+        List<InventoryBatch> batches = inventoryBatchRepository
+                .findByProductIdAndStatusWithLock(productId, BatchStatus.AVAILABLE);
+
+        int totalStock = batches.stream().mapToInt(InventoryBatch::getRemainingQuantity).sum();
+        if (totalStock < quantity) {
+            // Lấy tên sản phẩm từ batch đầu tiên (đã join fetch)
+            String productName = batches.isEmpty()
+                    ? "productId=" + productId
+                    : batches.get(0).getProduct().getName();
+            throw new BusinessException(
+                    String.format("Sản phẩm '%s' chỉ còn %d trong kho", productName, totalStock));
+        }
+
+        InventoryBatch mainBatch = null;
+        int remaining = quantity;
+
+        for (InventoryBatch batch : batches) {
+            if (remaining <= 0) break;
+            int deduct = Math.min(batch.getRemainingQuantity(), remaining);
+            batch.deductStock(deduct);
+            inventoryBatchRepository.save(batch);
+            remaining -= deduct;
+            if (mainBatch == null) mainBatch = batch;
+        }
+
+        return mainBatch;
+    }
+
+    /**
+     * Hoàn lại tồn kho cho tất cả OrderItem có batch.
+     * Được gọi từ OrderServiceImpl bên trong @Transactional — không cần @Transactional riêng.
+     */
+    @Override
+    public void restoreStockForOrder(List<OrderItem> orderItems) {
+        for (OrderItem item : orderItems) {
+            if (item.getBatch() == null) continue;
+
+            InventoryBatch batch = item.getBatch();
+            batch.setRemainingQuantity(batch.getRemainingQuantity() + item.getQuantity());
+            if (batch.getStatus() == BatchStatus.SOLD_OUT) {
+                batch.setStatus(BatchStatus.AVAILABLE);
+            }
+            inventoryBatchRepository.save(batch);
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    // Farm-domain query (new)
+    // ─────────────────────────────────────────────
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Long> getDistinctProductIdsByFarm(Long farmId) {
+        return inventoryBatchRepository.findDistinctProductIdsByFarmId(farmId);
     }
 }

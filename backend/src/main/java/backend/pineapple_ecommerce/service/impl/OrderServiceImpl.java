@@ -12,6 +12,7 @@ import backend.pineapple_ecommerce.exception.UnauthorizedException;
 import backend.pineapple_ecommerce.mapper.OrderMapper;
 import backend.pineapple_ecommerce.repository.*;
 import backend.pineapple_ecommerce.service.CartService;
+import backend.pineapple_ecommerce.service.InventoryService;
 import backend.pineapple_ecommerce.service.OrderService;
 import backend.pineapple_ecommerce.specification.OrderSpecification;
 import lombok.RequiredArgsConstructor;
@@ -37,12 +38,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository           orderRepository;
-    private final CartRepository            cartRepository;
     private final AddressRepository         addressRepository;
-    private final InventoryBatchRepository  inventoryBatchRepository;
     private final PaymentRepository         paymentRepository;
     private final OrderMapper               orderMapper;
     private final CartService               cartService;
+    private final InventoryService inventoryService;
 
     // ─────────────────────────────────────────────
     // CREATE ORDER
@@ -51,8 +51,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderResponse createOrder(Long userId, CreateOrderRequest request) {
-        Cart cart = cartRepository.findByUserIdWithItems(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Cart", "userId", userId));
+        Cart cart = cartService.getCheckoutItems(userId);
 
         if (cart.getItems().isEmpty()) {
             throw new BusinessException("Giỏ hàng trống, không thể đặt hàng");
@@ -97,16 +96,7 @@ public class OrderServiceImpl implements OrderService {
             int qty = cartItem.getQuantity();
             BigDecimal unitPrice = product.getEffectivePrice();
 
-            List<InventoryBatch> batches = inventoryBatchRepository
-                    .findByProductIdAndStatusWithLock(product.getId(), BatchStatus.AVAILABLE);
-
-            int totalStock = batches.stream().mapToInt(InventoryBatch::getRemainingQuantity).sum();
-            if (totalStock < qty) {
-                throw new BusinessException(
-                        String.format("Sản phẩm '%s' chỉ còn %d trong kho", product.getName(), totalStock));
-            }
-
-            InventoryBatch usedBatch = deductStockFifo(batches, qty);
+            InventoryBatch usedBatch = inventoryService.deductStockFifo(product.getId(), qty);
 
             OrderItem item = OrderItem.builder()
                     .order(order)
@@ -309,33 +299,8 @@ public class OrderServiceImpl implements OrderService {
                 .orElseThrow(() -> new ResourceNotFoundException("Order", orderId));
     }
 
-    private InventoryBatch deductStockFifo(List<InventoryBatch> batches, int qty) {
-        InventoryBatch mainBatch = null;
-        int remaining = qty;
-
-        for (InventoryBatch batch : batches) {
-            if (remaining <= 0) break;
-            int deduct = Math.min(batch.getRemainingQuantity(), remaining);
-            batch.deductStock(deduct);
-            inventoryBatchRepository.save(batch);
-            remaining -= deduct;
-            if (mainBatch == null) mainBatch = batch;
-        }
-
-        return mainBatch;
-    }
-
     private void restoreStock(Order order) {
-        for (OrderItem item : order.getItems()) {
-            if (item.getBatch() != null) {
-                InventoryBatch batch = item.getBatch();
-                batch.setRemainingQuantity(batch.getRemainingQuantity() + item.getQuantity());
-                if (batch.getStatus() == BatchStatus.SOLD_OUT) {
-                    batch.setStatus(BatchStatus.AVAILABLE);
-                }
-                inventoryBatchRepository.save(batch);
-            }
-        }
+        inventoryService.restoreStockForOrder(order.getItems());
     }
 
     private String buildShippingAddressSnapshot(Address address) {

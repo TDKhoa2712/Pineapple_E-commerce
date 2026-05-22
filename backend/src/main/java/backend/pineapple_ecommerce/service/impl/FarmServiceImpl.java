@@ -14,18 +14,12 @@ import backend.pineapple_ecommerce.exception.BusinessException;
 import backend.pineapple_ecommerce.exception.ResourceNotFoundException;
 import backend.pineapple_ecommerce.exception.UnauthorizedException;
 import backend.pineapple_ecommerce.mapper.FarmMapper;
-import backend.pineapple_ecommerce.mapper.ProductMapper;
 import backend.pineapple_ecommerce.repository.FarmRepository;
-import backend.pineapple_ecommerce.repository.InventoryBatchRepository;
-import backend.pineapple_ecommerce.repository.ProductRepository;
-import backend.pineapple_ecommerce.repository.UserRepository;
-import backend.pineapple_ecommerce.service.CloudinaryService;
-import backend.pineapple_ecommerce.service.FarmService;
+import backend.pineapple_ecommerce.service.*;
 import backend.pineapple_ecommerce.util.FileValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -41,12 +35,11 @@ import java.util.List;
 public class FarmServiceImpl implements FarmService {
 
     private final FarmRepository           farmRepository;
-    private final UserRepository           userRepository;
-    private final ProductRepository        productRepository;
-    private final InventoryBatchRepository inventoryBatchRepository;
     private final FarmMapper               farmMapper;
-    private final ProductMapper            productMapper;
     private final CloudinaryService        cloudinaryService;
+    private final UserService             userService;
+    private final ProductService productService;
+    private final InventoryService inventoryService;
     private final ApplicationEventPublisher eventPublisher;
     private final FileValidator fileValidator;
 
@@ -57,8 +50,7 @@ public class FarmServiceImpl implements FarmService {
     @Override
     @Transactional
     public FarmResponse createFarm(Long ownerId, CreateFarmRequest request) {
-        User owner = userRepository.findById(ownerId)
-                .orElseThrow(() -> new ResourceNotFoundException("User", ownerId));
+        User owner = userService.getEntityUser(ownerId);
 
         Farm farm = farmMapper.toEntity(request);
         farm.setOwner(owner);
@@ -244,7 +236,7 @@ public class FarmServiceImpl implements FarmService {
         }
 
         // Lấy distinct productIds từ batch của farm
-        List<Long> productIds = inventoryBatchRepository.findDistinctProductIdsByFarmId(farmId);
+        List<Long> productIds = inventoryService.getDistinctProductIdsByFarm(farmId);
 
         if (productIds.isEmpty()) {
             return PageResponse.<ProductSummaryResponse>builder()
@@ -255,23 +247,16 @@ public class FarmServiceImpl implements FarmService {
         }
 
         // Query products theo IDs với phân trang
-        var pageable = PageRequest.of(page, size, Sort.by("name").ascending());
-        var productPage = productRepository.findAllById(productIds);
+        List<ProductSummaryResponse> allProducts = productService.getProductsByIds(productIds);
 
-        // Manual pagination vì findAllById không hỗ trợ Pageable
         int start = page * size;
-        int end   = Math.min(start + size, productPage.size());
+        int end   = Math.min(start + size, allProducts.size());
 
-        List<ProductSummaryResponse> content = (start >= productPage.size())
+        List<ProductSummaryResponse> content = (start >= allProducts.size())
                 ? List.of()
-                : productPage.subList(start, end).stream()
-                        .map(productMapper::toSummaryResponse)
-                        .toList();
+                : allProducts.subList(start, end);
 
-        Page<ProductSummaryResponse> resultPage = new PageImpl<>(
-                content, pageable, productPage.size());
-
-        return PageResponse.of(resultPage);
+        return PageResponse.of(new PageImpl<>(content, PageRequest.of(page, size), allProducts.size()));
     }
 
     // ─────────────────────────────────────────────

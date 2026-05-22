@@ -67,4 +67,6 @@ public interface ProductService {
     void deleteProduct(Long id);
 
     int getAvailableStock(Long productId);
+
+    List<ProductSummaryResponse> getProductsByIds(List<Long> ids);
 }
