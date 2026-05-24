@@ -26,7 +26,6 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class ShippingWebhookHandler {
 
-    private final OrderService orderService;
     private final ObjectMapper objectMapper;
     private final ShippingService shippingService;
 

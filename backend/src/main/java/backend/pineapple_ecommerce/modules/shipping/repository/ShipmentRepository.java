@@ -13,7 +13,6 @@ import java.util.Optional;
 
 /**
  * Repository cho {@link Shipment} — provider-agnostic.
- * Thay thế {@code GhnShipmentRepository}.
  */
 @Repository
 public interface ShipmentRepository extends JpaRepository<Shipment, Long> {
@@ -28,41 +27,32 @@ public interface ShipmentRepository extends JpaRepository<Shipment, Long> {
 
     /**
      * Lấy tất cả vận đơn đang active (chưa ở trạng thái terminal).
-     * Dùng bởi scheduler để sync định kỳ.
      */
     @Query("""
         SELECT s FROM Shipment s
         WHERE s.cancelledAt IS NULL
           AND s.externalOrderCode IS NOT NULL
-          AND s.currentStatus NOT IN (
-              backend.pineapple_ecommerce.enums.ShippingStatus.DELIVERED,
-              backend.pineapple_ecommerce.enums.ShippingStatus.RETURNED,
-              backend.pineapple_ecommerce.enums.ShippingStatus.CANCELLED,
-              backend.pineapple_ecommerce.enums.ShippingStatus.LOST
-          )
+          AND s.currentStatus NOT IN :excludedStatuses
         ORDER BY s.lastSyncAt ASC NULLS FIRST
     """)
-    List<Shipment> findAllActive();
+    List<Shipment> findAllActive(@Param("excludedStatuses") List<ShippingStatus> excludedStatuses);
 
     /**
      * Lấy vận đơn active theo carrier cụ thể.
-     * Dùng khi cần sync riêng từng carrier.
      */
     @Query("""
         SELECT s FROM Shipment s
         WHERE s.carrierCode = :carrierCode
           AND s.cancelledAt IS NULL
           AND s.externalOrderCode IS NOT NULL
-          AND s.currentStatus NOT IN (
-              backend.pineapple_ecommerce.enums.ShippingStatus.DELIVERED,
-              backend.pineapple_ecommerce.enums.ShippingStatus.RETURNED,
-              backend.pineapple_ecommerce.enums.ShippingStatus.CANCELLED,
-              backend.pineapple_ecommerce.enums.ShippingStatus.LOST
-          )
+          AND s.currentStatus NOT IN :excludedStatuses
         ORDER BY s.lastSyncAt ASC NULLS FIRST
     """)
-    List<Shipment> findActiveByCarrier(@Param("carrierCode") CarrierCode carrierCode);
+    List<Shipment> findActiveByCarrier(
+            @Param("carrierCode") CarrierCode carrierCode,
+            @Param("excludedStatuses") List<ShippingStatus> excludedStatuses
+    );
 
-    /** Đếm vận đơn theo trạng thái và carrier (dùng cho metrics / dashboard) */
+    /** Đếm vận đơn theo trạng thái và carrier */
     long countByCarrierCodeAndCurrentStatus(CarrierCode carrierCode, ShippingStatus status);
 }

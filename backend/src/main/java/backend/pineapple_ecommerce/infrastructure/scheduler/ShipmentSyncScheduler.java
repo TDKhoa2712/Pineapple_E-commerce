@@ -1,5 +1,6 @@
 package backend.pineapple_ecommerce.infrastructure.scheduler;
 
+import backend.pineapple_ecommerce.common.enums.ShippingStatus;
 import backend.pineapple_ecommerce.infrastructure.carrier.ShippingProviderRouter;
 import backend.pineapple_ecommerce.infrastructure.carrier.config.ShippingProperties;
 import backend.pineapple_ecommerce.modules.shipping.models.Shipment;
@@ -30,6 +31,12 @@ public class ShipmentSyncScheduler {
     private final ShippingService     shippingService;
     private final ShipmentRepository  shipmentRepository;
     private final ShippingProperties  shippingProperties;
+    private static final List<ShippingStatus> EXCLUDED_STATUSES = List.of(
+            ShippingStatus.DELIVERED,
+            ShippingStatus.RETURNED,
+            ShippingStatus.CANCELLED,
+            ShippingStatus.LOST
+    );
 
     /**
      * Sync tất cả vận đơn đang active mỗi N phút (cấu hình từ ShippingProperties).
@@ -40,7 +47,7 @@ public class ShipmentSyncScheduler {
             initialDelayString = "#{5 * 60 * 1000}"  // delay 5 phút khi start
     )
     public void syncActiveShipments() {
-        List<Shipment> activeShipments = shipmentRepository.findAllActive();
+        List<Shipment> activeShipments = shipmentRepository.findAllActive(EXCLUDED_STATUSES);
 
         if (activeShipments.isEmpty()) {
             log.debug("No active shipments to sync");
