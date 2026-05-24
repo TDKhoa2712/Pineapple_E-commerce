@@ -32,6 +32,9 @@ public class OrderItem {
     @JoinColumn(name = "batch_id")
     private InventoryBatch batch;
 
+    @Column(name = "batch_code", length = 50)
+    private String batchCode;
+
     @Column(nullable = false)
     private Integer quantity;
 

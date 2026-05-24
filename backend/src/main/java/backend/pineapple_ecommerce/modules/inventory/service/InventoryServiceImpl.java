@@ -32,6 +32,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -199,7 +200,7 @@ public class InventoryServiceImpl implements InventoryService {
      * Được gọi từ OrderServiceImpl bên trong @Transactional — không cần @Transactional riêng.
      */
     @Override
-    public InventoryBatch deductStockFifo(Long productId, int quantity) {
+    public List<InventoryService.BatchAllocation> deductStockFifo(Long productId, int quantity) {
         List<InventoryBatch> batches = inventoryBatchRepository
                 .findByProductIdAndStatusWithLock(productId, BatchStatus.AVAILABLE);
 
@@ -213,7 +214,7 @@ public class InventoryServiceImpl implements InventoryService {
                     String.format("Sản phẩm '%s' chỉ còn %d trong kho", productName, totalStock));
         }
 
-        InventoryBatch mainBatch = null;
+        List<InventoryService.BatchAllocation> allocations = new ArrayList<>();
         int remaining = quantity;
 
         for (InventoryBatch batch : batches) {
@@ -221,11 +222,11 @@ public class InventoryServiceImpl implements InventoryService {
             int deduct = Math.min(batch.getRemainingQuantity(), remaining);
             batch.deductStock(deduct);
             inventoryBatchRepository.save(batch);
+            allocations.add(new InventoryService.BatchAllocation(batch, deduct));
             remaining -= deduct;
-            if (mainBatch == null) mainBatch = batch;
         }
 
-        return mainBatch;
+        return allocations;
     }
 
     /**

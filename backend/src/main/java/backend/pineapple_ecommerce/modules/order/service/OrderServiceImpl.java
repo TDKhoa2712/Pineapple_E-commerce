@@ -107,21 +107,24 @@ public class OrderServiceImpl implements OrderService {
             int qty = cartItem.getQuantity();
             BigDecimal unitPrice = product.getEffectivePrice();
 
-            InventoryBatch usedBatch = inventoryService.deductStockFifo(product.getId(), qty);
+            List<InventoryService.BatchAllocation> allocations = inventoryService.deductStockFifo(product.getId(), qty);
 
-            OrderItem item = OrderItem.builder()
-                    .order(order)
-                    .product(product)
-                    .batch(usedBatch)
-                    .quantity(qty)
-                    .unitPrice(unitPrice)
-                    .subtotal(unitPrice.multiply(BigDecimal.valueOf(qty)))
-                    .productName(product.getName())
-                    .productThumbnail(product.getThumbnail())
-                    .build();
+            for (InventoryService.BatchAllocation allocation : allocations) {
+                OrderItem item = OrderItem.builder()
+                        .order(order)
+                        .product(product)
+                        .batch(allocation.batch())
+                        .batchCode(allocation.batch().getBatchCode())
+                        .quantity(allocation.quantity())
+                        .unitPrice(unitPrice)
+                        .subtotal(unitPrice.multiply(BigDecimal.valueOf(allocation.quantity())))
+                        .productName(product.getName())
+                        .productThumbnail(product.getThumbnail())
+                        .build();
 
-            orderItems.add(item);
-            subtotal = subtotal.add(item.getSubtotal());
+                orderItems.add(item);
+                subtotal = subtotal.add(item.getSubtotal());
+            }
         }
 
         BigDecimal shippingFee = calculateShippingFee(subtotal);

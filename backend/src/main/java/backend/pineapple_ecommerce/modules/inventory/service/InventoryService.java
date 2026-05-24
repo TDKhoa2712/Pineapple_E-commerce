@@ -42,19 +42,21 @@ public interface InventoryService {
     // Order-domain operations
     // ─────────────────────────────────────────────
 
+    record BatchAllocation(InventoryBatch batch, int quantity) {}
+
     /**
      * Trừ tồn kho theo chiến lược FIFO (First In First Out / gần hết hạn trước).
-     * Trả về batch chính được dùng cho OrderItem.
+     * Trả về danh sách phân bổ các lô hàng kèm số lượng trừ thực tế của từng lô.
      *
      * <p>Dùng pessimistic lock — đảm bảo không oversell khi nhiều đơn đặt cùng lúc.
      * Chỉ gọi từ bên trong @Transactional của OrderService.
      *
      * @param productId  sản phẩm cần trừ tồn kho
      * @param quantity   số lượng cần trừ
-     * @return batch đầu tiên được trừ (dùng để lưu vào OrderItem.batch)
+     * @return danh sách BatchAllocation chứa thông tin lô hàng và số lượng đã trừ
      * @throws BusinessException nếu tồn kho không đủ
      */
-    InventoryBatch deductStockFifo(Long productId, int quantity);
+    List<BatchAllocation> deductStockFifo(Long productId, int quantity);
 
     /**
      * Hoàn lại tồn kho khi đơn hàng bị huỷ hoặc yêu cầu hoàn tiền.
