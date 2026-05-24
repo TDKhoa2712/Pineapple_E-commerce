@@ -25,6 +25,7 @@ import backend.pineapple_ecommerce.modules.cart.models.CartItem;
 import backend.pineapple_ecommerce.modules.inventory.models.InventoryBatch;
 import backend.pineapple_ecommerce.modules.product.models.Product;
 import backend.pineapple_ecommerce.modules.cart.service.CartService;
+import backend.pineapple_ecommerce.modules.coupon.service.CouponService;
 import backend.pineapple_ecommerce.modules.inventory.service.InventoryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -54,6 +55,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderMapper orderMapper;
     private final CartService               cartService;
     private final InventoryService inventoryService;
+    private final CouponService couponService;
 
     // ─────────────────────────────────────────────
     // CREATE ORDER
@@ -131,9 +133,21 @@ public class OrderServiceImpl implements OrderService {
         order.setItems(orderItems);
         order.setSubtotal(subtotal);
         order.setShippingFee(shippingFee);
+
+        BigDecimal discountAmount = BigDecimal.ZERO;
+        if (request.getCouponCode() != null && !request.getCouponCode().trim().isEmpty()) {
+            discountAmount = couponService.applyAndLock(request.getCouponCode().trim(), userId, cart.getItems(), subtotal);
+            order.setDiscountAmount(discountAmount);
+        }
+
         order.setTotalAmount(subtotal.add(shippingFee).subtract(order.getDiscountAmount()));
 
         Order savedOrder = orderRepository.save(order);
+
+        if (request.getCouponCode() != null && !request.getCouponCode().trim().isEmpty()) {
+            couponService.saveCouponUsage(request.getCouponCode().trim(), userId, savedOrder, discountAmount);
+        }
+
         createInitialPayment(savedOrder, request.getPaymentMethod());
         cartService.clearCart(userId);
 
@@ -201,6 +215,10 @@ public class OrderServiceImpl implements OrderService {
 
         validateStatusTransition(oldStatus, newStatus);
         order.setStatus(newStatus);
+
+        if (newStatus == OrderStatus.CANCELLED) {
+            couponService.releaseCouponUsage(orderId);
+        }
 
         if (newStatus == OrderStatus.DELIVERED && order.getPaymentMethod() == PaymentMethod.COD) {
             order.setPaymentStatus(PaymentStatus.PAID);
@@ -273,6 +291,7 @@ public class OrderServiceImpl implements OrderService {
         }
 
         restoreStock(order);
+        couponService.releaseCouponUsage(orderId);
         order.setStatus(OrderStatus.CANCELLED);
         Order saved = orderRepository.save(order);
         log.info("Order {} cancelled by userId={}", orderId, userId);
