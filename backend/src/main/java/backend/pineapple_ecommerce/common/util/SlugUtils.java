@@ -20,7 +20,8 @@ public class SlugUtils {
     public static String toSlug(String input) {
         if (input == null || input.isBlank()) return "";
 
-        String normalized = Normalizer.normalize(input, Normalizer.Form.NFD);
+        String replaced = input.replace('đ', 'd').replace('Đ', 'd');
+        String normalized = Normalizer.normalize(replaced, Normalizer.Form.NFD);
         String ascii      = NON_ASCII.matcher(normalized).replaceAll("");
         String lower      = ascii.toLowerCase(Locale.ROOT);
         String dashed     = WHITESPACE.matcher(lower).replaceAll("-");

@@ -50,11 +50,21 @@ public class VNPayUtil {
      */
     public static String getIpAddress(HttpServletRequest request) {
         String ipAddress = request.getHeader("X-Forwarded-For");
+        if (ipAddress == null || ipAddress.isBlank()) {
+            ipAddress = request.getHeader("X-FORWARDED-FOR");
+        }
+        if (ipAddress == null || ipAddress.isBlank()) {
+            ipAddress = request.getHeader("x-forwarded-for");
+        }
 
         if (ipAddress == null
                 || ipAddress.isBlank()
                 || "unknown".equalsIgnoreCase(ipAddress)) {
             ipAddress = request.getRemoteAddr();
+        }
+
+        if (ipAddress == null) {
+            ipAddress = "";
         }
 
         // localhost IPv6 -> IPv4
