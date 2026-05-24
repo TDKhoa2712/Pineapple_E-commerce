@@ -21,6 +21,8 @@ import backend.pineapple_ecommerce.modules.auth.repository.RoleRepository;
 import backend.pineapple_ecommerce.infrastructure.cloudinary.CloudinaryService;
 import backend.pineapple_ecommerce.modules.auth.service.RefreshTokenService;
 import backend.pineapple_ecommerce.common.util.FileValidator;
+import backend.pineapple_ecommerce.modules.user.specification.UserSpecification;
+import org.springframework.data.jpa.domain.Specification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -152,8 +154,13 @@ public class UserServiceImpl implements UserService {
     @Transactional(readOnly = true)
     public PageResponse<UserResponse> getAllUsers(int page, int size,
                                                   UserStatus status, String keyword) {
+        Specification<User> spec = Specification.allOf(
+                UserSpecification.hasStatus(status),
+                UserSpecification.searchByKeyword(keyword)
+        );
+
         Page<UserResponse> result = userRepository
-                .findByStatusAndKeyword(status, keyword, PageRequest.of(page, size))
+                .findAll(spec, PageRequest.of(page, size, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt")))
                 .map(userMapper::toResponse);
         return PageResponse.of(result);
     }

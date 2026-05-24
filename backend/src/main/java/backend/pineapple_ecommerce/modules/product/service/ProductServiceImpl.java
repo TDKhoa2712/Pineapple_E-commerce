@@ -21,6 +21,8 @@ import backend.pineapple_ecommerce.modules.review.repository.ReviewRepository;
 import backend.pineapple_ecommerce.infrastructure.cloudinary.CloudinaryService;
 import backend.pineapple_ecommerce.common.util.FileValidator;
 import backend.pineapple_ecommerce.common.util.SlugUtils;
+import backend.pineapple_ecommerce.modules.product.specification.ProductSpecification;
+import org.springframework.data.jpa.domain.Specification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.*;
@@ -42,7 +44,7 @@ public class ProductServiceImpl implements ProductService {
     private final InventoryBatchRepository inventoryBatchRepository;
     private final ReviewRepository reviewRepository;
     private final ProductMapper productMapper;
-    private final CloudinaryService        cloudinaryService;
+    private final CloudinaryService cloudinaryService;
     private final FileValidator fileValidator;
 
     // ─────────────────────────────────────────────
@@ -152,42 +154,48 @@ public class ProductServiceImpl implements ProductService {
     public PageResponse<ProductSummaryResponse> searchProducts(
             String keyword,
             Long categoryId,
-            Long farmId,          // NEW
+            Long farmId,
             BigDecimal minPrice,
             BigDecimal maxPrice,
             Boolean isOrganic,
-            Boolean inStock,      // NEW
+            Boolean inStock,
             int page, int size,
             String sortBy, String sortDir) {
 
         String safeKeyword = (keyword == null || keyword.isBlank()) ? null : keyword.trim();
-        boolean isBestSeller = "best_seller".equalsIgnoreCase(sortBy);
+        boolean sortByRelevance = (safeKeyword != null) &&
+                (sortBy == null || sortBy.isBlank() || "relevance".equalsIgnoreCase(sortBy));
 
-        // Nếu có farmId hoặc inStock → dùng query mở rộng (không hỗ trợ best_seller vì JOIN phức tạp)
-        boolean needsExtended = (farmId != null) || (Boolean.TRUE.equals(inStock));
+        Specification<Product> spec = Specification.allOf(
+                ProductSpecification.fetchCategory(),
+                ProductSpecification.hasStatus(ProductStatus.ACTIVE),
+                ProductSpecification.hasCategory(categoryId),
+                ProductSpecification.hasFarmId(farmId),
+                ProductSpecification.hasPriceGreaterThanOrEqual(minPrice),
+                ProductSpecification.hasPriceLessThanOrEqual(maxPrice),
+                ProductSpecification.isOrganic(isOrganic),
+                ProductSpecification.inStock(inStock),
+                ProductSpecification.searchByKeyword(safeKeyword, sortByRelevance)
+        );
 
-        Page<Product> productPage;
-
-        if (needsExtended) {
-            Sort.Direction direction = "asc".equalsIgnoreCase(sortDir)
-                    ? Sort.Direction.ASC : Sort.Direction.DESC;
-            String sortField = resolveSortField(isBestSeller ? "newest" : sortBy);
-            productPage = productRepository.searchProductsExtended(
-                    safeKeyword, categoryId, farmId, minPrice, maxPrice, isOrganic, inStock,
-                    PageRequest.of(page, size, Sort.by(direction, sortField)));
-        } else if (isBestSeller) {
-            productPage = productRepository.searchProductsBestSeller(
-                    safeKeyword, categoryId, minPrice, maxPrice, isOrganic,
-                    PageRequest.of(page, size));
-        } else {
-            Sort.Direction direction = "asc".equalsIgnoreCase(sortDir)
-                    ? Sort.Direction.ASC : Sort.Direction.DESC;
-            productPage = productRepository.searchProducts(
-                    safeKeyword, categoryId, minPrice, maxPrice, isOrganic,
-                    PageRequest.of(page, size, Sort.by(direction, resolveSortField(sortBy))));
+        if ("best_seller".equalsIgnoreCase(sortBy)) {
+            spec = spec.and(ProductSpecification.sortByBestSeller());
         }
 
-        return PageResponse.of(productPage.map(p -> enrichSummaryResponse(productMapper.toSummaryResponse(p), p)));
+        Pageable pageable;
+        if (sortByRelevance || "best_seller".equalsIgnoreCase(sortBy)) {
+            pageable = PageRequest.of(page, size, Sort.unsorted());
+        } else {
+            Sort.Direction direction = "asc".equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC;
+            pageable = PageRequest.of(page, size, Sort.by(direction, resolveSortField(sortBy)));
+        }
+
+        Page<Product> productPage = productRepository.findAll(spec, pageable);
+
+        List<ProductSummaryResponse> enrichedList = enrichSummaryResponses(productPage.getContent());
+        Page<ProductSummaryResponse> summaryPage = new PageImpl<>(enrichedList, productPage.getPageable(), productPage.getTotalElements());
+
+        return PageResponse.of(summaryPage);
     }
 
     @Override
@@ -209,10 +217,19 @@ public class ProductServiceImpl implements ProductService {
             } catch (IllegalArgumentException ignored) {}
         }
 
-        return PageResponse.of(productRepository
-                .searchProductsForAdmin(safeKeyword, status,
-                        PageRequest.of(page, size, Sort.by("createdAt").descending()))
-                .map(p -> enrichSummaryResponse(productMapper.toSummaryResponse(p), p)));
+        Specification<Product> spec = Specification.allOf(
+                ProductSpecification.fetchCategory(),
+                ProductSpecification.hasStatus(status),
+                ProductSpecification.searchByKeyword(safeKeyword, safeKeyword != null)
+        );
+
+        Pageable pageable = PageRequest.of(page, size, safeKeyword != null ? Sort.unsorted() : Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<Product> productPage = productRepository.findAll(spec, pageable);
+
+        List<ProductSummaryResponse> enrichedList = enrichSummaryResponses(productPage.getContent());
+        Page<ProductSummaryResponse> summaryPage = new PageImpl<>(enrichedList, productPage.getPageable(), productPage.getTotalElements());
+
+        return PageResponse.of(summaryPage);
     }
 
     @Override
@@ -223,12 +240,11 @@ public class ProductServiceImpl implements ProductService {
 
         if (product.getCategory() == null) return List.of();
 
-        return productRepository.findRelatedProducts(
+        List<Product> relatedProducts = productRepository.findRelatedProducts(
                         product.getCategory().getId(), productId,
                         PageRequest.of(0, limit, Sort.by("createdAt").descending()))
-                .getContent().stream()
-                .map(p -> enrichSummaryResponse(productMapper.toSummaryResponse(p), p))
-                .toList();
+                .getContent();
+        return enrichSummaryResponses(relatedProducts);
     }
 
     // ─────────────────────────────────────────────
@@ -287,9 +303,8 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional(readOnly = true)
     public List<ProductSummaryResponse> getProductsByIds(List<Long> ids) {
-        return productRepository.findAllById(ids).stream()
-                .map(product -> enrichSummaryResponse(productMapper.toSummaryResponse(product), product))
-                .toList();
+        List<Product> products = productRepository.findAllById(ids);
+        return enrichSummaryResponses(products);
     }
 
     // ─────────────────────────────────────────────
@@ -307,9 +322,26 @@ public class ProductServiceImpl implements ProductService {
         return response;
     }
 
-    private ProductSummaryResponse enrichSummaryResponse(ProductSummaryResponse summary, Product product) {
-        summary.setTotalStock(getAvailableStock(product.getId()));
-        return summary;
+    private List<ProductSummaryResponse> enrichSummaryResponses(List<Product> products) {
+        if (products == null || products.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> ids = products.stream().map(Product::getId).toList();
+        List<Object[]> stockResults = inventoryBatchRepository.getTotalAvailableStockByProductIds(ids);
+        java.util.Map<Long, Integer> stockMap = stockResults.stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        row -> (Long) row[0],
+                        row -> ((Number) row[1]).intValue()
+                ));
+
+        return products.stream()
+                .map(p -> {
+                    ProductSummaryResponse summary = productMapper.toSummaryResponse(p);
+                    summary.setTotalStock(stockMap.getOrDefault(p.getId(), 0));
+                    return summary;
+                })
+                .toList();
     }
 
     private String generateUniqueSlug(String name, String requestedSlug) {

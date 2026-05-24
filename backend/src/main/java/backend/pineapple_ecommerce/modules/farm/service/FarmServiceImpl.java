@@ -22,6 +22,8 @@ import backend.pineapple_ecommerce.modules.user.service.UserService;
 import backend.pineapple_ecommerce.common.util.FileValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import backend.pineapple_ecommerce.modules.farm.specification.FarmSpecification;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -79,10 +81,14 @@ public class FarmServiceImpl implements FarmService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<FarmResponse> getAllFarms(int page, int size) {
-        // Public: chỉ ACTIVE farm
+        // Public: chỉ ACTIVE farm, chưa bị xoá
+        Specification<Farm> spec = Specification.allOf(
+                FarmSpecification.hasStatus(FarmStatus.ACTIVE),
+                FarmSpecification.isDeleted(false)
+        );
+
         var result = farmRepository
-                .findByStatusAndIsDeletedFalse(FarmStatus.ACTIVE,
-                        PageRequest.of(page, size, Sort.by("createdAt").descending()))
+                .findAll(spec, PageRequest.of(page, size, Sort.by("createdAt").descending()))
                 .map(farmMapper::toResponse);
         return PageResponse.of(result);
     }
@@ -90,11 +96,15 @@ public class FarmServiceImpl implements FarmService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<FarmResponse> getAllFarmsAdmin(int page, int size, FarmStatus status) {
-        var pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        var result = (status != null)
-                ? farmRepository.findByStatusAndIsDeletedFalse(status, pageable)
-                : farmRepository.findByIsDeletedFalse(pageable);
-        return PageResponse.of(result.map(farmMapper::toResponse));
+        Specification<Farm> spec = Specification.allOf(
+                FarmSpecification.isDeleted(false),
+                FarmSpecification.hasStatus(status)
+        );
+
+        var result = farmRepository
+                .findAll(spec, PageRequest.of(page, size, Sort.by("createdAt").descending()))
+                .map(farmMapper::toResponse);
+        return PageResponse.of(result);
     }
 
     @Override

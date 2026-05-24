@@ -97,6 +97,17 @@ public interface InventoryBatchRepository extends JpaRepository<InventoryBatch, 
             @Param("to") LocalDateTime to);
 
     /**
+     * Lấy tổng tồn kho khả dụng của các sản phẩm theo danh sách ID.
+     */
+    @Query("""
+        SELECT b.product.id, SUM(b.remainingQuantity)
+        FROM InventoryBatch b
+        WHERE b.product.id IN :productIds AND b.status = 'AVAILABLE'
+        GROUP BY b.product.id
+    """)
+    List<Object[]> getTotalAvailableStockByProductIds(@Param("productIds") List<Long> productIds);
+
+    /**
      * Tổng tồn kho khả dụng hiện tại của tất cả sản phẩm — dùng cho summary.
      */
     @Query("""
