@@ -1,6 +1,7 @@
 package backend.pineapple_ecommerce.modules.coupon.specification;
 
 import backend.pineapple_ecommerce.common.enums.CouponType;
+import backend.pineapple_ecommerce.common.util.AppConstants;
 import backend.pineapple_ecommerce.modules.coupon.models.Coupon;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -18,7 +19,7 @@ public class CouponSpecification {
     public static Specification<Coupon> isExpired(Boolean expired) {
         return (root, query, cb) -> {
             if (expired == null) return null;
-            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime now = LocalDateTime.now(AppConstants.VN_ZONE);
             if (expired) {
                 return cb.lessThan(root.get("expiryDate"), now);
             } else {

@@ -213,7 +213,7 @@ class CouponServiceImplTest {
         @Test
         @DisplayName("áp dụng và khoá coupon thành công")
         void applyAndLockSuccess() {
-            when(couponRepository.findByCodeIgnoreCase("PINE20")).thenReturn(Optional.of(percentageCoupon));
+            when(couponRepository.findByCodeIgnoreCaseWithLock("PINE20")).thenReturn(Optional.of(percentageCoupon));
             when(couponUsageRepository.countByCouponIdAndUserId(percentageCoupon.getId(), USER_ID)).thenReturn(0L);
             when(couponRepository.incrementUsedCount(percentageCoupon.getId())).thenReturn(1);
 
@@ -226,7 +226,7 @@ class CouponServiceImplTest {
         @Test
         @DisplayName("ném ngoại lệ nếu mã đã hết lượt khi thực hiện lock")
         void applyAndLockExhausted() {
-            when(couponRepository.findByCodeIgnoreCase("PINE20")).thenReturn(Optional.of(percentageCoupon));
+            when(couponRepository.findByCodeIgnoreCaseWithLock("PINE20")).thenReturn(Optional.of(percentageCoupon));
             when(couponUsageRepository.countByCouponIdAndUserId(percentageCoupon.getId(), USER_ID)).thenReturn(0L);
             when(couponRepository.incrementUsedCount(percentageCoupon.getId())).thenReturn(0); // 0 rows affected => exhausted
 
@@ -266,7 +266,7 @@ class CouponServiceImplTest {
         percentageCoupon.setTotalLimit(1);
         percentageCoupon.setUsedCount(0);
 
-        when(couponRepository.findByCodeIgnoreCase("PINE20")).thenReturn(Optional.of(percentageCoupon));
+        when(couponRepository.findByCodeIgnoreCaseWithLock("PINE20")).thenReturn(Optional.of(percentageCoupon));
         when(couponUsageRepository.countByCouponIdAndUserId(percentageCoupon.getId(), USER_ID)).thenReturn(0L);
 
         // Mô phỏng: Luồng đầu tiên gọi update thành công (return 1), các luồng sau lỗi (return 0)

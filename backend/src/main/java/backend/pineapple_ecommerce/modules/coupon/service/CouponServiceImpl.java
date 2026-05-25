@@ -3,6 +3,7 @@ package backend.pineapple_ecommerce.modules.coupon.service;
 import backend.pineapple_ecommerce.common.enums.CouponType;
 import backend.pineapple_ecommerce.common.exception.BusinessException;
 import backend.pineapple_ecommerce.common.exception.ResourceNotFoundException;
+import backend.pineapple_ecommerce.common.util.AppConstants;
 import backend.pineapple_ecommerce.modules.category.models.Category;
 import backend.pineapple_ecommerce.modules.cart.models.Cart;
 import backend.pineapple_ecommerce.modules.cart.models.CartItem;
@@ -79,7 +80,7 @@ public class CouponServiceImpl implements CouponService {
     @Override
     @Transactional
     public BigDecimal applyAndLock(String code, Long userId, List<CartItem> cartItems, BigDecimal subtotal) {
-        Coupon coupon = couponRepository.findByCodeIgnoreCase(code)
+        Coupon coupon = couponRepository.findByCodeIgnoreCaseWithLock(code)
                 .orElseThrow(() -> new ResourceNotFoundException("Mã giảm giá không tồn tại"));
 
         // Run validations
@@ -109,7 +110,7 @@ public class CouponServiceImpl implements CouponService {
                 .user(user)
                 .order(order)
                 .discountApplied(discountApplied)
-                .usedAt(LocalDateTime.now())
+                .usedAt(LocalDateTime.now(AppConstants.VN_ZONE))
                 .build();
 
         couponUsageRepository.save(usage);
@@ -209,7 +210,7 @@ public class CouponServiceImpl implements CouponService {
             throw new BusinessException("Mã giảm giá không còn hiệu lực");
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(AppConstants.VN_ZONE);
         if (now.isBefore(coupon.getStartDate()) || now.isAfter(coupon.getExpiryDate())) {
             throw new BusinessException("Mã giảm giá đã hết hạn hoặc chưa có hiệu lực");
         }
