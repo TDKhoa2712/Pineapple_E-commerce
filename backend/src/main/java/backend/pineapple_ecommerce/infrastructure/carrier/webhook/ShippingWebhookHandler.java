@@ -100,22 +100,34 @@ public class ShippingWebhookHandler {
         }
     }
 
+    private String getHeaderCaseInsensitive(Map<String, String> headers, String key) {
+        if (headers == null) return null;
+        for (Map.Entry<String, String> entry : headers.entrySet()) {
+            if (entry.getKey().equalsIgnoreCase(key)) {
+                return entry.getValue();
+            }
+        }
+        return null;
+    }
+
     /**
      * Thuật toán kiểm tra bảo mật tùy theo thiết kế API của từng đơn vị vận chuyển.
      */
     private boolean verifySecurity(CarrierCode carrierCode, String token, Map<String, String> headers, String rawPayload) {
         return switch (carrierCode) {
             case GHN -> {
-                // GHN không có HMAC, dùng query parameter token trên URL
-                // So sánh token GHN gửi lên với token mình cấu hình trong properties
-                yield ghnWebhookSecret != null && ghnWebhookSecret.equals(token);
+                String headerToken = getHeaderCaseInsensitive(headers, "X-Pushback-Token");
+                if (headerToken == null) {
+                    headerToken = getHeaderCaseInsensitive(headers, "Token");
+                }
+                yield ghnWebhookSecret != null && !ghnWebhookSecret.isBlank() && ghnWebhookSecret.equals(headerToken);
             }
-            case GHTK -> {
-                // Ví dụ sau này GHTK có hỗ trợ HMAC Hash qua Header
-                String signature = headers.get("x-ghtk-hash");
-                String ghtkSecret = "thu_nghiem_secret_ghtk";
-                yield signature != null && isValidHmac(rawPayload, ghtkSecret, signature);
-            }
+//            case GHTK -> {
+//                // Ví dụ sau này GHTK có hỗ trợ HMAC Hash qua Header
+//                String signature = headers.get("x-ghtk-hash");
+//                String ghtkSecret = "thu_nghiem_secret_ghtk";
+//                yield signature != null && isValidHmac(rawPayload, ghtkSecret, signature);
+//            }
             // Mặc định tạm đóng hoặc mở tùy chiến lược tích hợp
             default -> false;
         };
