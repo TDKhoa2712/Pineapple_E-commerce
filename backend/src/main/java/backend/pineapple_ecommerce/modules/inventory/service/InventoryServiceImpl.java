@@ -158,7 +158,7 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     @Transactional
     public StockAdjustmentResponse adjustBatch(Long batchId, Long adminUserId, StockAdjustmentRequest request) {
-        InventoryBatch batch = inventoryBatchRepository.findById(batchId)
+        InventoryBatch batch = inventoryBatchRepository.findByIdWithLock(batchId)
                 .orElseThrow(() -> new ResourceNotFoundException("InventoryBatch", batchId));
         User admin = userRepository.findById(adminUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", adminUserId));
@@ -200,6 +200,7 @@ public class InventoryServiceImpl implements InventoryService {
      * Được gọi từ OrderServiceImpl bên trong @Transactional — không cần @Transactional riêng.
      */
     @Override
+    @Transactional
     public List<InventoryService.BatchAllocation> deductStockFifo(Long productId, int quantity) {
         List<InventoryBatch> batches = inventoryBatchRepository
                 .findByProductIdAndStatusWithLock(productId, BatchStatus.AVAILABLE);
@@ -233,16 +234,14 @@ public class InventoryServiceImpl implements InventoryService {
      * Hoàn lại tồn kho cho tất cả OrderItem có batch.
      * Được gọi từ OrderServiceImpl bên trong @Transactional — không cần @Transactional riêng.
      */
-    @Override
     public void restoreStockForOrder(List<OrderItem> orderItems) {
         for (OrderItem item : orderItems) {
             if (item.getBatch() == null) continue;
-
-            InventoryBatch batch = item.getBatch();
+            InventoryBatch batch = inventoryBatchRepository
+                    .findByIdWithLock(item.getBatch().getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("InventoryBatch", item.getBatch().getId()));
             batch.setRemainingQuantity(batch.getRemainingQuantity() + item.getQuantity());
-            if (batch.getStatus() == BatchStatus.SOLD_OUT) {
-                batch.setStatus(BatchStatus.AVAILABLE);
-            }
+            if (batch.getStatus() == BatchStatus.SOLD_OUT) batch.setStatus(BatchStatus.AVAILABLE);
             inventoryBatchRepository.save(batch);
         }
     }

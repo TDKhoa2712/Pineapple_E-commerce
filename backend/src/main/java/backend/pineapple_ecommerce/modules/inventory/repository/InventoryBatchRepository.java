@@ -30,8 +30,13 @@ public interface InventoryBatchRepository extends JpaRepository<InventoryBatch, 
     Optional<InventoryBatch> findByBatchCode(String batchCode);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT b FROM InventoryBatch b WHERE b.product.id = :productId " +
-           "AND b.status = :status ORDER BY b.expiryDate ASC NULLS LAST")
+    @Query("SELECT b FROM InventoryBatch b WHERE b.id = :id")
+    Optional<InventoryBatch> findByIdWithLock(@Param("id") Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT b FROM InventoryBatch b LEFT JOIN FETCH b.product " +
+           "WHERE b.product.id = :productId AND b.status = :status " +
+           "ORDER BY b.expiryDate ASC NULLS LAST")
     List<InventoryBatch> findByProductIdAndStatusWithLock(
             @Param("productId") Long productId,
             @Param("status")    BatchStatus status);
