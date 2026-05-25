@@ -15,7 +15,7 @@ import backend.pineapple_ecommerce.common.enums.PaymentMethod;
 import backend.pineapple_ecommerce.common.exception.BusinessException;
 import backend.pineapple_ecommerce.common.exception.ResourceNotFoundException;
 import backend.pineapple_ecommerce.common.exception.UnauthorizedException;
-import backend.pineapple_ecommerce.modules.order.repository.OrderRepository;
+import backend.pineapple_ecommerce.modules.order.service.OrderInternalService;
 import backend.pineapple_ecommerce.infrastructure.carrier.CarrierAddressMetadataHelper;
 import backend.pineapple_ecommerce.infrastructure.carrier.ShippingProviderRouter;
 import backend.pineapple_ecommerce.infrastructure.carrier.ShippingCarrierClient;
@@ -47,7 +47,7 @@ public class ShippingServiceImpl implements ShippingService {
 
     private final ShippingProviderRouter    router;
     private final ShipmentRepository shipmentRepository;
-    private final OrderRepository           orderRepository;
+    private final OrderInternalService      orderInternalService;
     private final CarrierAddressMetadataHelper metadataHelper;
     private final ShippingProperties shippingProperties;
     private final ObjectMapper              objectMapper;
@@ -99,7 +99,7 @@ public class ShippingServiceImpl implements ShippingService {
     @Override
     @Transactional
     public ShippingTrackingResponse createShipment(Long orderId, CarrierCode carrierCode) {
-        Order order = orderRepository.findById(orderId)
+        Order order = orderInternalService.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng: " + orderId));
 
         if (order.getStatus() != OrderStatus.PROCESSING) {
@@ -144,11 +144,7 @@ public class ShippingServiceImpl implements ShippingService {
         shipmentRepository.save(shipment);
 
         // Cập nhật shippingFee vào Order nếu chưa có
-        if (order.getShippingFee().compareTo(BigDecimal.ZERO) == 0) {
-            order.setShippingFee(result.shippingFee() != null ? result.shippingFee() : BigDecimal.ZERO);
-            order.setTotalAmount(order.getSubtotal().add(order.getShippingFee()));
-            orderRepository.save(order);
-        }
+        orderInternalService.updateShippingFeeIfNeeded(orderId, result.shippingFee());
 
         return toTrackingResponse(shipment);
     }
@@ -160,7 +156,7 @@ public class ShippingServiceImpl implements ShippingService {
     @Override
     @Transactional(readOnly = true)
     public ShippingTrackingResponse getTracking(Long orderId, Long userId) {
-        Order order = orderRepository.findById(orderId)
+        Order order = orderInternalService.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng: " + orderId));
 
         // Authorize — null = admin bypass
@@ -216,8 +212,7 @@ public class ShippingServiceImpl implements ShippingService {
 
 //                if (order.getStatus() != mappedOrderStatus && order.getStatus().canTransitionTo(mappedOrderStatus)) {
                 if (order.getStatus() != mappedOrderStatus) {
-                    order.setStatus(mappedOrderStatus);
-                    orderRepository.save(order);
+                    orderInternalService.updateOrderStatus(order.getId(), mappedOrderStatus);
                     log.info("Updated order #{} status to {}", order.getId(), mappedOrderStatus);
                 }
             }

@@ -23,10 +23,23 @@ public class DatabaseSearchInitializer implements CommandLineRunner {
         // 2. Check and enable "pg_trgm" extension
         ensureExtension("pg_trgm");
 
-        // 3. Create the GIN Trigram functional index on products
+        // 3. Create an IMMUTABLE wrapper for the unaccent function
         try {
-            jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_products_name_unaccent_trgm ON products USING GIN (unaccent(LOWER(name)) gin_trgm_ops)");
-            log.info("Successfully verified/created GIN trigram index on products(unaccent(lower(name)))");
+            String createFunctionSql =
+                    "CREATE OR REPLACE FUNCTION immutable_unaccent(text) " +
+                            "RETURNS text AS $$ " +
+                            "SELECT public.unaccent('public.unaccent', $1); " +
+                            "$$ LANGUAGE sql IMMUTABLE STRICT;";
+            jdbcTemplate.execute(createFunctionSql);
+            log.info("Successfully created/verified IMMUTABLE wrapper function for unaccent.");
+        } catch (Exception e) {
+            log.error("Failed to create immutable_unaccent function: {}", e.getMessage(), e);
+        }
+
+        // 4. Create the GIN Trigram functional index using the NEW immutable function
+        try {
+            jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_products_name_unaccent_trgm ON products USING GIN (immutable_unaccent(LOWER(name)) gin_trgm_ops)");
+            log.info("Successfully verified/created GIN trigram index on products(immutable_unaccent(lower(name)))");
         } catch (Exception e) {
             log.error("Failed to create GIN trigram index on products. Please verify your table structure and permissions: {}", e.getMessage(), e);
         }
@@ -37,10 +50,9 @@ public class DatabaseSearchInitializer implements CommandLineRunner {
         if (!exists) {
             log.info("Extension '{}' is missing. Attempting to create it...", extensionName);
             try {
-                jdbcTemplate.execute("CREATE EXTENSION IF NOT EXISTS \"" + extensionName + "\"");
+                jdbcTemplate.execute("CREATE EXTENSION IF NOT EXISTS \"" + extensionName + "\" SCHEMA public"); // Thêm SCHEMA public cho chắc chắn
                 log.info("Successfully created extension '{}'", extensionName);
             } catch (Exception e) {
-                // Check once again in case of concurrent initialization or other conditions
                 if (checkExtensionExists(extensionName)) {
                     log.info("Extension '{}' was created by another process.", extensionName);
                     return;
