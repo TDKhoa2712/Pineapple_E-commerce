@@ -2,6 +2,7 @@ package backend.pineapple_ecommerce.modules.order.controller;
 
 import backend.pineapple_ecommerce.common.enums.OrderStatus;
 import backend.pineapple_ecommerce.modules.order.service.OrderExportService;
+import backend.pineapple_ecommerce.modules.order.service.OrderManagementService;
 import backend.pineapple_ecommerce.modules.order.service.OrderService;
 import backend.pineapple_ecommerce.modules.order.dto.request.BulkOrderStatusRequest;
 import backend.pineapple_ecommerce.modules.order.dto.request.CreateOrderRequest;
@@ -35,6 +36,7 @@ public class OrderController {
     private final OrderService orderService;
     private final UserService  userService;
     private final OrderExportService orderExportService;
+    private final OrderManagementService  orderManagementService;
 
     // ─────────────────────────────────────────────
     // USER
@@ -131,7 +133,7 @@ public class OrderController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Integer>> bulkUpdateStatus(
             @Valid @RequestBody BulkOrderStatusRequest request) {
-        int updated = orderService.bulkUpdateStatus(request);
+        int updated = orderManagementService.bulkUpdateStatus(request);
         return ResponseEntity.ok(ApiResponse.success(updated,
                 "Đã cập nhật " + updated + "/" + request.getOrderIds().size() + " đơn hàng thành công"));
     }

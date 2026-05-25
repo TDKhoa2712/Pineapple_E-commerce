@@ -54,12 +54,6 @@ public interface OrderService {
 
     OrderResponse updateOrderStatus(Long orderId, OrderStatus newStatus);
 
-    /**
-     * NEW — 2.1: Bulk update trạng thái nhiều đơn cùng lúc.
-     * Bỏ qua các đơn có transition không hợp lệ, trả về số đơn cập nhật thành công.
-     */
-    int bulkUpdateStatus(BulkOrderStatusRequest request);
-
     OrderResponse cancelOrder(Long orderId, Long userId);
 
     OrderResponse requestRefund(Long orderId, Long userId);

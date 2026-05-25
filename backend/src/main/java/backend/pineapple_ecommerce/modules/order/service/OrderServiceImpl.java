@@ -41,19 +41,20 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class OrderServiceImpl implements OrderService {
+public class OrderServiceImpl implements OrderService, OrderInternalService {
 
     private final OrderRepository orderRepository;
     private final AddressRepository addressRepository;
     private final PaymentRepository paymentRepository;
     private final OrderMapper orderMapper;
-    private final CartService               cartService;
+    private final CartService cartService;
     private final InventoryService inventoryService;
     private final CouponService couponService;
 
@@ -245,29 +246,6 @@ public class OrderServiceImpl implements OrderService {
     // NEW — 2.1: BULK UPDATE STATUS
     // ─────────────────────────────────────────────
 
-    @Override
-    @Transactional
-    public int bulkUpdateStatus(BulkOrderStatusRequest request) {
-        List<Order> orders = orderRepository.findAllByIdIn(request.getOrderIds());
-        AtomicInteger successCount = new AtomicInteger(0);
-
-        orders.forEach(order -> {
-            try {
-                validateStatusTransition(order.getStatus(), request.getNewStatus());
-                order.setStatus(request.getNewStatus());
-                orderRepository.save(order);
-                successCount.incrementAndGet();
-            } catch (BusinessException e) {
-                // Bỏ qua đơn không hợp lệ — không throw, tiếp tục xử lý các đơn còn lại
-                log.warn("Bulk update skipped orderId={}: {}", order.getId(), e.getMessage());
-            }
-        });
-
-        log.info("Bulk status update: {}/{} orders updated to {}",
-                successCount.get(), request.getOrderIds().size(), request.getNewStatus());
-        return successCount.get();
-    }
-
     // ─────────────────────────────────────────────
     // CANCEL & REFUND
     // ─────────────────────────────────────────────
@@ -326,6 +304,32 @@ public class OrderServiceImpl implements OrderService {
     // ─────────────────────────────────────────────
     // PRIVATE HELPERS
     // ─────────────────────────────────────────────
+
+    // ─────────────────────────────────────────────
+    // ORDER INTERNAL SERVICE IMPLEMENTATION
+    // ─────────────────────────────────────────────
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Order> findById(Long id) {
+        return orderRepository.findById(id);
+    }
+
+    @Override
+    @Transactional
+    public boolean updateShippingFeeIfNeeded(Long orderId, BigDecimal shippingFee) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order", orderId));
+        if (order.getShippingFee() == null || order.getShippingFee().compareTo(BigDecimal.ZERO) == 0) {
+            BigDecimal fee = shippingFee != null ? shippingFee : BigDecimal.ZERO;
+            order.setShippingFee(fee);
+            BigDecimal discount = order.getDiscountAmount() != null ? order.getDiscountAmount() : BigDecimal.ZERO;
+            order.setTotalAmount(order.getSubtotal().add(fee).subtract(discount));
+            orderRepository.save(order);
+            return true;
+        }
+        return false;
+    }
 
     private Order findOrderWithItems(Long orderId) {
         return orderRepository.findByIdWithItems(orderId)
