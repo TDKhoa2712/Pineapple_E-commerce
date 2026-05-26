@@ -10,6 +10,9 @@ import backend.pineapple_ecommerce.common.exception.ResourceNotFoundException;
 import backend.pineapple_ecommerce.common.util.SlugUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.ApplicationEventPublisher;
+import backend.pineapple_ecommerce.modules.category.event.CategoryChangedEvent;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +25,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     private final CategoryRepository categoryRepository;
     private final CategoryMapper categoryMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -41,11 +45,13 @@ public class CategoryServiceImpl implements CategoryService {
 
         Category saved = categoryRepository.save(category);
         log.info("Category created: id={}, slug={}", saved.getId(), saved.getSlug());
+        eventPublisher.publishEvent(new CategoryChangedEvent(this));
         return categoryMapper.toResponse(saved);
     }
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "categories", key = "'tree'")
     public List<CategoryResponse> getCategoryTree() {
         // Query lấy root + children trong 1 lần join fetch
         List<Category> roots = categoryRepository.findAllRootWithChildren();
@@ -56,18 +62,21 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "categories", key = "'all'")
     public List<CategoryResponse> getAllCategories() {
         return categoryMapper.toResponseList(categoryRepository.findAll());
     }
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "categories", key = "#id")
     public CategoryResponse getCategoryById(Long id) {
         return categoryMapper.toResponse(findById(id));
     }
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "categories", key = "#slug")
     public CategoryResponse getCategoryBySlug(String slug) {
         Category category = categoryRepository.findBySlug(slug)
                 .orElseThrow(() -> new ResourceNotFoundException("Category", "slug", slug));
@@ -98,6 +107,7 @@ public class CategoryServiceImpl implements CategoryService {
         categoryMapper.updateFromRequest(request, category);
         Category saved = categoryRepository.save(category);
         log.info("Category updated: id={}", saved.getId());
+        eventPublisher.publishEvent(new CategoryChangedEvent(this));
         return categoryMapper.toResponse(saved);
     }
 
@@ -117,6 +127,7 @@ public class CategoryServiceImpl implements CategoryService {
 
         categoryRepository.delete(category);
         log.info("Category deleted: id={}", id);
+        eventPublisher.publishEvent(new CategoryChangedEvent(this));
     }
 
     // ─────────────────────────────────────────────
