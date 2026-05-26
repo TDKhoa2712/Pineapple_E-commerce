@@ -23,6 +23,6 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     Optional<Payment> findByTransactionCodeForUpdate(@Param("txnRef") String txnRef);
 
     // Hàm hỗ trợ cho Cronjob tìm các đơn hàng bị kẹt
-    @Query("SELECT p FROM Payment p WHERE p.status = 'UNPAID' AND p.provider != 'COD' AND p.createdAt < :cutoff")
+    @Query("SELECT p FROM Payment p WHERE p.status = 'UNPAID' AND p.provider != 'COD' AND p.transactionCode != NULL AND p.createdAt < :cutoff")
     List<Payment> findByStatusUnpaidAndCreatedAtBefore(@Param("cutoff") LocalDateTime cutoff);
 }
