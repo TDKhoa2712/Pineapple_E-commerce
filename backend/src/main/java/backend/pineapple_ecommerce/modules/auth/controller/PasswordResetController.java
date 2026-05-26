@@ -4,6 +4,8 @@ import backend.pineapple_ecommerce.modules.auth.dto.request.ConfirmPasswordReset
 import backend.pineapple_ecommerce.modules.auth.dto.request.InitiatePasswordResetRequest;
 import backend.pineapple_ecommerce.common.dto.response.ApiResponse;
 import backend.pineapple_ecommerce.modules.auth.service.PasswordResetService;
+import backend.pineapple_ecommerce.security.ratelimit.RateLimit;
+import backend.pineapple_ecommerce.security.ratelimit.RateLimitType;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -37,6 +39,7 @@ public class PasswordResetController {
     @Operation(summary = "Yêu cầu OTP đặt lại mật khẩu",
                description = "Gửi mã OTP 6 chữ số về email. Mã hết hạn sau 10 phút.")
     @PostMapping("/initiate")
+    @RateLimit(maxRequests = 3, windowSeconds = 600, type = RateLimitType.IP_AND_EMAIL)
     public ResponseEntity<ApiResponse<Void>> initiate(
             @Valid @RequestBody InitiatePasswordResetRequest request) {
 
@@ -52,6 +55,7 @@ public class PasswordResetController {
 
     @Operation(summary = "Xác nhận OTP và đặt mật khẩu mới")
     @PostMapping("/confirm")
+    @RateLimit(maxRequests = 5, windowSeconds = 60, type = RateLimitType.IP_AND_EMAIL)
     public ResponseEntity<ApiResponse<Void>> confirm(
             @Valid @RequestBody ConfirmPasswordResetRequest request) {
 

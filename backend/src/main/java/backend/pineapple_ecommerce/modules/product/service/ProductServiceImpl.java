@@ -25,6 +25,9 @@ import backend.pineapple_ecommerce.modules.product.specification.ProductSpecific
 import org.springframework.data.jpa.domain.Specification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,6 +49,7 @@ public class ProductServiceImpl implements ProductService {
     private final ProductMapper productMapper;
     private final CloudinaryService cloudinaryService;
     private final FileValidator fileValidator;
+    private final CacheManager cacheManager;
 
     // ─────────────────────────────────────────────
     // CREATE
@@ -131,6 +135,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "products", key = "#id")
     public ProductDetailResponse getProductById(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product", id));
@@ -139,6 +144,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "products", key = "#slug")
     public ProductDetailResponse getProductBySlug(String slug) {
         Product product = productRepository.findActiveBySlugWithImages(slug)
                 .orElseThrow(() -> new ResourceNotFoundException("Product slug" + slug));
@@ -234,6 +240,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "products_related", key = "#productId + '_' + #limit")
     public List<ProductSummaryResponse> getRelatedProducts(Long productId, int limit) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product", productId));
@@ -272,7 +279,9 @@ public class ProductServiceImpl implements ProductService {
 
         Product saved = productRepository.save(product);
         log.info("Product updated: id={}", saved.getId());
-        return enrichDetailResponse(saved);
+        ProductDetailResponse response = enrichDetailResponse(saved);
+        evictProductCache(saved.getId(), saved.getSlug());
+        return response;
     }
 
     // ─────────────────────────────────────────────
@@ -287,6 +296,7 @@ public class ProductServiceImpl implements ProductService {
         product.setStatus(ProductStatus.INACTIVE);
         productRepository.save(product);
         log.info("Product soft-deleted (INACTIVE): id={}", id);
+        evictProductCache(product.getId(), product.getSlug());
     }
 
     // ─────────────────────────────────────────────
@@ -302,9 +312,32 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "products_by_ids", key = "#ids")
     public List<ProductSummaryResponse> getProductsByIds(List<Long> ids) {
         List<Product> products = productRepository.findAllById(ids);
         return enrichSummaryResponses(products);
+    }
+
+    private void evictProductCache(Long id, String slug) {
+        try {
+            Cache productsCache = cacheManager.getCache("products");
+            if (productsCache != null) {
+                productsCache.evict(id);
+                if (slug != null) {
+                    productsCache.evict(slug);
+                }
+            }
+            Cache relatedCache = cacheManager.getCache("products_related");
+            if (relatedCache != null) {
+                relatedCache.clear();
+            }
+            Cache byIdsCache = cacheManager.getCache("products_by_ids");
+            if (byIdsCache != null) {
+                byIdsCache.clear();
+            }
+        } catch (Exception e) {
+            log.error("Failed to evict product cache", e);
+        }
     }
 
     // ─────────────────────────────────────────────

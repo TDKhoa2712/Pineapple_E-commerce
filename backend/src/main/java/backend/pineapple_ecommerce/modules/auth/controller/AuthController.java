@@ -7,6 +7,8 @@ import backend.pineapple_ecommerce.modules.auth.dto.response.AuthResponse;
 import backend.pineapple_ecommerce.modules.user.dto.response.UserResponse;
 import backend.pineapple_ecommerce.modules.auth.service.EmailVerificationService;
 import backend.pineapple_ecommerce.modules.user.service.UserService;
+import backend.pineapple_ecommerce.security.ratelimit.RateLimit;
+import backend.pineapple_ecommerce.security.ratelimit.RateLimitType;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -43,6 +45,7 @@ public class AuthController {
                     "Response KHÔNG chứa JWT — gọi /verify-email để nhận JWT."
     )
     @PostMapping("/register")
+    @RateLimit(maxRequests = 5, windowSeconds = 60, type = RateLimitType.IP_AND_EMAIL)
     public ResponseEntity<ApiResponse<AuthResponse>> register(
             @Valid @RequestBody RegisterRequest request) {
 
@@ -62,6 +65,7 @@ public class AuthController {
                     "response sẽ trả JWT đầy đủ (accessToken + refreshToken)."
     )
     @PostMapping("/verify-email")
+    @RateLimit(maxRequests = 5, windowSeconds = 60, type = RateLimitType.IP_AND_EMAIL)
     public ResponseEntity<ApiResponse<AuthResponse>> verifyEmail(
             @Valid @RequestBody VerifyEmailRequest request) {
         log.info("verify email run controller 1");
@@ -87,6 +91,7 @@ public class AuthController {
                     "Rate limit: tối đa 3 lần trong 10 phút."
     )
     @PostMapping("/resend-verification")
+    @RateLimit(maxRequests = 3, windowSeconds = 600, type = RateLimitType.IP_AND_EMAIL)
     public ResponseEntity<ApiResponse<Void>> resendVerification(
             @Valid @RequestBody ResendVerificationRequest request) {
 
@@ -104,6 +109,7 @@ public class AuthController {
             description = "LOCAL user phải xác thực email trước khi đăng nhập được."
     )
     @PostMapping("/login")
+    @RateLimit(maxRequests = 5, windowSeconds = 60, type = RateLimitType.IP_AND_EMAIL)
     public ResponseEntity<ApiResponse<AuthResponse>> login(
             @Valid @RequestBody LoginRequest request) {
 

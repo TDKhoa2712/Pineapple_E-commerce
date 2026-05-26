@@ -13,6 +13,12 @@ spring:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
   # =========================
   # OAUTH2 CONFIGURATION
   # =========================
@@ -94,6 +100,11 @@ app:
     shop-id: ${GHN_SHOP_ID}
     webhook-secret: ${GHN_WEBHOOK_SECRET}
     base-url: https://dev-online-gateway.ghn.vn/shiip/public-api
+
+  cache:
+    type: ${APP_CACHE_TYPE:caffeine}
+  rate-limiter:
+    type: ${APP_RATE_LIMITER_TYPE:in-memory}
 
   # Thêm khi tích hợp GHTK
   # ghtk:

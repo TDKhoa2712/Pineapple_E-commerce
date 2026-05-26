@@ -27,6 +27,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.context.ApplicationEventPublisher;
+import backend.pineapple_ecommerce.modules.inventory.event.ProductStockChangedEvent;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,6 +48,7 @@ public class InventoryServiceImpl implements InventoryService {
     private final FarmRepository            farmRepository;
     private final UserRepository            userRepository;
     private final InventoryBatchMapper inventoryBatchMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     // ─────────────────────────────────────────────
     // Batch management (existing)
@@ -74,6 +77,7 @@ public class InventoryServiceImpl implements InventoryService {
         batch.setRemainingQuantity(request.getQuantity());
         InventoryBatch saved = inventoryBatchRepository.save(batch);
         log.info("Batch added: batchCode={}, productId={}, qty={}", saved.getBatchCode(), product.getId(), saved.getQuantity());
+        eventPublisher.publishEvent(new ProductStockChangedEvent(this, product.getId()));
         return inventoryBatchMapper.toResponse(saved);
     }
 
@@ -183,6 +187,7 @@ public class InventoryServiceImpl implements InventoryService {
         StockAdjustment saved = stockAdjustmentRepository.save(adj);
 
         log.info("Stock adjusted: batchId={}, by={}, {}->{}; reason={}", batchId, adminUserId, qtyBefore, qtyAfter, request.getReason());
+        eventPublisher.publishEvent(new ProductStockChangedEvent(this, batch.getProduct().getId()));
         return StockAdjustmentResponse.builder()
                 .id(saved.getId()).batchId(batch.getId()).batchCode(batch.getBatchCode())
                 .productId(batch.getProduct().getId()).productName(batch.getProduct().getName())
@@ -227,6 +232,7 @@ public class InventoryServiceImpl implements InventoryService {
             remaining -= deduct;
         }
 
+        eventPublisher.publishEvent(new ProductStockChangedEvent(this, productId));
         return allocations;
     }
 
@@ -235,6 +241,7 @@ public class InventoryServiceImpl implements InventoryService {
      * Được gọi từ OrderServiceImpl bên trong @Transactional — không cần @Transactional riêng.
      */
     public void restoreStockForOrder(List<OrderItem> orderItems) {
+        java.util.Set<Long> uniqueProductIds = new java.util.HashSet<>();
         for (OrderItem item : orderItems) {
             if (item.getBatch() == null) continue;
             InventoryBatch batch = inventoryBatchRepository
@@ -243,6 +250,12 @@ public class InventoryServiceImpl implements InventoryService {
             batch.setRemainingQuantity(batch.getRemainingQuantity() + item.getQuantity());
             if (batch.getStatus() == BatchStatus.SOLD_OUT) batch.setStatus(BatchStatus.AVAILABLE);
             inventoryBatchRepository.save(batch);
+            if (batch.getProduct() != null) {
+                uniqueProductIds.add(batch.getProduct().getId());
+            }
+        }
+        for (Long productId : uniqueProductIds) {
+            eventPublisher.publishEvent(new ProductStockChangedEvent(this, productId));
         }
     }
 
