@@ -27,12 +27,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+import org.springframework.context.ApplicationEventPublisher;
+
 @ExtendWith(MockitoExtension.class)
 @DisplayName("CategoryServiceImpl")
 class CategoryServiceImplTest {
 
     @Mock private CategoryRepository categoryRepository;
     @Mock private CategoryMapper      categoryMapper;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private CategoryServiceImpl categoryService;
