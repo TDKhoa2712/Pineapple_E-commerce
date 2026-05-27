@@ -20,6 +20,17 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import backend.pineapple_ecommerce.common.config.JwtProperties;
+import backend.pineapple_ecommerce.common.exception.BusinessException;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
+import org.springframework.util.StringUtils;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.util.Arrays;
 
 /**
  * Authentication endpoints.
@@ -34,6 +45,8 @@ public class AuthController {
     private final AuthService authService;
     private final EmailVerificationService emailVerificationService;
     private final UserService userService;
+    private final CacheManager cacheManager;
+    private final JwtProperties jwtProperties;
 
     // ─────────────────────────────────────────────
     // Register
@@ -118,15 +131,63 @@ public class AuthController {
     }
 
     // ─────────────────────────────────────────────
+    // OAuth2 Exchange
+    // ─────────────────────────────────────────────
+
+    @Operation(
+            summary = "Trao đổi mã code OAuth2 lấy token",
+            description = "Nhận mã tạm thời từ URL callback và trả về Access Token trong body và Refresh Token trong HttpOnly Cookie."
+    )
+    @PostMapping("/oauth2/exchange")
+    public ResponseEntity<ApiResponse<AuthResponse>> exchangeOAuth2Code(
+            @Valid @RequestBody OAuth2ExchangeRequest request,
+            HttpServletResponse servletResponse) {
+
+        Cache cache = cacheManager.getCache("oauth2_codes");
+        if (cache == null) {
+            throw new BusinessException("Hệ thống cache không hoạt động");
+        }
+
+        AuthResponse authResponse = cache.get(request.getCode(), AuthResponse.class);
+        if (authResponse == null) {
+            throw new BusinessException("Mã xác thực không hợp lệ hoặc đã hết hạn");
+        }
+
+        // Xoá code khỏi cache để đảm bảo sử dụng 1 lần duy nhất (Single-Use)
+        cache.evict(request.getCode());
+
+        // Lấy refresh token từ response và set vào HttpOnly Cookie
+        String refreshToken = authResponse.getRefreshToken();
+        setRefreshTokenCookie(servletResponse, refreshToken);
+
+        // Xoá refresh token khỏi response body để tăng tính bảo mật
+        authResponse.setRefreshToken(null);
+
+        return ResponseEntity.ok(ApiResponse.success(authResponse, "Đăng nhập OAuth2 thành công!"));
+    }
+
+    // ─────────────────────────────────────────────
     // Refresh Token
     // ─────────────────────────────────────────────
 
     @Operation(summary = "Làm mới access token bằng refresh token")
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<AuthResponse>> refresh(
-            @Valid @RequestBody RefreshTokenRequest request) {
+            @RequestBody(required = false) RefreshTokenRequest request,
+            HttpServletRequest servletRequest,
+            HttpServletResponse servletResponse) {
 
-        AuthResponse response = authService.refreshToken(request);
+        String token = extractRefreshToken(request, servletRequest);
+        if (!StringUtils.hasText(token)) {
+            throw new BusinessException("Refresh token không được để trống");
+        }
+
+        AuthResponse response = authService.refreshToken(new RefreshTokenRequest(token));
+
+        // Thiết lập Cookie Refresh Token mới do rotation
+        setRefreshTokenCookie(servletResponse, response.getRefreshToken());
+        response.setRefreshToken(null);
+
         return ResponseEntity.ok(ApiResponse.success(response, "Token đã được làm mới"));
     }
 
@@ -137,10 +198,49 @@ public class AuthController {
     @Operation(summary = "Đăng xuất", security = @SecurityRequirement(name = "bearerAuth"))
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout(
-            @Valid @RequestBody RefreshTokenRequest request) {
+            @RequestBody(required = false) RefreshTokenRequest request,
+            HttpServletRequest servletRequest,
+            HttpServletResponse servletResponse) {
 
-        authService.logout(request.getRefreshToken());
+        String token = extractRefreshToken(request, servletRequest);
+        if (StringUtils.hasText(token)) {
+            authService.logout(token);
+        }
+
+        // Xoá cookie refresh token
+        setRefreshTokenCookie(servletResponse, null);
+
         return ResponseEntity.ok(ApiResponse.success(null, "Đăng xuất thành công"));
+    }
+
+    // ─────────────────────────────────────────────
+    // Cookie Helpers (NEW)
+    // ─────────────────────────────────────────────
+
+    private void setRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
+        long maxAge = refreshToken == null ? 0 : jwtProperties.getRefreshTokenExpirationMs() / 1000;
+        ResponseCookie cookie = ResponseCookie.from("refresh_token", refreshToken == null ? "" : refreshToken)
+                .httpOnly(true)
+                .secure(true)
+                .sameSite("Lax")
+                .path("/api/v1/auth")
+                .maxAge(maxAge)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+
+    private String extractRefreshToken(RefreshTokenRequest request, HttpServletRequest servletRequest) {
+        if (request != null && StringUtils.hasText(request.getRefreshToken())) {
+            return request.getRefreshToken();
+        }
+        if (servletRequest.getCookies() != null) {
+            return Arrays.stream(servletRequest.getCookies())
+                    .filter(c -> "refresh_token".equals(c.getName()))
+                    .map(Cookie::getValue)
+                    .findFirst()
+                    .orElse(null);
+        }
+        return null;
     }
 
     // ─────────────────────────────────────────────

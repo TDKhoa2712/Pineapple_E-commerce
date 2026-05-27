@@ -15,6 +15,9 @@ import org.springframework.security.web.authentication.SimpleUrlAuthenticationSu
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.util.UriComponentsBuilder;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+import java.util.UUID;
 
 import java.io.IOException;
 import java.net.URI;
@@ -50,6 +53,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
     private final OAuth2Service oauth2Service;
     private final UserRepository userRepository;
     private final CorsProperties corsProperties;
+    private final CacheManager cacheManager;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
@@ -88,11 +92,19 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
                 ? redirectUri
                 : resolveFrontendUrl() + "/oauth2/callback";
 
+        // Sinh mã code tạm thời ngẫu nhiên và lưu AuthResponse vào cache oauth2_codes
+        String exchangeCode = UUID.randomUUID().toString();
+        Cache cache = cacheManager.getCache("oauth2_codes");
+        if (cache != null) {
+            cache.put(exchangeCode, authResponse);
+            log.info("OAuth2 login success: {} → Saved AuthResponse to cache with code: {}", email, exchangeCode);
+        } else {
+            log.error("Không tìm thấy cache oauth2_codes! Không thể hoàn tất OAuth2 flow an toàn.");
+            throw new IllegalStateException("Hệ thống cache không hoạt động, không thể lưu mã xác thực tạm thời.");
+        }
+
         return UriComponentsBuilder.fromUriString(frontendCallbackUrl)
-                .queryParam("accessToken",  authResponse.getAccessToken())
-                .queryParam("refreshToken", authResponse.getRefreshToken())
-                .queryParam("expiresIn",    authResponse.getExpiresIn())
-                .queryParam("tokenType",    "Bearer")
+                .queryParam("code", exchangeCode)
                 .build().toUriString();
     }
 
