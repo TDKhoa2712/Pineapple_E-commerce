@@ -33,6 +33,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import backend.pineapple_ecommerce.security.CustomUserDetails;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -264,6 +265,11 @@ public class UserServiceImpl implements UserService {
         if (auth == null || !auth.isAuthenticated()
                 || "anonymousUser".equals(auth.getPrincipal())) {
             throw new BusinessException("Không xác định được người dùng hiện tại");
+        }
+
+        Object principal = auth.getPrincipal();
+        if (principal instanceof CustomUserDetails cud) {
+            return cud.getUserId();
         }
 
         String email = auth.getName();
