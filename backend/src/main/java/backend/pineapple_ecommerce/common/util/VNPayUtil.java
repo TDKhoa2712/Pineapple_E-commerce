@@ -1,5 +1,6 @@
 package backend.pineapple_ecommerce.common.util;
 
+import backend.pineapple_ecommerce.security.RequestIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 
 import javax.crypto.Mac;
@@ -49,35 +50,15 @@ public class VNPayUtil {
      * Get client IP address
      */
     public static String getIpAddress(HttpServletRequest request) {
-        String ipAddress = request.getHeader("X-Forwarded-For");
-        if (ipAddress == null || ipAddress.isBlank()) {
-            ipAddress = request.getHeader("X-FORWARDED-FOR");
+        try {
+            return RequestIpResolver.getInstance().resolveClientIp(request);
+        } catch (Exception e) {
+            String ip = request.getRemoteAddr();
+            if ("0:0:0:0:0:0:0:1".equals(ip) || "::1".equals(ip)) {
+                return "127.0.0.1";
+            }
+            return ip != null ? ip : "";
         }
-        if (ipAddress == null || ipAddress.isBlank()) {
-            ipAddress = request.getHeader("x-forwarded-for");
-        }
-
-        if (ipAddress == null
-                || ipAddress.isBlank()
-                || "unknown".equalsIgnoreCase(ipAddress)) {
-            ipAddress = request.getRemoteAddr();
-        }
-
-        if (ipAddress == null) {
-            ipAddress = "";
-        }
-
-        // localhost IPv6 -> IPv4
-        if ("0:0:0:0:0:0:0:1".equals(ipAddress) || "::1".equals(ipAddress)) {
-            ipAddress = "127.0.0.1";
-        }
-
-        // nhiều proxy IP — lấy IP đầu tiên
-        if (ipAddress.contains(",")) {
-            ipAddress = ipAddress.split(",")[0].trim();
-        }
-
-        return ipAddress;
     }
 
     /**

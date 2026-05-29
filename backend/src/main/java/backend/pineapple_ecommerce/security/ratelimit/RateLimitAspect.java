@@ -1,6 +1,7 @@
 package backend.pineapple_ecommerce.security.ratelimit;
 
 import backend.pineapple_ecommerce.common.exception.RateLimitException;
+import backend.pineapple_ecommerce.security.RequestIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +24,7 @@ import java.lang.reflect.Method;
 public class RateLimitAspect {
 
     private final RateLimiter rateLimiter;
+    private final RequestIpResolver ipResolver;
 
     @Around("@annotation(rateLimit)")
     public Object rateLimit(ProceedingJoinPoint joinPoint, RateLimit rateLimit) throws Throwable {
@@ -67,11 +69,7 @@ public class RateLimitAspect {
     }
 
     private String getClientIp(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isBlank()) {
-            return xForwardedFor.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
+        return ipResolver.resolveClientIp(request);
     }
 
     private String getEndpointName(ProceedingJoinPoint joinPoint) {

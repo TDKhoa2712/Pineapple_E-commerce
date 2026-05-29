@@ -4,6 +4,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -35,7 +36,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class OAuth2RateLimitFilter extends OncePerRequestFilter {
+
+    private final RequestIpResolver ipResolver;
 
     private static final int    MAX_REQUESTS_PER_MINUTE = 10;
     private static final long   WINDOW_MS               = 60_000L; // 1 phút
@@ -86,10 +90,6 @@ public class OAuth2RateLimitFilter extends OncePerRequestFilter {
     }
 
     private String getClientIp(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isBlank()) {
-            return xForwardedFor.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
+        return ipResolver.resolveClientIp(request);
     }
 }
