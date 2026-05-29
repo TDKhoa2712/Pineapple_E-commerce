@@ -83,6 +83,7 @@ public class FarmServiceImpl implements FarmService {
     public PageResponse<FarmResponse> getAllFarms(int page, int size) {
         // Public: chỉ ACTIVE farm, chưa bị xoá
         Specification<Farm> spec = Specification.allOf(
+                FarmSpecification.fetchOwner(),
                 FarmSpecification.hasStatus(FarmStatus.ACTIVE),
                 FarmSpecification.isDeleted(false)
         );
@@ -97,6 +98,7 @@ public class FarmServiceImpl implements FarmService {
     @Transactional(readOnly = true)
     public PageResponse<FarmResponse> getAllFarmsAdmin(int page, int size, FarmStatus status) {
         Specification<Farm> spec = Specification.allOf(
+                FarmSpecification.fetchOwner(),
                 FarmSpecification.isDeleted(false),
                 FarmSpecification.hasStatus(status)
         );
