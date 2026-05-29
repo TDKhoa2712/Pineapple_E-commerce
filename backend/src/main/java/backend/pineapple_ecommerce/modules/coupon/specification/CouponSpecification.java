@@ -4,12 +4,24 @@ import backend.pineapple_ecommerce.common.enums.CouponType;
 import backend.pineapple_ecommerce.common.util.AppConstants;
 import backend.pineapple_ecommerce.modules.coupon.models.Coupon;
 import org.springframework.data.jpa.domain.Specification;
+import jakarta.persistence.criteria.JoinType;
 
 import java.time.LocalDateTime;
 
 public class CouponSpecification {
 
     private CouponSpecification() {}
+
+    public static Specification<Coupon> fetchCreatedBy() {
+        return (root, query, cb) -> {
+            Class<?> resultType = query.getResultType();
+            if (resultType != Long.class && resultType != long.class) {
+                root.fetch("createdBy", JoinType.LEFT);
+                query.distinct(true);
+            }
+            return null;
+        };
+    }
 
     public static Specification<Coupon> isActive(Boolean active) {
         return (root, query, cb) ->

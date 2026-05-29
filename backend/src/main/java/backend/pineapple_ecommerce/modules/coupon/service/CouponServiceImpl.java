@@ -185,6 +185,7 @@ public class CouponServiceImpl implements CouponService {
     @Transactional(readOnly = true)
     public List<CouponResponse> getAllCoupons(Boolean active, Boolean expired, CouponType type) {
         Specification<Coupon> spec = Specification.allOf(
+                CouponSpecification.fetchCreatedBy(),
                 CouponSpecification.isActive(active),
                 CouponSpecification.isExpired(expired),
                 CouponSpecification.hasType(type)

@@ -19,7 +19,15 @@ import java.util.Optional;
 @Repository
 public interface InventoryBatchRepository extends JpaRepository<InventoryBatch, Long> {
 
-    List<InventoryBatch> findByProductIdAndStatus(Long productId, BatchStatus status);
+    @Query("""
+        SELECT b FROM InventoryBatch b
+        LEFT JOIN FETCH b.product
+        LEFT JOIN FETCH b.farm
+        WHERE b.product.id = :productId AND b.status = :status
+        """)
+    List<InventoryBatch> findByProductIdAndStatus(
+            @Param("productId") Long productId,
+            @Param("status")    BatchStatus status);
 
     List<InventoryBatch> findByStatus(BatchStatus status);
 

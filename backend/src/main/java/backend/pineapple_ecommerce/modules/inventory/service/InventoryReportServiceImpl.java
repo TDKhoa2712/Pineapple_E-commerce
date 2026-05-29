@@ -54,6 +54,18 @@ public class InventoryReportServiceImpl implements InventoryReportService {
             byProduct.computeIfAbsent(b.getProduct().getId(), k -> new ArrayList<>()).add(b);
         }
 
+        // ── Lấy tổng tồn kho khả dụng hàng loạt để tránh N+1 ──
+        List<Long> productIds = new ArrayList<>(byProduct.keySet());
+        Map<Long, Integer> stockMap = new java.util.HashMap<>();
+        if (!productIds.isEmpty()) {
+            List<Object[]> stockResults = inventoryBatchRepository.getTotalAvailableStockByProductIds(productIds);
+            stockMap = stockResults.stream()
+                    .collect(java.util.stream.Collectors.toMap(
+                            row -> (Long) row[0],
+                            row -> ((Number) row[1]).intValue()
+                    ));
+        }
+
         // ── Build chi tiết theo sản phẩm ──
         List<ProductReportDetail> details = new ArrayList<>();
         long totalImported     = 0;
@@ -79,7 +91,7 @@ public class InventoryReportServiceImpl implements InventoryReportService {
                     .sum();
 
             // Tồn kho riêng của sản phẩm này (chỉ lô AVAILABLE, không giới hạn kỳ)
-            Integer stock = inventoryBatchRepository.getTotalAvailableStock(entry.getKey());
+            Integer stock = stockMap.getOrDefault(entry.getKey(), 0);
 
             LocalDate earliest = pBatches.stream()
                     .map(b -> b.getCreatedAt().toLocalDate())
