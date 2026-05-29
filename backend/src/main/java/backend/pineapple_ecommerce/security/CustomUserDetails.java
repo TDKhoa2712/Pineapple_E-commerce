@@ -40,6 +40,8 @@ import java.util.stream.Collectors;
  */
 public class CustomUserDetails implements UserDetails, OAuth2User {
 
+    private static final long serialVersionUID = 1L;
+
     // ── Core user data ────────────────────────────────────────────────────
 
     @Getter
@@ -98,6 +100,25 @@ public class CustomUserDetails implements UserDetails, OAuth2User {
         this.oauth2Attributes = oauth2Attributes != null
                 ? Collections.unmodifiableMap(oauth2Attributes)
                 : Collections.emptyMap();
+    }
+
+    /**
+     * Constructor cho JWT flow phục dựng từ token claims (tránh hit DB).
+     */
+    public CustomUserDetails(Long userId, String email, String fullName, String avatar, Collection<? extends GrantedAuthority> authorities) {
+        this.userId = userId;
+        this.email = email;
+        this.password = "";
+        this.fullName = fullName;
+        this.avatar = avatar;
+        this.authorities = authorities != null
+                ? authorities.stream()
+                        .map(auth -> (GrantedAuthority) new SimpleGrantedAuthority(auth.getAuthority()))
+                        .toList()
+                : Collections.emptyList();
+        this.accountLocked = false;
+        this.disabled = false;
+        this.oauth2Attributes = Collections.emptyMap();
     }
 
     // ── UserDetails impl ─────────────────────────────────────────────────
@@ -163,5 +184,10 @@ public class CustomUserDetails implements UserDetails, OAuth2User {
     /** Dùng cho OAuth2 flow — giữ lại attributes từ Google/Facebook. */
     public static CustomUserDetails of(User user, Map<String, Object> attributes) {
         return new CustomUserDetails(user, attributes);
+    }
+
+    /** Dùng cho JWT flow phục dựng từ token claims (tránh hit DB). */
+    public static CustomUserDetails of(Long userId, String email, String fullName, String avatar, Collection<? extends GrantedAuthority> authorities) {
+        return new CustomUserDetails(userId, email, fullName, avatar, authorities);
     }
 }
