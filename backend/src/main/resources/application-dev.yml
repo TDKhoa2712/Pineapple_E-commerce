@@ -106,6 +106,16 @@ app:
   rate-limiter:
     type: ${APP_RATE_LIMITER_TYPE:in-memory}
 
+  security:
+    trusted-proxies:
+      - 127.0.0.1
+      - ::1
+      - 0:0:0:0:0:0:0:1
+      - 10.0.0.0/8
+      - 172.16.0.0/12
+      - 192.168.0.0/16
+    trust-all-proxies: false
+
   # Thêm khi tích hợp GHTK
   # ghtk:
   #   token: ${GHTK_TOKEN}
