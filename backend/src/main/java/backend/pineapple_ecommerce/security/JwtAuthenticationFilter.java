@@ -14,6 +14,9 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 
 import java.io.IOException;
 
@@ -48,27 +51,34 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         final String jwt = authHeader.substring(7);
 
         try {
-            String email = jwtService.extractUsername(jwt);
+            Claims claims = jwtService.extractAllClaims(jwt);
+            String email = claims.getSubject();
 
-            if (email != null) { // Xóa bỏ điều kiện kiểm tra Authentication == null
-                UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+            if (email != null) {
+                UserDetails userDetails = jwtService.buildUserDetailsFromClaims(claims);
 
-                if (jwtService.isTokenValid(jwt, userDetails)) {
-                    UsernamePasswordAuthenticationToken authToken =
-                            new UsernamePasswordAuthenticationToken(
-                                    userDetails,
-                                    null,
-                                    userDetails.getAuthorities()
-                            );
-                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-                    // Cố tình Ghi đè (Overwrite) SecurityContext hiện tại bằng dữ liệu mới nhất
-                    SecurityContextHolder.getContext().setAuthentication(authToken);
+                if (userDetails == null) {
+                    // Fallback to database for old tokens / tests
+                    userDetails = userDetailsService.loadUserByUsername(email);
                 }
+
+                UsernamePasswordAuthenticationToken authToken =
+                        new UsernamePasswordAuthenticationToken(
+                                userDetails,
+                                null,
+                                userDetails.getAuthorities()
+                        );
+                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
+                // Cố tình Ghi đè (Overwrite) SecurityContext hiện tại bằng dữ liệu mới nhất
+                SecurityContextHolder.getContext().setAuthentication(authToken);
             }
+        } catch (ExpiredJwtException e) {
+            log.warn("JWT is expired: {}", e.getMessage());
+        } catch (JwtException e) {
+            log.warn("JWT is invalid: {}", e.getMessage());
         } catch (Exception e) {
             log.warn("JWT authentication failed: {}", e.getMessage());
-            // Không throw — để filter chain tiếp tục, endpoint sẽ trả 401
         }
 
         filterChain.doFilter(request, response);
