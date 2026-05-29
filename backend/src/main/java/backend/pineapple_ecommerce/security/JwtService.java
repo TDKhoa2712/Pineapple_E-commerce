@@ -40,8 +40,23 @@ public class JwtService {
     private String buildToken(Map<String, Object> extraClaims,
                               UserDetails userDetails,
                               long expirationMs) {
+        Map<String, Object> claims = new java.util.HashMap<>(extraClaims);
+
+        if (userDetails instanceof CustomUserDetails customUser) {
+            claims.put("userId", customUser.getUserId());
+            claims.put("fullName", customUser.getFullName());
+            claims.put("avatar", customUser.getAvatar());
+        }
+
+        if (userDetails.getAuthorities() != null) {
+            java.util.List<String> rolesList = userDetails.getAuthorities().stream()
+                    .map(org.springframework.security.core.GrantedAuthority::getAuthority)
+                    .collect(java.util.stream.Collectors.toList());
+            claims.put("roles", rolesList);
+        }
+
         return Jwts.builder()
-                .claims(extraClaims)
+                .claims(claims)
                 .subject(userDetails.getUsername())   // username = email
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expirationMs))
@@ -62,12 +77,38 @@ public class JwtService {
         return claimsResolver.apply(claims);
     }
 
-    private Claims extractAllClaims(String token) {
+    public Claims extractAllClaims(String token) {
         return Jwts.parser()
                 .verifyWith(getSigningKey())
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
+    }
+
+    public CustomUserDetails buildUserDetailsFromClaims(Claims claims) {
+        String email = claims.getSubject();
+        Object userIdObj = claims.get("userId");
+        if (userIdObj == null) {
+            return null;
+        }
+        Long userId = null;
+        if (userIdObj instanceof Number) {
+            userId = ((Number) userIdObj).longValue();
+        }
+        String fullName = claims.get("fullName", String.class);
+        String avatar = claims.get("avatar", String.class);
+        
+        java.util.List<?> rolesList = claims.get("roles", java.util.List.class);
+        if (rolesList == null || rolesList.isEmpty()) {
+            return null;
+        }
+        
+        java.util.List<org.springframework.security.core.authority.SimpleGrantedAuthority> authorities = rolesList.stream()
+                .map(Object::toString)
+                .map(org.springframework.security.core.authority.SimpleGrantedAuthority::new)
+                .collect(java.util.stream.Collectors.toList());
+                
+        return CustomUserDetails.of(userId, email, fullName, avatar, authorities);
     }
 
     // ────────────────────────────────────────────
