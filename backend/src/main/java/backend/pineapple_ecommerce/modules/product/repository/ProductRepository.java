@@ -32,6 +32,7 @@ public interface ProductRepository extends JpaRepository<Product, Long>,
     /** Related products: cùng category, loại trừ sản phẩm hiện tại */
     @Query("""
             SELECT p FROM Product p
+            LEFT JOIN FETCH p.category
             WHERE p.category.id = :categoryId
             AND p.id <> :excludeId
             AND p.status = 'ACTIVE'
@@ -41,5 +42,7 @@ public interface ProductRepository extends JpaRepository<Product, Long>,
             @Param("excludeId")  Long excludeId,
             Pageable pageable);
 
-    List<Product> findAllById(Iterable<Long> ids);
+    @Override
+    @Query("SELECT DISTINCT p FROM Product p LEFT JOIN FETCH p.category WHERE p.id IN :ids")
+    List<Product> findAllById(@Param("ids") Iterable<Long> ids);
 }
