@@ -5,6 +5,12 @@ spring:
   config:
     import: optional:file:.env[.properties]
 
+  task:
+    scheduling:
+      pool:
+        size: 5
+      thread-name-prefix: scheduling-
+
   flyway:
     enabled: true
     baseline-on-migrate: true
