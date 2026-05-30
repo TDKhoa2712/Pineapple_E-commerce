@@ -46,7 +46,7 @@ public interface UserService {
      * Lấy danh sách user phân trang, có thể filter theo status.
      * status = null → trả toàn bộ.
      */
-    PageResponse<UserResponse> getAllUsers(int page, int size, UserStatus status, String keyword);
+    PageResponse<UserResponse> getAllUsers(int page, int size, UserStatus status, String keyword, backend.pineapple_ecommerce.common.enums.RoleName role, String sortBy, String sortDirection);
 
     /**
      * Cập nhật trạng thái tài khoản (ACTIVE / INACTIVE / BANNED).

@@ -154,14 +154,29 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<UserResponse> getAllUsers(int page, int size,
-                                                  UserStatus status, String keyword) {
+                                                  UserStatus status, String keyword,
+                                                  backend.pineapple_ecommerce.common.enums.RoleName role,
+                                                  String sortBy, String sortDirection) {
         Specification<User> spec = Specification.allOf(
                 UserSpecification.hasStatus(status),
-                UserSpecification.searchByKeyword(keyword)
+                UserSpecification.searchByKeyword(keyword),
+                UserSpecification.hasRole(role)
         );
 
+        org.springframework.data.domain.Sort sort = org.springframework.data.domain.Sort.by("createdAt").descending();
+        if (sortBy != null && !sortBy.isBlank()) {
+            org.springframework.data.domain.Sort.Direction direction = "ASC".equalsIgnoreCase(sortDirection)
+                    ? org.springframework.data.domain.Sort.Direction.ASC
+                    : org.springframework.data.domain.Sort.Direction.DESC;
+            String mappedSortBy = sortBy;
+            if ("name".equalsIgnoreCase(sortBy)) {
+                mappedSortBy = "fullName";
+            }
+            sort = org.springframework.data.domain.Sort.by(direction, mappedSortBy);
+        }
+
         Page<UserResponse> result = userRepository
-                .findAll(spec, PageRequest.of(page, size, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt")))
+                .findAll(spec, PageRequest.of(page, size, sort))
                 .map(userMapper::toResponse);
         return PageResponse.of(result);
     }
@@ -209,18 +224,18 @@ public class UserServiceImpl implements UserService {
         // Resolve các Role entity từ DB
         Set<Role> newRoles = new HashSet<>();
 
-        // ROLE_USER luôn được đảm bảo — ngay cả khi admin không gửi lên
-        Role userRole = roleRepository.findByName(RoleName.ROLE_USER)
-                .orElseThrow(() -> new ResourceNotFoundException("Role", "name", RoleName.ROLE_USER));
-        newRoles.add(userRole);
-
         // Thêm các role admin chỉ định
         for (RoleName roleName : request.getRoles()) {
-            if (roleName == RoleName.ROLE_USER) continue;
-
             Role role = roleRepository.findByName(roleName)
                     .orElseThrow(() -> new ResourceNotFoundException("Role", "name", roleName));
             newRoles.add(role);
+        }
+
+        // Nếu không chọn role nào, mặc định là ROLE_USER
+        if (newRoles.isEmpty()) {
+            Role userRole = roleRepository.findByName(RoleName.ROLE_USER)
+                    .orElseThrow(() -> new ResourceNotFoundException("Role", "name", RoleName.ROLE_USER));
+            newRoles.add(userRole);
         }
 
         Set<String> oldRoleNames = user.getRoles().stream()

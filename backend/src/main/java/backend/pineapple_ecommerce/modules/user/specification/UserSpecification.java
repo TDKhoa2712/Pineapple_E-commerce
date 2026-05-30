@@ -34,4 +34,11 @@ public class UserSpecification {
             );
         };
     }
+
+    public static Specification<User> hasRole(backend.pineapple_ecommerce.common.enums.RoleName roleName) {
+        return (root, query, cb) -> {
+            if (roleName == null) return null;
+            return cb.equal(root.join("roles").get("name"), roleName);
+        };
+    }
 }

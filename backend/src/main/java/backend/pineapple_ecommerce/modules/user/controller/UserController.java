@@ -88,16 +88,19 @@ public class UserController {
      * - keyword: tìm theo email hoặc fullName
      */
     @Operation(summary = "Danh sách tất cả người dùng, có filter (Admin)")
-    @GetMapping
+    @GetMapping({"", "/"})
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<PageResponse<UserResponse>>> getAllUsers(
             @RequestParam(defaultValue = "0")  int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) UserStatus status,
-            @RequestParam(required = false)    String keyword) {
+            @RequestParam(required = false)    String keyword,
+            @RequestParam(required = false)    backend.pineapple_ecommerce.common.enums.RoleName role,
+            @RequestParam(required = false)    String sortBy,
+            @RequestParam(required = false)    String sortDirection) {
 
         return ResponseEntity.ok(ApiResponse.success(
-                userService.getAllUsers(page, size, status, keyword)));
+                userService.getAllUsers(page, size, status, keyword, role, sortBy, sortDirection)));
     }
 
     @Operation(summary = "Lấy thông tin người dùng theo ID (Admin)")
