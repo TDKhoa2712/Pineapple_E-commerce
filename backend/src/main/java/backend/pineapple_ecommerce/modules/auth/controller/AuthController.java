@@ -27,6 +27,7 @@ import org.springframework.cache.CacheManager;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.util.StringUtils;
+import org.springframework.beans.factory.annotation.Value;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -47,6 +48,12 @@ public class AuthController {
     private final UserService userService;
     private final CacheManager cacheManager;
     private final JwtProperties jwtProperties;
+
+    // FIX: Đọc từ config — false trong dev (HTTP), true trong prod (HTTPS)
+    // application-dev.yml: app.cookie.secure=false
+    // application-prod.yml: app.cookie.secure=true
+    @Value("${app.cookie.secure:true}")
+    private boolean cookieSecure;
 
     // ─────────────────────────────────────────────
     // Register
@@ -221,7 +228,8 @@ public class AuthController {
         long maxAge = refreshToken == null ? 0 : jwtProperties.getRefreshTokenExpirationMs() / 1000;
         ResponseCookie cookie = ResponseCookie.from("refresh_token", refreshToken == null ? "" : refreshToken)
                 .httpOnly(true)
-                .secure(true)
+                // FIX: Đọc từ config — false trong dev (HTTP localhost), true trong prod (HTTPS)
+                .secure(cookieSecure)
                 .sameSite("Lax")
                 .path("/api/v1/auth")
                 .maxAge(maxAge)
