@@ -90,7 +90,7 @@ public class AuthServiceImpl implements AuthService {
     // ─────────────────────────────────────────────
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public AuthResponse login(LoginRequest request) {
         User user = userRepository.findByEmailWithRoles(request.getEmail())
                 .orElseThrow(() -> new UnauthorizedException("Email hoặc mật khẩu không chính xác"));
