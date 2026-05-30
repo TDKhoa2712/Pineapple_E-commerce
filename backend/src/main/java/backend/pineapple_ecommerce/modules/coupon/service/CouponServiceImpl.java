@@ -24,6 +24,7 @@ import backend.pineapple_ecommerce.modules.user.models.User;
 import backend.pineapple_ecommerce.modules.user.repository.UserRepository;
 import backend.pineapple_ecommerce.modules.coupon.specification.CouponSpecification;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.domain.Sort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -183,7 +184,7 @@ public class CouponServiceImpl implements CouponService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<CouponResponse> getAllCoupons(Boolean active, Boolean expired, CouponType type) {
+    public List<CouponResponse> getAllCoupons(Boolean active, Boolean expired, CouponType type, String sortBy, String sortDirection) {
         Specification<Coupon> spec = Specification.allOf(
                 CouponSpecification.fetchCreatedBy(),
                 CouponSpecification.isActive(active),
@@ -191,7 +192,13 @@ public class CouponServiceImpl implements CouponService {
                 CouponSpecification.hasType(type)
         );
 
-        List<Coupon> coupons = couponRepository.findAll(spec);
+        Sort sort = Sort.by("createdAt").descending();
+        if (sortBy != null && !sortBy.isBlank()) {
+            Sort.Direction direction = "ASC".equalsIgnoreCase(sortDirection) ? Sort.Direction.ASC : Sort.Direction.DESC;
+            sort = Sort.by(direction, sortBy);
+        }
+
+        List<Coupon> coupons = couponRepository.findAll(spec, sort);
         return coupons.stream()
                 .map(couponMapper::toResponse)
                 .toList();

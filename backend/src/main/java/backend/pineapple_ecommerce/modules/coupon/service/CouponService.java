@@ -27,7 +27,7 @@ public interface CouponService {
 
     CouponResponse updateCoupon(Long id, UpdateCouponRequest request);
 
-    List<CouponResponse> getAllCoupons(Boolean active, Boolean expired, CouponType type);
+    List<CouponResponse> getAllCoupons(Boolean active, Boolean expired, CouponType type, String sortBy, String sortDirection);
 
     List<CouponUsageResponse> getCouponUsageHistory(Long couponId);
 }

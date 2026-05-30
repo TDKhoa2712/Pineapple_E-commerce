@@ -1,6 +1,7 @@
 package backend.pineapple_ecommerce.modules.coupon.controller;
 
 import backend.pineapple_ecommerce.common.dto.response.ApiResponse;
+import backend.pineapple_ecommerce.common.dto.response.PageResponse;
 import backend.pineapple_ecommerce.common.enums.CouponType;
 import backend.pineapple_ecommerce.modules.coupon.dto.request.CreateCouponRequest;
 import backend.pineapple_ecommerce.modules.coupon.dto.request.UpdateCouponRequest;
@@ -32,7 +33,7 @@ public class AdminCouponController {
     private final UserService   userService;
 
     @Operation(summary = "Tạo mã giảm giá mới (Admin)")
-    @PostMapping
+    @PostMapping({"", "/"})
     public ResponseEntity<ApiResponse<CouponResponse>> createCoupon(
             @Valid @RequestBody CreateCouponRequest request) {
         Long adminId = userService.getCurrentUserId();
@@ -41,13 +42,35 @@ public class AdminCouponController {
                 .body(ApiResponse.success(response, "Tạo mã giảm giá thành công"));
     }
 
-    @Operation(summary = "Lấy danh sách mã giảm giá (Admin)")
-    @GetMapping
-    public ResponseEntity<ApiResponse<List<CouponResponse>>> getAllCoupons(
+    @Operation(summary = "Lấy danh sách mã giảm giá (Admin) — filter & sort")
+    @GetMapping({"", "/"})
+    public ResponseEntity<ApiResponse<PageResponse<CouponResponse>>> getAllCoupons(
             @RequestParam(required = false) Boolean active,
             @RequestParam(required = false) Boolean expired,
-            @RequestParam(required = false) CouponType type) {
-        List<CouponResponse> response = couponService.getAllCoupons(active, expired, type);
+            @RequestParam(required = false) CouponType type,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDirection,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        List<CouponResponse> all = couponService.getAllCoupons(active, expired, type, sortBy, sortDirection);
+
+        int totalElements = all.size();
+        int fromIndex = Math.min(page * size, totalElements);
+        int toIndex = Math.min((page + 1) * size, totalElements);
+        List<CouponResponse> content = all.subList(fromIndex, toIndex);
+
+        boolean last = toIndex >= totalElements;
+        int totalPages = (int) Math.ceil((double) totalElements / size);
+
+        PageResponse<CouponResponse> response = PageResponse.<CouponResponse>builder()
+                .content(content)
+                .page(page)
+                .size(size)
+                .totalElements(totalElements)
+                .totalPages(totalPages)
+                .last(last)
+                .build();
+
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
