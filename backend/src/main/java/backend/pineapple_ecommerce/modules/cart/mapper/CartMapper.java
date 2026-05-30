@@ -15,9 +15,12 @@ public interface CartMapper {
 
     @Mapping(target = "productId",        expression = "java(item.getProduct().getId())")
     @Mapping(target = "productName",      expression = "java(item.getProduct().getName())")
+    @Mapping(target = "productSlug",      expression = "java(item.getProduct().getSlug())")
     @Mapping(target = "productThumbnail", expression = "java(item.getProduct().getThumbnail())")
     @Mapping(target = "unitPrice",        expression = "java(item.getProduct().getEffectivePrice())")
     @Mapping(target = "subtotal",         expression = "java(calcSubtotal(item))")
+    // FIX: thêm productStatus để FE biết sản phẩm còn active không
+    @Mapping(target = "productStatus",    expression = "java(item.getProduct().getStatus() != null ? item.getProduct().getStatus().name() : null)")
     @Mapping(target = "availableStock",   ignore = true)  // Service tính từ batches
     CartItemResponse toItemResponse(CartItem item);
 
