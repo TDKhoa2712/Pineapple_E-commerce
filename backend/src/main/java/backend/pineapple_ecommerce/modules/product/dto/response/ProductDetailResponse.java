@@ -20,6 +20,7 @@ public class ProductDetailResponse implements Serializable {
     private String description;
     private BigDecimal price;
     private BigDecimal discountPrice;
+    // FIX: thêm effectivePrice
     private BigDecimal effectivePrice;
     private BigDecimal weight;
     private BigDecimal calories;
@@ -31,6 +32,14 @@ public class ProductDetailResponse implements Serializable {
 
     private Long categoryId;
     private String categoryName;
+
+    // FIX: thêm farm info
+    private Long farmId;
+    private String farmName;
+
+    // FIX: thêm unit, soldCount
+    private String unit;
+    private Integer soldCount;
 
     private List<String> imageUrls;
     private Integer totalStock;

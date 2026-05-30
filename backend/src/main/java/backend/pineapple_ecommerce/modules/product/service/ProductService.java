@@ -57,7 +57,7 @@ public interface ProductService {
 
     /** Admin: tìm kiếm sản phẩm với keyword và lọc theo status. */
     PageResponse<ProductSummaryResponse> getAllProductsForAdmin(
-            int page, int size, String keyword, String statusStr);
+            int page, int size, String keyword, String statusStr, String sortBy, String sortDirection);
 
     /** Lấy sản phẩm liên quan (cùng danh mục, loại trừ sản phẩm hiện tại). */
     List<ProductSummaryResponse> getRelatedProducts(Long productId, int limit);

@@ -134,18 +134,19 @@ public class ProductController {
                 productService.uploadThumbnail(id, file), "Upload thumbnail thành công"));
     }
 
-    @Operation(summary = "Lấy tất cả sản phẩm (Admin — filter keyword + status)",
+    @Operation(summary = "Lấy tất cả sản phẩm (Admin — filter keyword + status + sort)",
             security = @SecurityRequirement(name = "bearerAuth"))
     @GetMapping("/admin")
     @PreAuthorize("hasRole('ADMIN')")
-
     public ResponseEntity<ApiResponse<PageResponse<ProductSummaryResponse>>> getAllAdmin(
             @RequestParam(defaultValue = "0")  int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String status) {
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDirection) {
         return ResponseEntity.ok(ApiResponse.success(
-                productService.getAllProductsForAdmin(page, size, keyword, status)));
+                productService.getAllProductsForAdmin(page, size, keyword, status, sortBy, sortDirection)));
     }
 
     @Operation(summary = "Cập nhật sản phẩm (Admin/Farmer)",

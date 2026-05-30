@@ -17,13 +17,21 @@ public class ProductSummaryResponse implements Serializable {
     private String slug;
     private BigDecimal price;
     private BigDecimal discountPrice;
+    // FIX: thêm effectivePrice (min của price/discountPrice) cho FE hiển thị
     private BigDecimal effectivePrice;
     private String thumbnail;
     private Boolean isOrganic;
     private String status;
+    private Long categoryId;
     private String categoryName;
     private Integer totalStock;
     private Double averageRating;
-    // FIX: thêm reviewCount để ProductCard hiển thị số đánh giá
     private Integer reviewCount;
+    // FIX: thêm farm info để FE ProductCard hiển thị trang trại
+    private Long farmId;
+    private String farmName;
+    // FIX: thêm unit (đơn vị tính: kg, bó, quả...)
+    private String unit;
+    // FIX: thêm soldCount để FE sort "Bán chạy nhất"
+    private Integer soldCount;
 }

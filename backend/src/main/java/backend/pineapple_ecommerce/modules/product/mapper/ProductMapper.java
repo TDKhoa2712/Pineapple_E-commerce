@@ -28,23 +28,32 @@ public interface ProductMapper {
     Product toEntity(CreateProductRequest request);
 
     // Summary: dùng trong list, search
-    @Mapping(target = "categoryName", expression = "java(product.getCategory() != null ? product.getCategory().getName() : null)")
-    @Mapping(target = "effectivePrice", expression = "java(product.getEffectivePrice())")
-    @Mapping(target = "status", expression = "java(product.getStatus().name())")
-    @Mapping(target = "totalStock", ignore = true)   // Service tính từ batches
-    @Mapping(target = "averageRating", ignore = true)
-    // Service tính từ reviews
+    @Mapping(target = "categoryId",    expression = "java(product.getCategory() != null ? product.getCategory().getId() : null)")
+    @Mapping(target = "categoryName",  expression = "java(product.getCategory() != null ? product.getCategory().getName() : null)")
+    @Mapping(target = "effectivePrice",expression = "java(product.getEffectivePrice())")
+    @Mapping(target = "status",        expression = "java(product.getStatus().name())")
+    @Mapping(target = "totalStock",    ignore = true)   // Service tính từ batches
+    @Mapping(target = "averageRating", ignore = true)   // Service tính từ reviews
+    @Mapping(target = "reviewCount",   ignore = true)   // Service tính từ reviews
+    @Mapping(target = "farmId",        ignore = true)   // TODO: khi có farm relationship trên Product
+    @Mapping(target = "farmName",      ignore = true)   // TODO: khi có farm relationship trên Product
+    @Mapping(target = "unit",          ignore = true)   // TODO: khi có unit field trên Product
+    @Mapping(target = "soldCount",     ignore = true)   // TODO: tính từ order items
     ProductSummaryResponse toSummaryResponse(Product product);
 
     // Detail: dùng trong trang chi tiết
-    @Mapping(target = "categoryId", expression = "java(product.getCategory() != null ? product.getCategory().getId() : null)")
-    @Mapping(target = "categoryName", expression = "java(product.getCategory() != null ? product.getCategory().getName() : null)")
-    @Mapping(target = "effectivePrice", expression = "java(product.getEffectivePrice())")
-    @Mapping(target = "status", expression = "java(product.getStatus().name())")
-    @Mapping(target = "imageUrls", expression = "java(mapImageUrls(product))")
-    @Mapping(target = "totalStock", ignore = true)
+    @Mapping(target = "categoryId",    expression = "java(product.getCategory() != null ? product.getCategory().getId() : null)")
+    @Mapping(target = "categoryName",  expression = "java(product.getCategory() != null ? product.getCategory().getName() : null)")
+    @Mapping(target = "effectivePrice",expression = "java(product.getEffectivePrice())")
+    @Mapping(target = "status",        expression = "java(product.getStatus().name())")
+    @Mapping(target = "imageUrls",     expression = "java(mapImageUrls(product))")
+    @Mapping(target = "totalStock",    ignore = true)
     @Mapping(target = "averageRating", ignore = true)
-    @Mapping(target = "reviewCount", ignore = true)
+    @Mapping(target = "reviewCount",   ignore = true)
+    @Mapping(target = "farmId",        ignore = true)   // TODO: khi có farm relationship trên Product
+    @Mapping(target = "farmName",      ignore = true)   // TODO: khi có farm relationship trên Product
+    @Mapping(target = "unit",          ignore = true)   // TODO: khi có unit field trên Product
+    @Mapping(target = "soldCount",     ignore = true)   // TODO: tính từ order items
     ProductDetailResponse toDetailResponse(Product product);
 
     List<ProductSummaryResponse> toSummaryResponseList(List<Product> products);

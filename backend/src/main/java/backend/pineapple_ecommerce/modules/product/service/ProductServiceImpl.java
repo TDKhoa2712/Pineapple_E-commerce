@@ -207,13 +207,13 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<ProductSummaryResponse> getAllProductsForAdmin(int page, int size) {
-        return getAllProductsForAdmin(page, size, null, null);
+        return getAllProductsForAdmin(page, size, null, null, null, null);
     }
 
     @Override
     @Transactional(readOnly = true)
     public PageResponse<ProductSummaryResponse> getAllProductsForAdmin(
-            int page, int size, String keyword, String statusStr) {
+            int page, int size, String keyword, String statusStr, String sortBy, String sortDirection) {
 
         String safeKeyword = (keyword == null || keyword.isBlank()) ? null : keyword.trim();
         ProductStatus status = null;
@@ -229,7 +229,14 @@ public class ProductServiceImpl implements ProductService {
                 ProductSpecification.searchByKeyword(safeKeyword, safeKeyword != null)
         );
 
-        Pageable pageable = PageRequest.of(page, size, safeKeyword != null ? Sort.unsorted() : Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable pageable;
+        if (safeKeyword != null && (sortBy == null || sortBy.isBlank())) {
+            pageable = PageRequest.of(page, size, Sort.unsorted());
+        } else {
+            Sort.Direction direction = "asc".equalsIgnoreCase(sortDirection) ? Sort.Direction.ASC : Sort.Direction.DESC;
+            String resolvedSortBy = resolveSortField(sortBy);
+            pageable = PageRequest.of(page, size, Sort.by(direction, resolvedSortBy));
+        }
         Page<Product> productPage = productRepository.findAll(spec, pageable);
 
         List<ProductSummaryResponse> enrichedList = enrichSummaryResponses(productPage.getContent());
