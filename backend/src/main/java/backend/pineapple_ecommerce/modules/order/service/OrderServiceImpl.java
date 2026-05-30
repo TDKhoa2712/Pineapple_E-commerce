@@ -27,6 +27,10 @@ import backend.pineapple_ecommerce.modules.product.models.Product;
 import backend.pineapple_ecommerce.modules.cart.service.CartService;
 import backend.pineapple_ecommerce.modules.coupon.service.CouponService;
 import backend.pineapple_ecommerce.modules.inventory.service.InventoryService;
+import backend.pineapple_ecommerce.modules.user.repository.UserRepository;
+import backend.pineapple_ecommerce.modules.farm.repository.FarmRepository;
+import backend.pineapple_ecommerce.modules.order.dto.response.AdminStatisticsResponse;
+import backend.pineapple_ecommerce.common.enums.FarmStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -57,6 +61,8 @@ public class OrderServiceImpl implements OrderService, OrderInternalService {
     private final CartService cartService;
     private final InventoryService inventoryService;
     private final CouponService couponService;
+    private final UserRepository userRepository;
+    private final FarmRepository farmRepository;
 
     // ─────────────────────────────────────────────
     // CREATE ORDER
@@ -405,5 +411,87 @@ public class OrderServiceImpl implements OrderService, OrderInternalService {
             throw new BusinessException(
                     String.format("Không thể chuyển trạng thái đơn hàng từ %s sang %s", current, next));
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AdminStatisticsResponse getAdminStatistics() {
+        long totalUsers = userRepository.count();
+        long pendingFarms = farmRepository.countByStatus(FarmStatus.PENDING_APPROVAL);
+
+        List<Order> allOrders = orderRepository.findAllByOrderByCreatedAtAsc();
+
+        BigDecimal totalRevenue = BigDecimal.ZERO;
+        long totalOrdersCount = allOrders.size();
+
+        java.util.Map<String, Long> statusDistribution = new java.util.HashMap<>();
+        for (backend.pineapple_ecommerce.common.enums.OrderStatus status : backend.pineapple_ecommerce.common.enums.OrderStatus.values()) {
+            statusDistribution.put(status.name(), 0L);
+        }
+
+        java.util.Map<String, AdminStatisticsResponse.MonthlyRevenue> monthlyMap = new java.util.LinkedHashMap<>();
+
+        java.time.format.DateTimeFormatter monthFormatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM");
+        LocalDateTime now = LocalDateTime.now();
+        for (int i = 11; i >= 0; i--) {
+            String m = now.minusMonths(i).format(monthFormatter);
+            monthlyMap.put(m, new AdminStatisticsResponse.MonthlyRevenue(m, BigDecimal.ZERO, 0L));
+        }
+
+        for (Order order : allOrders) {
+            statusDistribution.put(order.getStatus().name(), statusDistribution.getOrDefault(order.getStatus().name(), 0L) + 1);
+
+            if (order.getStatus() != OrderStatus.CANCELLED) {
+                totalRevenue = totalRevenue.add(order.getTotalAmount());
+                
+                String orderMonth = order.getCreatedAt().format(monthFormatter);
+                if (monthlyMap.containsKey(orderMonth)) {
+                    AdminStatisticsResponse.MonthlyRevenue monthly = monthlyMap.get(orderMonth);
+                    monthly.setRevenue(monthly.getRevenue().add(order.getTotalAmount()));
+                    monthly.setOrderCount(monthly.getOrderCount() + 1);
+                } else {
+                    monthlyMap.put(orderMonth, new AdminStatisticsResponse.MonthlyRevenue(orderMonth, order.getTotalAmount(), 1L));
+                }
+            }
+        }
+
+        String currentMonthStr = now.format(monthFormatter);
+        String prevMonthStr = now.minusMonths(1).format(monthFormatter);
+
+        AdminStatisticsResponse.MonthlyRevenue currentMonthData = monthlyMap.get(currentMonthStr);
+        AdminStatisticsResponse.MonthlyRevenue prevMonthData = monthlyMap.get(prevMonthStr);
+
+        BigDecimal currentRevenue = currentMonthData != null ? currentMonthData.getRevenue() : BigDecimal.ZERO;
+        BigDecimal prevRevenue = prevMonthData != null ? prevMonthData.getRevenue() : BigDecimal.ZERO;
+        long currentOrderCount = currentMonthData != null ? currentMonthData.getOrderCount() : 0L;
+        long prevOrderCount = prevMonthData != null ? prevMonthData.getOrderCount() : 0L;
+
+        double revenueChangePercentage = 0.0;
+        if (prevRevenue.compareTo(BigDecimal.ZERO) > 0) {
+            revenueChangePercentage = currentRevenue.subtract(prevRevenue)
+                    .divide(prevRevenue, 4, java.math.RoundingMode.HALF_UP)
+                    .multiply(BigDecimal.valueOf(100))
+                    .doubleValue();
+        } else if (currentRevenue.compareTo(BigDecimal.ZERO) > 0) {
+            revenueChangePercentage = 100.0;
+        }
+
+        double orderChangePercentage = 0.0;
+        if (prevOrderCount > 0) {
+            orderChangePercentage = ((double) (currentOrderCount - prevOrderCount) / prevOrderCount) * 100.0;
+        } else if (currentOrderCount > 0) {
+            orderChangePercentage = 100.0;
+        }
+
+        return AdminStatisticsResponse.builder()
+                .totalRevenue(totalRevenue)
+                .totalOrders(totalOrdersCount)
+                .totalUsers(totalUsers)
+                .pendingFarms(pendingFarms)
+                .revenueChangePercentage(revenueChangePercentage)
+                .orderChangePercentage(orderChangePercentage)
+                .monthlyRevenueList(new ArrayList<>(monthlyMap.values()))
+                .orderStatusDistribution(statusDistribution)
+                .build();
     }
 }

@@ -62,4 +62,6 @@ public interface OrderService {
     OrderResponse cancelOrder(Long orderId, Long userId);
 
     OrderResponse requestRefund(Long orderId, Long userId);
+
+    backend.pineapple_ecommerce.modules.order.dto.response.AdminStatisticsResponse getAdminStatistics();
 }

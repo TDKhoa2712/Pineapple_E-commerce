@@ -92,9 +92,12 @@ public class OrderController {
                 "Yêu cầu hoàn tiền đã được ghi nhận"));
     }
 
-    // ─────────────────────────────────────────────
-    // ADMIN
-    // ─────────────────────────────────────────────
+    @Operation(summary = "Lấy thống kê doanh thu và báo cáo (Admin)")
+    @GetMapping("/admin/statistics")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<backend.pineapple_ecommerce.modules.order.dto.response.AdminStatisticsResponse>> getStatistics() {
+        return ResponseEntity.ok(ApiResponse.success(orderService.getAdminStatistics()));
+    }
 
     /**
      * NEW — 2.1: Filter đa điều kiện (status + userId + paymentMethod + dateRange).

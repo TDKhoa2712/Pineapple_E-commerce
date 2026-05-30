@@ -56,5 +56,5 @@ public interface OrderRepository extends JpaRepository<Order, Long>,
      */
     Optional<Order> findById(Long id);
 
-
+    java.util.List<Order> findAllByOrderByCreatedAtAsc();
 }

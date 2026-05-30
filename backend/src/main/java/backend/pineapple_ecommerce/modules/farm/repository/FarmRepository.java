@@ -26,4 +26,6 @@ public interface FarmRepository extends JpaRepository<Farm, Long>, JpaSpecificat
 
     /** Compat: giữ lại cho FarmServiceImpl cũ */
     List<Farm> findByOwnerId(Long ownerId);
+
+    long countByStatus(FarmStatus status);
 }
