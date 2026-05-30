@@ -96,6 +96,13 @@ public class InventoryController {
                 inventoryService.adjustBatch(batchId, adminId, request), "Dieu chinh ton kho thanh cong"));
     }
 
+    @Operation(summary = "Lấy lịch sử điều chỉnh của lô hàng")
+    @GetMapping("/batches/{batchId}/adjustments")
+    public ResponseEntity<ApiResponse<List<StockAdjustmentResponse>>> getBatchAdjustments(
+            @PathVariable Long batchId) {
+        return ResponseEntity.ok(ApiResponse.success(inventoryService.getBatchAdjustments(batchId)));
+    }
+
     @Operation(summary = "Trigger thu cong danh dau lo het han (Admin)")
     @PostMapping("/admin/mark-expired")
     @PreAuthorize("hasRole('ADMIN')")
@@ -130,4 +137,14 @@ public class InventoryController {
                 report.getDetails().size());
         return ResponseEntity.ok(ApiResponse.success(report, message));
     }
+
+    @Operation(summary = "Lấy tất cả lô hàng phân trang (Admin)")
+    @GetMapping("/admin/batches")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<PageResponse<InventoryBatchResponse>>> getAllBatches(
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(ApiResponse.success(inventoryService.getAllBatches(page, size)));
+    }
 }
+

@@ -38,6 +38,8 @@ public interface InventoryService {
 
     StockAdjustmentResponse adjustBatch(Long batchId, Long adminUserId, StockAdjustmentRequest request);
 
+    List<StockAdjustmentResponse> getBatchAdjustments(Long batchId);
+
     // ─────────────────────────────────────────────
     // Order-domain operations
     // ─────────────────────────────────────────────
@@ -80,4 +82,6 @@ public interface InventoryService {
      * @return list productId, rỗng nếu farm chưa có sản phẩm nào
      */
     List<Long> getDistinctProductIdsByFarm(Long farmId);
+
+    PageResponse<InventoryBatchResponse> getAllBatches(int page, int size);
 }

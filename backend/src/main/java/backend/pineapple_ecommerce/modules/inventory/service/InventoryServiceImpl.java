@@ -196,6 +196,29 @@ public class InventoryServiceImpl implements InventoryService {
                 .adjustedByName(admin.getFullName()).createdAt(saved.getCreatedAt()).build();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<StockAdjustmentResponse> getBatchAdjustments(Long batchId) {
+        if (!inventoryBatchRepository.existsById(batchId)) {
+            throw new ResourceNotFoundException("InventoryBatch", batchId);
+        }
+        return stockAdjustmentRepository.findByBatchIdOrderByCreatedAtDesc(batchId).stream()
+                .map(adj -> StockAdjustmentResponse.builder()
+                        .id(adj.getId())
+                        .batchId(adj.getBatch().getId())
+                        .batchCode(adj.getBatch().getBatchCode())
+                        .productId(adj.getBatch().getProduct().getId())
+                        .productName(adj.getBatch().getProduct().getName())
+                        .adjustmentQty(adj.getAdjustmentQty())
+                        .reason(adj.getReason())
+                        .qtyBefore(adj.getQtyBefore())
+                        .qtyAfter(adj.getQtyAfter())
+                        .adjustedByName(adj.getAdjustedBy() != null ? adj.getAdjustedBy().getFullName() : "N/A")
+                        .createdAt(adj.getCreatedAt())
+                        .build())
+                .toList();
+    }
+
     // ─────────────────────────────────────────────
     // Order-domain operations
     // ─────────────────────────────────────────────
@@ -267,5 +290,16 @@ public class InventoryServiceImpl implements InventoryService {
     @Transactional(readOnly = true)
     public List<Long> getDistinctProductIdsByFarm(Long farmId) {
         return inventoryBatchRepository.findDistinctProductIdsByFarmId(farmId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<InventoryBatchResponse> getAllBatches(int page, int size) {
+        PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<InventoryBatch> rawPage = inventoryBatchRepository.findAllWithProductAndFarm(pageable);
+        List<InventoryBatchResponse> content = rawPage.getContent().stream()
+                .map(inventoryBatchMapper::toResponse)
+                .toList();
+        return PageResponse.of(new PageImpl<>(content, pageable, rawPage.getTotalElements()));
     }
 }

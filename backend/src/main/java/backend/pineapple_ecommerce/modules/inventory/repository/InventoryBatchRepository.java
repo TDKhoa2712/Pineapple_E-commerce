@@ -129,4 +129,13 @@ public interface InventoryBatchRepository extends JpaRepository<InventoryBatch, 
         WHERE b.status = 'AVAILABLE'
     """)
     long sumAllAvailableStock();
+
+    @Query(value = """
+        SELECT b FROM InventoryBatch b
+        LEFT JOIN FETCH b.product
+        LEFT JOIN FETCH b.farm
+        """,
+        countQuery = "SELECT COUNT(b) FROM InventoryBatch b")
+    Page<InventoryBatch> findAllWithProductAndFarm(Pageable pageable);
 }
+
