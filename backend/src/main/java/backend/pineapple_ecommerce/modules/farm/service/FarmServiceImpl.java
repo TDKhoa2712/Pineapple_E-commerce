@@ -96,15 +96,22 @@ public class FarmServiceImpl implements FarmService {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<FarmResponse> getAllFarmsAdmin(int page, int size, FarmStatus status) {
+    public PageResponse<FarmResponse> getAllFarmsAdmin(int page, int size, FarmStatus status, String keyword, String sortBy, String sortDirection) {
         Specification<Farm> spec = Specification.allOf(
                 FarmSpecification.fetchOwner(),
                 FarmSpecification.isDeleted(false),
-                FarmSpecification.hasStatus(status)
+                FarmSpecification.hasStatus(status),
+                FarmSpecification.searchByKeyword(keyword)
         );
 
+        Sort sort = Sort.by("createdAt").descending();
+        if (sortBy != null && !sortBy.isBlank()) {
+            Sort.Direction direction = "ASC".equalsIgnoreCase(sortDirection) ? Sort.Direction.ASC : Sort.Direction.DESC;
+            sort = Sort.by(direction, sortBy);
+        }
+
         var result = farmRepository
-                .findAll(spec, PageRequest.of(page, size, Sort.by("createdAt").descending()))
+                .findAll(spec, PageRequest.of(page, size, sort))
                 .map(farmMapper::toResponse);
         return PageResponse.of(result);
     }

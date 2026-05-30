@@ -26,7 +26,7 @@ public interface FarmService {
     PageResponse<FarmResponse> getAllFarms(int page, int size);
 
     /** Admin listing — tất cả status, có thể filter */
-    PageResponse<FarmResponse> getAllFarmsAdmin(int page, int size, FarmStatus status);
+    PageResponse<FarmResponse> getAllFarmsAdmin(int page, int size, FarmStatus status, String keyword, String sortBy, String sortDirection);
 
     List<FarmResponse> getMyFarms(Long ownerId);
 

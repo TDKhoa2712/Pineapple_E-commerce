@@ -123,16 +123,19 @@ public class FarmController {
     // ADMIN
     // ─────────────────────────────────────────────
 
-    @Operation(summary = "Lấy tất cả trang trại (Admin) — có filter status",
+    @Operation(summary = "Lấy tất cả trang trại (Admin) — filter đa điều kiện",
             security = @SecurityRequirement(name = "bearerAuth"))
     @GetMapping("/admin")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<PageResponse<FarmResponse>>> getAllAdmin(
             @RequestParam(defaultValue = "0")  int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) FarmStatus status) {
+            @RequestParam(required = false) FarmStatus status,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDirection) {
         return ResponseEntity.ok(ApiResponse.success(
-                farmService.getAllFarmsAdmin(page, size, status)));
+                farmService.getAllFarmsAdmin(page, size, status, keyword, sortBy, sortDirection)));
     }
 
     @Operation(summary = "Duyệt trang trại (Admin) — PENDING_APPROVAL → ACTIVE",

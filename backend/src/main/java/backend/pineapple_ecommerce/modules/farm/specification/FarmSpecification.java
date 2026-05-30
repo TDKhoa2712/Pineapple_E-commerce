@@ -29,4 +29,17 @@ public class FarmSpecification {
         return (root, query, cb) ->
                 isDeleted == null ? null : cb.equal(root.get("isDeleted"), isDeleted);
     }
+
+    public static Specification<Farm> searchByKeyword(String keyword) {
+        return (root, query, cb) -> {
+            if (keyword == null || keyword.isBlank()) return null;
+            String pattern = "%" + keyword.trim().toLowerCase() + "%";
+            return cb.or(
+                    cb.like(cb.lower(root.get("name")), pattern),
+                    cb.like(cb.lower(root.get("location")), pattern),
+                    cb.like(cb.lower(root.join("owner", jakarta.persistence.criteria.JoinType.LEFT).get("fullName")), pattern),
+                    cb.like(cb.lower(root.join("owner", jakarta.persistence.criteria.JoinType.LEFT).get("email")), pattern)
+            );
+        };
+    }
 }
