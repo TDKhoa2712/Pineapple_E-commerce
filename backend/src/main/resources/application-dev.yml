@@ -121,3 +121,11 @@ app:
   #   token: ${GHTK_TOKEN}
   #   partner-id: ${GHTK_PARTNER_ID}
   #   base-url: https://services.giaohangtietkiem.vn
+
+  # =========================
+  # COOKIE SECURITY (DEV only)
+  # =========================
+  # secure=false cho phép HttpOnly cookie hoạt động trên HTTP (localhost)
+  # Trong production (application-prod.yml) phải đặt secure=true
+  cookie:
+    secure: false
