@@ -50,19 +50,25 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     /**
      * Admin: lấy tất cả review (kể cả isHidden = true),
-     * lọc theo keyword (tên user / nội dung) và rating.
+     * lọc theo keyword (tên user / nội dung), rating, productId và userId.
      */
     @Query("""
         SELECT r FROM Review r
         LEFT JOIN FETCH r.user
         LEFT JOIN FETCH r.product
         WHERE (:rating IS NULL OR r.rating = :rating)
+        AND (:productId IS NULL OR r.product.id = :productId)
+        AND (:userId IS NULL OR r.user.id = :userId)
         AND (:keyword IS NULL OR :keyword = ''
             OR LOWER(r.user.fullName) LIKE LOWER(CONCAT('%', :keyword, '%'))
+            OR LOWER(r.user.email)    LIKE LOWER(CONCAT('%', :keyword, '%'))
+            OR LOWER(r.product.name)  LIKE LOWER(CONCAT('%', :keyword, '%'))
             OR LOWER(r.comment)       LIKE LOWER(CONCAT('%', :keyword, '%')))
     """)
     Page<Review> findAllForAdmin(
-            @Param("keyword") String keyword,
-            @Param("rating")  Integer rating,
+            @Param("keyword")   String keyword,
+            @Param("rating")    Integer rating,
+            @Param("productId") Long productId,
+            @Param("userId")    Long userId,
             Pageable pageable);
 }

@@ -56,6 +56,6 @@ public interface ReviewService {
     /** Rating trung bình của sản phẩm (double 1.0 – 5.0). */
     Double getAverageRating(Long productId);
 
-    /** Admin: lấy tất cả review có filter keyword + rating. */
-    PageResponse<ReviewResponse> getAllReviews(int page, int size, String keyword, Integer rating);
+    /** Admin: lấy tất cả review có filter keyword, rating, productId, userId và sort. */
+    PageResponse<ReviewResponse> getAllReviews(int page, int size, String keyword, Integer rating, Long productId, Long userId, String sortBy, String sortDirection);
 }

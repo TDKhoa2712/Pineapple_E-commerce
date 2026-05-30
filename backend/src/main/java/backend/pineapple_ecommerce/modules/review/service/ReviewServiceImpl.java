@@ -260,12 +260,18 @@ public class ReviewServiceImpl implements ReviewService {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<ReviewResponse> getAllReviews(int page, int size, String keyword, Integer rating) {
+    public PageResponse<ReviewResponse> getAllReviews(int page, int size, String keyword, Integer rating, Long productId, Long userId, String sortBy, String sortDirection) {
         String safeKeyword = (keyword == null || keyword.isBlank()) ? null : keyword.trim();
 
+        Sort sort = Sort.by("createdAt").descending();
+        if (sortBy != null && !sortBy.isBlank()) {
+            Sort.Direction direction = "ASC".equalsIgnoreCase(sortDirection) ? Sort.Direction.ASC : Sort.Direction.DESC;
+            sort = Sort.by(direction, sortBy);
+        }
+
         Page<ReviewResponse> result = reviewRepository
-                .findAllForAdmin(safeKeyword, rating,
-                        PageRequest.of(page, size, Sort.by("createdAt").descending()))
+                .findAllForAdmin(safeKeyword, rating, productId, userId,
+                        PageRequest.of(page, size, sort))
                 .map(reviewMapper::toResponse);
 
         return PageResponse.of(result);

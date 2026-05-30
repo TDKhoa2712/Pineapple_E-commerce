@@ -109,7 +109,7 @@ public class ReviewController {
     // ADMIN
     // ─────────────────────────────────────────────
 
-    @Operation(summary = "Lấy tất cả đánh giá (Admin) — filter keyword + rating",
+    @Operation(summary = "Lấy tất cả đánh giá (Admin) — filter đa điều kiện & sort",
             security = @SecurityRequirement(name = "bearerAuth"))
     @GetMapping("/admin/all")
     @PreAuthorize("hasRole('ADMIN')")
@@ -117,10 +117,14 @@ public class ReviewController {
             @RequestParam(defaultValue = "0")  int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) Integer rating) {
+            @RequestParam(required = false) Integer rating,
+            @RequestParam(required = false) Long productId,
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDirection) {
 
         return ResponseEntity.ok(ApiResponse.success(
-                reviewService.getAllReviews(page, size, keyword, rating)));
+                reviewService.getAllReviews(page, size, keyword, rating, productId, userId, sortBy, sortDirection)));
     }
 
     /**
