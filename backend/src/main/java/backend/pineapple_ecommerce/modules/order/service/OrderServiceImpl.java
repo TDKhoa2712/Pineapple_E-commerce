@@ -139,6 +139,8 @@ public class OrderServiceImpl implements OrderService, OrderInternalService {
         if (request.getCouponCode() != null && !request.getCouponCode().trim().isEmpty()) {
             discountAmount = couponService.applyAndLock(request.getCouponCode().trim(), userId, cart.getItems(), subtotal);
             order.setDiscountAmount(discountAmount);
+            // FIX: lưu couponCode vào Order entity để hiển thị trong OrderResponse
+            order.setCouponCode(request.getCouponCode().trim());
         }
 
         order.setTotalAmount(subtotal.add(shippingFee).subtract(order.getDiscountAmount()));
@@ -172,6 +174,13 @@ public class OrderServiceImpl implements OrderService, OrderInternalService {
 
     @Override
     @Transactional(readOnly = true)
+    public OrderResponse getOrderByIdAsAdmin(Long orderId) {
+        Order order = findOrderWithItems(orderId);
+        return orderMapper.toResponse(order);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResponse<OrderResponse> getMyOrders(Long userId, OrderStatus status, int page, int size) {
         var pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         Page<Order> result = (status != null)
@@ -188,6 +197,8 @@ public class OrderServiceImpl implements OrderService, OrderInternalService {
             PaymentMethod paymentMethod,
             LocalDateTime from,
             LocalDateTime to,
+            String sortBy,
+            String sortDirection,
             int page,
             int size) {
 
@@ -197,7 +208,13 @@ public class OrderServiceImpl implements OrderService, OrderInternalService {
                         .and(OrderSpecification.hasPaymentMethod(paymentMethod))
                         .and(OrderSpecification.createdBetween(from, to));
 
-        PageRequest pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Sort sort = Sort.by("createdAt").descending();
+        if (sortBy != null && !sortBy.isBlank()) {
+            Sort.Direction direction = "ASC".equalsIgnoreCase(sortDirection) ? Sort.Direction.ASC : Sort.Direction.DESC;
+            sort = Sort.by(direction, sortBy);
+        }
+
+        PageRequest pageable = PageRequest.of(page, size, sort);
 
         Page<Order> orderPage = orderRepository.findAll(spec, pageable);
 

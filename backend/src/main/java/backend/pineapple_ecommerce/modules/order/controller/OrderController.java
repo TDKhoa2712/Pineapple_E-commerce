@@ -6,6 +6,7 @@ import backend.pineapple_ecommerce.modules.order.service.OrderManagementService;
 import backend.pineapple_ecommerce.modules.order.service.OrderService;
 import backend.pineapple_ecommerce.modules.order.dto.request.BulkOrderStatusRequest;
 import backend.pineapple_ecommerce.modules.order.dto.request.CreateOrderRequest;
+import backend.pineapple_ecommerce.modules.order.dto.request.UpdateOrderStatusRequest;
 import backend.pineapple_ecommerce.common.dto.response.ApiResponse;
 import backend.pineapple_ecommerce.modules.order.dto.response.OrderResponse;
 import backend.pineapple_ecommerce.common.dto.response.PageResponse;
@@ -98,7 +99,7 @@ public class OrderController {
     /**
      * NEW — 2.1: Filter đa điều kiện (status + userId + paymentMethod + dateRange).
      */
-    @Operation(summary = "Lấy tất cả đơn hàng (Admin) — filter đa điều kiện")
+    @Operation(summary = "Lấy tất cả đơn hàng (Admin) — filter đa điều kiện & sort")
     @GetMapping("/admin")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<PageResponse<OrderResponse>>> getAllOrders(
@@ -107,11 +108,20 @@ public class OrderController {
             @RequestParam(required = false) PaymentMethod paymentMethod,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDirection,
             @RequestParam(defaultValue = "0")  int page,
             @RequestParam(defaultValue = "20") int size) {
 
         return ResponseEntity.ok(ApiResponse.success(
-                orderService.getAllOrders(status, userId, paymentMethod, from, to, page, size)));
+                orderService.getAllOrders(status, userId, paymentMethod, from, to, sortBy, sortDirection, page, size)));
+    }
+
+    @Operation(summary = "Chi tiết đơn hàng bất kỳ (Admin)")
+    @GetMapping("/admin/{orderId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<OrderResponse>> getOrderAsAdmin(@PathVariable Long orderId) {
+        return ResponseEntity.ok(ApiResponse.success(orderService.getOrderByIdAsAdmin(orderId)));
     }
 
     @Operation(summary = "Cập nhật trạng thái đơn hàng (Admin)")
@@ -119,9 +129,9 @@ public class OrderController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<OrderResponse>> updateStatus(
             @PathVariable Long orderId,
-            @RequestParam OrderStatus status) {
+            @Valid @RequestBody UpdateOrderStatusRequest request) {
         return ResponseEntity.ok(ApiResponse.success(
-                orderService.updateOrderStatus(orderId, status), "Cập nhật trạng thái thành công"));
+                orderService.updateOrderStatus(orderId, request.getStatus()), "Cập nhật trạng thái thành công"));
     }
 
     /**

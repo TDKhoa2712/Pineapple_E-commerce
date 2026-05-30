@@ -11,6 +11,12 @@ import java.util.List;
 @Builder
 public class OrderResponse {
     private Long id;
+
+    // FIX: thêm user info để FE hiển thị (OrderResponse của FE kỳ vọng userId, userEmail, userFullName)
+    private Long   userId;
+    private String userEmail;
+    private String userFullName;
+
     private String status;
     private String paymentStatus;
     private String paymentMethod;
@@ -23,6 +29,10 @@ public class OrderResponse {
     private BigDecimal totalAmount;
 
     private String note;
+
+    // FIX: thêm couponCode để FE hiển thị mã giảm giá đã dùng
+    private String couponCode;
+
     private List<OrderItemResponse> items;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

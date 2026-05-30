@@ -24,6 +24,9 @@ public interface OrderService {
 
     OrderResponse getOrderById(Long orderId, Long userId);
 
+    /** Admin: xem chi tiết đơn hàng bất kỳ (không kiểm tra ownership). */
+    OrderResponse getOrderByIdAsAdmin(Long orderId);
+
     /**
      * Lịch sử đơn hàng của user — phân trang.
      * NEW: thêm filter status (nullable = tất cả).
@@ -45,11 +48,13 @@ public interface OrderService {
             PaymentMethod paymentMethod,
             LocalDateTime from,
             LocalDateTime to,
+            String sortBy,
+            String sortDirection,
             int page, int size);
 
     /** Compat: gọi getAllOrders với chỉ status filter */
     default PageResponse<OrderResponse> getAllOrders(OrderStatus status, int page, int size) {
-        return getAllOrders(status, null, null, null, null, page, size);
+        return getAllOrders(status, null, null, null, null, null, null, page, size);
     }
 
     OrderResponse updateOrderStatus(Long orderId, OrderStatus newStatus);

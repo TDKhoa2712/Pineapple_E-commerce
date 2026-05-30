@@ -76,6 +76,10 @@ public class Order extends BaseEntity {
     @Column(name = "note", length = 500)
     private String note;
 
+    // FIX: thêm couponCode để map vào OrderResponse.couponCode cho FE
+    @Column(name = "coupon_code", length = 50)
+    private String couponCode;
+
     // === Relationships ===
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)

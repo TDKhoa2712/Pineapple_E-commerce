@@ -68,6 +68,10 @@ public interface OrderMapper {
 
         return OrderResponse.builder()
                 .id(order.getId())
+                // FIX: populate user info từ order.user
+                .userId(order.getUser() != null ? order.getUser().getId() : null)
+                .userEmail(order.getUser() != null ? order.getUser().getEmail() : null)
+                .userFullName(order.getUser() != null ? order.getUser().getFullName() : null)
                 .status(order.getStatus() != null ? order.getStatus().name() : null)
                 .paymentStatus(order.getPaymentStatus() != null ? order.getPaymentStatus().name() : null)
                 .paymentMethod(order.getPaymentMethod() != null ? order.getPaymentMethod().name() : null)
@@ -77,6 +81,8 @@ public interface OrderMapper {
                 .discountAmount(order.getDiscountAmount())
                 .totalAmount(order.getTotalAmount())
                 .note(order.getNote())
+                // FIX: populate couponCode
+                .couponCode(order.getCouponCode())
                 .createdAt(order.getCreatedAt())
                 .updatedAt(order.getUpdatedAt())
                 .items(itemResponses)
