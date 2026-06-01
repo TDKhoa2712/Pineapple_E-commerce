@@ -82,7 +82,7 @@ spring:
       mail.smtp.writetimeout: 5000
 
 server:
-  port: 8080
+  port: ${PORT:8080}
 
 springdoc:
   api-docs:

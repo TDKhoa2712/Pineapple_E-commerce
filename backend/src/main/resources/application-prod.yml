@@ -58,11 +58,11 @@ app:
     frontend-result-url: ${APP_VNPAY_FRONTEND_RESULT_URL:https://yourdomain.com/payment/result}
 
   ghn:
-    token: ${GHN_TOKEN}
-    shop-id: ${GHN_SHOP_ID}
+    token: ${GHN_TOKEN:}
+    shop-id: ${GHN_SHOP_ID:0}
     # Chuyển sang URL prod khi deploy
-    webhook-secret: ${GHN_WEBHOOK_SECRET}
-    base-url: https://online-gateway.ghn.vn/shiip/public-api
+    webhook-secret: ${GHN_WEBHOOK_SECRET:}
+    base-url: ${GHN_BASE_URL:https://online-gateway.ghn.vn/shiip/public-api}
 
   security:
     trusted-proxies:
