@@ -150,6 +150,12 @@ public class AuthServiceImpl implements AuthService {
         RefreshToken refreshToken = refreshTokenService.verifyRefreshToken(request.getRefreshToken());
         User user = refreshToken.getUser();
 
+        switch (user.getStatus()) {
+            case INACTIVE -> throw new UnauthorizedException("Tài khoản chưa được kích hoạt");
+            case BANNED   -> throw new UnauthorizedException("Tài khoản đã bị khoá");
+            default       -> { /* ACTIVE */ }
+        }
+
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
         String newAccessToken   = jwtService.generateAccessToken(userDetails);
         RefreshToken newRefresh = refreshTokenService.createRefreshToken(user);

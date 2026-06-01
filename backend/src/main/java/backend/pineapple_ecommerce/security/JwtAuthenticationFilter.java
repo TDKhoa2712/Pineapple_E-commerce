@@ -49,29 +49,37 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         final String jwt = authHeader.substring(7);
+        boolean blocked = false;
 
         try {
             Claims claims = jwtService.extractAllClaims(jwt);
             String email = claims.getSubject();
 
             if (email != null) {
-                UserDetails userDetails = jwtService.buildUserDetailsFromClaims(claims);
+                // Luôn load từ DB để kiểm tra trạng thái mới nhất (ACTIVE / BANNED / INACTIVE)
+                UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
-                if (userDetails == null) {
-                    // Fallback to database for old tokens / tests
-                    userDetails = userDetailsService.loadUserByUsername(email);
+                if (!userDetails.isAccountNonLocked()) {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json;charset=UTF-8");
+                    response.getWriter().write("{\"success\":false,\"message\":\"Tài khoản đã bị khoá\"}");
+                    blocked = true;
+                } else if (!userDetails.isEnabled()) {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json;charset=UTF-8");
+                    response.getWriter().write("{\"success\":false,\"message\":\"Tài khoản chưa được kích hoạt\"}");
+                    blocked = true;
+                } else {
+                    UsernamePasswordAuthenticationToken authToken =
+                            new UsernamePasswordAuthenticationToken(
+                                    userDetails,
+                                    null,
+                                    userDetails.getAuthorities()
+                            );
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    // Ghi đè SecurityContext với thông tin mới nhất từ DB
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
-
-                UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(
-                                userDetails,
-                                null,
-                                userDetails.getAuthorities()
-                        );
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-                // Cố tình Ghi đè (Overwrite) SecurityContext hiện tại bằng dữ liệu mới nhất
-                SecurityContextHolder.getContext().setAuthentication(authToken);
             }
         } catch (ExpiredJwtException e) {
             log.warn("JWT is expired: {}", e.getMessage());
@@ -81,6 +89,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             log.warn("JWT authentication failed: {}", e.getMessage());
         }
 
-        filterChain.doFilter(request, response);
+        if (!blocked) {
+            filterChain.doFilter(request, response);
+        }
     }
 }

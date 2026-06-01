@@ -1,6 +1,7 @@
 package backend.pineapple_ecommerce.modules.auth.service;
 
 import backend.pineapple_ecommerce.modules.user.models.User;
+import backend.pineapple_ecommerce.common.enums.UserStatus;
 import backend.pineapple_ecommerce.security.CustomUserDetails;
 import backend.pineapple_ecommerce.security.OAuth2UserInfo;
 import backend.pineapple_ecommerce.security.OAuth2UserInfoFactory;
@@ -60,9 +61,16 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         // Bước 3: Delegate toàn bộ business logic sang OAuth2Service
         User user = oauth2Service.processOAuth2User(registrationId, userInfo);
 
+        // Kiểm tra trạng thái người dùng sau khi tạo / lấy từ DB
+        if (user.getStatus() == UserStatus.BANNED) {
+            throw new OAuth2AuthenticationException(new OAuth2Error("account_banned"), "Tài khoản đã bị khoá");
+        }
+        if (user.getStatus() == UserStatus.INACTIVE) {
+            throw new OAuth2AuthenticationException(new OAuth2Error("account_inactive"), "Tài khoản chưa được kích hoạt");
+        }
+
         // Bước 4: Wrap thành CustomUserDetails — implements cả UserDetails + OAuth2User
         // Giữ nguyên attributes từ provider để SuccessHandler có thể đọc email
         return CustomUserDetails.of(user, oAuth2User.getAttributes());
     }
 }
-
