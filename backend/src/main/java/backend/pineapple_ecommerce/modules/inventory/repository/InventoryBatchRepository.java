@@ -45,9 +45,9 @@ public interface InventoryBatchRepository extends JpaRepository<InventoryBatch, 
     Optional<InventoryBatch> findByIdWithLock(@Param("id") Long id);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT b FROM InventoryBatch b LEFT JOIN FETCH b.product LEFT JOIN FETCH b.farm " +
+    @Query("SELECT b FROM InventoryBatch b " +
            "WHERE b.product.id = :productId AND b.status = :status " +
-           "AND (b.farm IS NULL OR b.farm.status = 'ACTIVE' OR b.farm.status = 'PENDING_DEACTIVATION') " +
+           "AND (b.farm IS NULL OR EXISTS (SELECT 1 FROM Farm f WHERE f.id = b.farm.id AND (f.status = 'ACTIVE' OR f.status = 'PENDING_DEACTIVATION')))" +
            "ORDER BY b.expiryDate ASC NULLS LAST")
     List<InventoryBatch> findByProductIdAndStatusWithLock(
             @Param("productId") Long productId,
