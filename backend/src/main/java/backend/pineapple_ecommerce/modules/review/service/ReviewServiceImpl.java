@@ -10,6 +10,10 @@ import backend.pineapple_ecommerce.modules.review.dto.request.CreateReviewReques
 import backend.pineapple_ecommerce.modules.review.dto.request.UpdateReviewRequest;
 import backend.pineapple_ecommerce.common.dto.response.PageResponse;
 import backend.pineapple_ecommerce.modules.review.dto.response.ReviewResponse;
+import backend.pineapple_ecommerce.modules.review.dto.response.ReviewRatingResponse;
+import backend.pineapple_ecommerce.modules.review.dto.response.ReviewEligibilityResponse;
+import java.util.Map;
+import java.util.HashMap;
 import backend.pineapple_ecommerce.common.exception.BusinessException;
 import backend.pineapple_ecommerce.common.exception.ResourceNotFoundException;
 import backend.pineapple_ecommerce.common.exception.UnauthorizedException;
@@ -54,26 +58,29 @@ public class ReviewServiceImpl implements ReviewService {
         var user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", userId));
 
-        // FIX: dùng 1 query thay vì load toàn bộ đơn hàng vào memory
-        boolean hasPurchased = orderRepository
-                .existsByUserIdAndProductIdAndDelivered(userId, request.getProductId());
+        long purchasedQty = orderRepository.countDeliveredQuantityByUserIdAndProductId(userId, request.getProductId());
 
-        if (!hasPurchased) {
+        if (purchasedQty <= 0) {
             throw new BusinessException("Bạn chỉ có thể đánh giá sản phẩm đã mua và nhận hàng");
         }
 
-        if (reviewRepository.existsByUserIdAndProductId(userId, request.getProductId())) {
-            throw new BusinessException("Bạn đã đánh giá sản phẩm này rồi");
+        long reviewsCount = reviewRepository.countByUserIdAndProductId(userId, request.getProductId());
+        if (reviewsCount >= purchasedQty) {
+            throw new BusinessException("Bạn đã đánh giá hết số lượng sản phẩm này đã mua");
         }
 
         Review review = reviewMapper.toEntity(request);
         review.setUser(user);
         review.setProduct(product);
 
-        if (request.getImageUrls() != null && !request.getImageUrls().isEmpty()) {
+        if (request.getImages() != null && !request.getImages().isEmpty()) {
             List<ReviewImage> images = new ArrayList<>();
-            for (String url : request.getImageUrls()) {
-                images.add(ReviewImage.builder().review(review).imageUrl(url).build());
+            for (var imgDto : request.getImages()) {
+                images.add(ReviewImage.builder()
+                        .review(review)
+                        .imageUrl(imgDto.getUrl())
+                        .publicId(imgDto.getPublicId())
+                        .build());
             }
             review.setImages(images);
         }
@@ -260,6 +267,39 @@ public class ReviewServiceImpl implements ReviewService {
 
     @Override
     @Transactional(readOnly = true)
+    public ReviewRatingResponse getProductRatingStats(Long productId) {
+        Double avgRating = reviewRepository.getAverageRatingByProductId(productId);
+        if (avgRating == null) {
+            avgRating = 0.0;
+        }
+
+        long totalReviews = reviewRepository.countVisibleReviewsByProductId(productId);
+
+        Map<Integer, Long> distribution = new HashMap<>();
+        for (int i = 1; i <= 5; i++) {
+            distribution.put(i, 0L);
+        }
+
+        List<Object[]> distData = reviewRepository.getRatingDistributionByProductId(productId);
+        if (distData != null) {
+            for (Object[] row : distData) {
+                Integer rating = (Integer) row[0];
+                Long count = (Long) row[1];
+                if (rating >= 1 && rating <= 5) {
+                    distribution.put(rating, count);
+                }
+            }
+        }
+
+        return ReviewRatingResponse.builder()
+                .averageRating(avgRating)
+                .totalReviews(totalReviews)
+                .distribution(distribution)
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResponse<ReviewResponse> getAllReviews(int page, int size, String keyword, Integer rating, Long productId, Long userId, String sortBy, String sortDirection) {
         String safeKeyword = (keyword == null || keyword.isBlank()) ? null : keyword.trim();
 
@@ -275,5 +315,17 @@ public class ReviewServiceImpl implements ReviewService {
                 .map(reviewMapper::toResponse);
 
         return PageResponse.of(result);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ReviewEligibilityResponse checkReviewEligibility(Long userId, Long productId) {
+        long purchasedQty = orderRepository.countDeliveredQuantityByUserIdAndProductId(userId, productId);
+        long reviewsCount = reviewRepository.countByUserIdAndProductId(userId, productId);
+        return ReviewEligibilityResponse.builder()
+                .eligible(purchasedQty > 0 && reviewsCount < purchasedQty)
+                .purchasedQuantity(purchasedQty)
+                .reviewedCount(reviewsCount)
+                .build();
     }
 }

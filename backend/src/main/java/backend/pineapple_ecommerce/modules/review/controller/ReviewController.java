@@ -7,6 +7,8 @@ import backend.pineapple_ecommerce.modules.review.dto.request.VoteReviewRequest;
 import backend.pineapple_ecommerce.common.dto.response.ApiResponse;
 import backend.pineapple_ecommerce.common.dto.response.PageResponse;
 import backend.pineapple_ecommerce.modules.review.dto.response.ReviewResponse;
+import backend.pineapple_ecommerce.modules.review.dto.response.ReviewRatingResponse;
+import backend.pineapple_ecommerce.modules.review.dto.response.ReviewEligibilityResponse;
 import backend.pineapple_ecommerce.modules.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -45,13 +47,21 @@ public class ReviewController {
 
     @Operation(summary = "Rating trung bình của sản phẩm (public)")
     @GetMapping("/product/{productId}/rating")
-    public ResponseEntity<ApiResponse<Double>> getAverageRating(@PathVariable Long productId) {
-        return ResponseEntity.ok(ApiResponse.success(reviewService.getAverageRating(productId)));
+    public ResponseEntity<ApiResponse<ReviewRatingResponse>> getAverageRating(@PathVariable Long productId) {
+        return ResponseEntity.ok(ApiResponse.success(reviewService.getProductRatingStats(productId)));
     }
 
     // ─────────────────────────────────────────────
     // AUTHENTICATED USER
     // ─────────────────────────────────────────────
+
+    @Operation(summary = "Kiểm tra quyền đánh giá sản phẩm của user hiện tại",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @GetMapping("/product/{productId}/eligible")
+    public ResponseEntity<ApiResponse<ReviewEligibilityResponse>> checkEligibility(@PathVariable Long productId) {
+        Long userId = userService.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.success(reviewService.checkReviewEligibility(userId, productId)));
+    }
 
     @Operation(summary = "Tạo đánh giá (cần đã mua & nhận hàng)",
             security = @SecurityRequirement(name = "bearerAuth"))

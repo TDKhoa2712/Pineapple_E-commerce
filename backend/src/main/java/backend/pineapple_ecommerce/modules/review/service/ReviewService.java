@@ -4,6 +4,8 @@ import backend.pineapple_ecommerce.modules.review.dto.request.CreateReviewReques
 import backend.pineapple_ecommerce.modules.review.dto.request.UpdateReviewRequest;
 import backend.pineapple_ecommerce.common.dto.response.PageResponse;
 import backend.pineapple_ecommerce.modules.review.dto.response.ReviewResponse;
+import backend.pineapple_ecommerce.modules.review.dto.response.ReviewRatingResponse;
+import backend.pineapple_ecommerce.modules.review.dto.response.ReviewEligibilityResponse;
 
 /**
  * Quản lý đánh giá sản phẩm.
@@ -56,6 +58,12 @@ public interface ReviewService {
     /** Rating trung bình của sản phẩm (double 1.0 – 5.0). */
     Double getAverageRating(Long productId);
 
+    /** Chi tiết rating của sản phẩm bao gồm số sao trung bình, tổng review và phân phối sao. */
+    ReviewRatingResponse getProductRatingStats(Long productId);
+
     /** Admin: lấy tất cả review có filter keyword, rating, productId, userId và sort. */
     PageResponse<ReviewResponse> getAllReviews(int page, int size, String keyword, Integer rating, Long productId, Long userId, String sortBy, String sortDirection);
+
+    /** Kiểm tra quyền đánh giá sản phẩm của user hiện tại. */
+    ReviewEligibilityResponse checkReviewEligibility(Long userId, Long productId);
 }

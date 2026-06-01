@@ -24,5 +24,12 @@ public class CreateReviewRequest {
     @Size(max = 1000, message = "Bình luận không quá 1000 ký tự")
     private String comment;
 
-    private List<String> imageUrls;
+    private List<ImageDto> images;
+
+    @Getter
+    @Setter
+    public static class ImageDto {
+        private String url;
+        private String publicId;
+    }
 }

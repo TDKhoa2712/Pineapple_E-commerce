@@ -41,7 +41,15 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     boolean existsByUserIdAndProductId(Long userId, Long productId);
 
+    long countByUserIdAndProductId(Long userId, Long productId);
+
     int countByProductId(Long productId);
+
+    @Query("SELECT COUNT(r) FROM Review r WHERE r.product.id = :productId AND r.isHidden = false")
+    long countVisibleReviewsByProductId(@Param("productId") Long productId);
+
+    @Query("SELECT r.rating, COUNT(r) FROM Review r WHERE r.product.id = :productId AND r.isHidden = false GROUP BY r.rating")
+    java.util.List<Object[]> getRatingDistributionByProductId(@Param("productId") Long productId);
 
     @Query("SELECT AVG(r.rating) FROM Review r WHERE r.product.id = :productId AND r.isHidden = false")
     Double getAverageRatingByProductId(@Param("productId") Long productId);
