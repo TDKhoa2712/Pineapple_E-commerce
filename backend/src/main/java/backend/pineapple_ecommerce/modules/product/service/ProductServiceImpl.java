@@ -483,7 +483,7 @@ public class ProductServiceImpl implements ProductService {
     // ─────────────────────────────────────────────
 
     private void ensureUserHasActiveFarm(Long ownerId) {
-        if (!farmRepository.existsByOwnerIdAndStatusAndIsDeletedFalse(ownerId, FarmStatus.ACTIVE)) {
+        if (!farmRepository.existsByOwnerIdAndStatusInAndIsDeletedFalse(ownerId, List.of(FarmStatus.ACTIVE, FarmStatus.PENDING_DEACTIVATION))) {
             throw new BusinessException("Trang trai cua ban chua hoat dong nen khong the thao tac san pham.");
         }
     }

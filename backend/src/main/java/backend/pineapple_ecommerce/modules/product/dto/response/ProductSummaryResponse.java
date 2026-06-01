@@ -22,6 +22,7 @@ public class ProductSummaryResponse implements Serializable {
     private String thumbnail;
     private Boolean isOrganic;
     private String status;
+    private String statusReason;
     private Long categoryId;
     private String categoryName;
     private Integer totalStock;

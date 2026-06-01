@@ -79,6 +79,9 @@ public class Product extends BaseEntity {
     @Builder.Default
     private ProductStatus status = ProductStatus.ACTIVE;
 
+    @Column(name = "status_reason", length = 500)
+    private String statusReason;
+
     // === Relationships ===
 
     @ManyToOne(fetch = FetchType.LAZY)

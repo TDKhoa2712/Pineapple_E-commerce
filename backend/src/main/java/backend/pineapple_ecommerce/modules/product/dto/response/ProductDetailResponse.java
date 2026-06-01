@@ -29,6 +29,7 @@ public class ProductDetailResponse implements Serializable {
     private Boolean isOrganic;
     private String thumbnail;
     private String status;
+    private String statusReason;
 
     private Long categoryId;
     private String categoryName;

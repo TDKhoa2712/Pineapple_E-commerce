@@ -23,6 +23,7 @@ public interface ProductMapper {
     @Mapping(target = "reviews", ignore = true)
     @Mapping(target = "wishlistItems", ignore = true)
     @Mapping(target = "status", ignore = true)   // default ACTIVE
+    @Mapping(target = "statusReason", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     Product toEntity(CreateProductRequest request);
@@ -32,6 +33,7 @@ public interface ProductMapper {
     @Mapping(target = "categoryName",  expression = "java(product.getCategory() != null ? product.getCategory().getName() : null)")
     @Mapping(target = "effectivePrice",expression = "java(product.getEffectivePrice())")
     @Mapping(target = "status",        expression = "java(product.getStatus().name())")
+    @Mapping(target = "statusReason",  source = "statusReason")
     @Mapping(target = "totalStock",    ignore = true)   // Service tính từ batches
     @Mapping(target = "averageRating", ignore = true)   // Service tính từ reviews
     @Mapping(target = "reviewCount",   ignore = true)   // Service tính từ reviews
@@ -46,6 +48,7 @@ public interface ProductMapper {
     @Mapping(target = "categoryName",  expression = "java(product.getCategory() != null ? product.getCategory().getName() : null)")
     @Mapping(target = "effectivePrice",expression = "java(product.getEffectivePrice())")
     @Mapping(target = "status",        expression = "java(product.getStatus().name())")
+    @Mapping(target = "statusReason",  source = "statusReason")
     @Mapping(target = "imageUrls",     expression = "java(mapImageUrls(product))")
     @Mapping(target = "totalStock",    ignore = true)
     @Mapping(target = "averageRating", ignore = true)
@@ -62,6 +65,7 @@ public interface ProductMapper {
     @Mapping(target = "category", ignore = true)
     @Mapping(target = "images", ignore = true)
     @Mapping(target = "slug", ignore = true)
+    @Mapping(target = "statusReason", ignore = true)
     void updateFromRequest(UpdateProductRequest request, @MappingTarget Product product);
 
     // Helper: Product → list URL ảnh

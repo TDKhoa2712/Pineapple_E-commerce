@@ -70,7 +70,7 @@ public class ProductSpecification {
                             cb.greaterThan(subRoot.get("remainingQuantity"), 0),
                             cb.or(
                                     cb.isNull(subRoot.get("farm")),
-                                    cb.equal(subRoot.get("farm").get("status"), FarmStatus.ACTIVE)
+                                    subRoot.get("farm").get("status").in(FarmStatus.ACTIVE, FarmStatus.PENDING_DEACTIVATION)
                             )
                     );
             return cb.exists(subquery);
@@ -87,7 +87,7 @@ public class ProductSpecification {
                     .where(
                             cb.equal(subRoot.get("product"), root),
                             cb.equal(subRoot.get("farm").get("id"), farmId),
-                            cb.equal(subRoot.get("farm").get("status"), FarmStatus.ACTIVE)
+                            subRoot.get("farm").get("status").in(FarmStatus.ACTIVE, FarmStatus.PENDING_DEACTIVATION)
                     );
             return cb.exists(subquery);
         };
