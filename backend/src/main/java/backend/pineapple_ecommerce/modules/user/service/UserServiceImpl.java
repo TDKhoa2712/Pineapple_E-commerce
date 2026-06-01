@@ -9,6 +9,7 @@ import backend.pineapple_ecommerce.modules.auth.dto.request.ChangePasswordReques
 import backend.pineapple_ecommerce.modules.user.dto.request.UpdateProfileRequest;
 import backend.pineapple_ecommerce.modules.user.dto.request.UpdateUserRolesRequest;
 import backend.pineapple_ecommerce.modules.user.dto.request.UpdateUserStatusRequest;
+import backend.pineapple_ecommerce.modules.user.dto.request.AdminUpdateUserRequest;
 import backend.pineapple_ecommerce.common.dto.response.PageResponse;
 import backend.pineapple_ecommerce.common.dto.response.UploadResponse;
 import backend.pineapple_ecommerce.modules.user.dto.response.UserResponse;
@@ -198,6 +199,11 @@ public class UserServiceImpl implements UserService {
         UserStatus oldStatus = user.getStatus();
         user.setStatus(request.getStatus());
 
+        // Nếu tài khoản bị khoá (BANNED) hoặc ngừng hoạt động (INACTIVE), thu hồi toàn bộ refresh token để kickout user ngay lập tức
+        if (request.getStatus() == UserStatus.BANNED || request.getStatus() == UserStatus.INACTIVE) {
+            refreshTokenService.revokeByUserId(targetUserId);
+        }
+
         User saved = userRepository.save(user);
         log.info("Admin {} changed user {} status: {} → {} | reason: {}",
                 adminId, targetUserId, oldStatus, request.getStatus(),
@@ -268,6 +274,67 @@ public class UserServiceImpl implements UserService {
         userRepository.save(user);
         refreshTokenService.revokeByUserId(user.getId());
         log.info("Admin reset password for userId={}", targetUserId);
+    }
+
+    // ─────────────────────────────────────────────
+    // ADMIN — CẬP NHẬT THÔNG TIN CÁ NHÂN USER
+    // ─────────────────────────────────────────────
+
+    @Override
+    @Transactional
+    public UserResponse updateUserAdmin(Long targetUserId, AdminUpdateUserRequest request) {
+        User user = findUserById(targetUserId);
+
+        // Validate phone nếu được cập nhật
+        if (request.getPhone() != null && !request.getPhone().isBlank()) {
+            boolean phoneTaken = userRepository.existsByPhone(request.getPhone())
+                    && !request.getPhone().equals(user.getPhone());
+            if (phoneTaken) {
+                throw new BusinessException("Số điện thoại đã được sử dụng bởi tài khoản khác");
+            }
+        }
+
+        // Cập nhật fullName nếu được cung cấp
+        if (request.getFullName() != null && !request.getFullName().isBlank()) {
+            user.setFullName(request.getFullName());
+        }
+
+        // Cập nhật phone nếu được cung cấp
+        if (request.getPhone() != null && !request.getPhone().isBlank()) {
+            user.setPhone(request.getPhone());
+        }
+
+        User saved = userRepository.save(user);
+        log.info("Admin updated user {} info", targetUserId);
+        return userMapper.toResponse(saved);
+    }
+
+    // ─────────────────────────────────────────────
+    // ADMIN — UPLOAD AVATAR CHO USER
+    // ─────────────────────────────────────────────
+
+    @Override
+    @Transactional
+    public UserResponse uploadUserAvatarAdmin(Long targetUserId, MultipartFile file) {
+        User user = findUserById(targetUserId);
+
+        // Validate file
+        fileValidator.validateImage(file);
+
+        // Xóa avatar cũ nếu tồn tại
+        if (user.getAvatar() != null && !user.getAvatar().isBlank() && user.getAvatarPublicId() != null) {
+            cloudinaryService.deleteImage(user.getAvatarPublicId());
+        }
+
+        // Upload avatar mới
+        UploadResponse uploadResponse = cloudinaryService.uploadImage(file, UploadFolder.AVATAR);
+
+        user.setAvatar(uploadResponse.getUrl());
+        user.setAvatarPublicId(uploadResponse.getPublicId());
+        userRepository.save(user);
+
+        log.info("Admin uploaded avatar for user {}", targetUserId);
+        return userMapper.toResponse(user);
     }
 
     // ─────────────────────────────────────────────

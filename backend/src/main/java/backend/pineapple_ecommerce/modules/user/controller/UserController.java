@@ -7,6 +7,7 @@ import backend.pineapple_ecommerce.modules.auth.dto.request.ChangePasswordReques
 import backend.pineapple_ecommerce.modules.user.dto.request.UpdateProfileRequest;
 import backend.pineapple_ecommerce.modules.user.dto.request.UpdateUserRolesRequest;
 import backend.pineapple_ecommerce.modules.user.dto.request.UpdateUserStatusRequest;
+import backend.pineapple_ecommerce.modules.user.dto.request.AdminUpdateUserRequest;
 import backend.pineapple_ecommerce.common.dto.response.ApiResponse;
 import backend.pineapple_ecommerce.common.dto.response.PageResponse;
 import backend.pineapple_ecommerce.modules.user.dto.response.UserResponse;
@@ -191,6 +192,51 @@ public class UserController {
 
         userService.adminResetPassword(userId, request);
         return ResponseEntity.ok(ApiResponse.success(null, "Đặt lại mật khẩu thành công"));
+    }
+
+    // ─────────────────────────────────────────────
+    // ADMIN — cập nhật thông tin cá nhân user
+    // ─────────────────────────────────────────────
+
+    /**
+     * PUT /api/v1/users/{userId}
+     *
+     * Admin cập nhật thông tin cá nhân của user (fullName, phone).
+     * Admin không thể cập nhật email, status, roles qua endpoint này.
+     * Body: { "fullName": "Nguyễn Văn A", "phone": "0912345678" }
+     */
+    @Operation(summary = "Cập nhật thông tin cá nhân user (Admin)")
+    @PutMapping("/{userId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<UserResponse>> updateUserAdmin(
+            @PathVariable Long userId,
+            @Valid @RequestBody AdminUpdateUserRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(
+                userService.updateUserAdmin(userId, request),
+                "Cập nhật thông tin user thành công"));
+    }
+
+    // ─────────────────────────────────────────────
+    // ADMIN — upload avatar cho user
+    // ─────────────────────────────────────────────
+
+    /**
+     * POST /api/v1/users/{userId}/avatar
+     *
+     * Admin upload/thay đổi avatar cho user.
+     * Xóa avatar cũ nếu tồn tại.
+     * Content-Type: multipart/form-data
+     * Form parameter: file (file ảnh)
+     */
+    @Operation(summary = "Upload avatar cho user (Admin)")
+    @PostMapping(value = "/{userId}/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<UserResponse>> uploadUserAvatarAdmin(
+            @PathVariable Long userId,
+            @RequestParam("file") MultipartFile file) {
+        return ResponseEntity.ok(ApiResponse.success(
+                userService.uploadUserAvatarAdmin(userId, file),
+                "Cập nhật avatar thành công"));
     }
 
     @Operation(summary = "Lấy danh sách địa chỉ của người dùng (Admin)")

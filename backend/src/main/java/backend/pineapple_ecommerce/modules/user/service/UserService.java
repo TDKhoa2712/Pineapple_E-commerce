@@ -68,6 +68,18 @@ public interface UserService {
     void adminResetPassword(Long targetUserId, AdminResetPasswordRequest request);
 
     /**
+     * Admin cập nhật thông tin cá nhân của user (fullName, phone).
+     * Admin không thể cập nhật email, status, roles qua endpoint này.
+     */
+    UserResponse updateUserAdmin(Long targetUserId, backend.pineapple_ecommerce.modules.user.dto.request.AdminUpdateUserRequest request);
+
+    /**
+     * Admin upload/thay đổi avatar cho user.
+     * Xóa avatar cũ nếu tồn tại.
+     */
+    UserResponse uploadUserAvatarAdmin(Long targetUserId, MultipartFile file);
+
+    /**
      * Helper nội bộ: resolve userId đang đăng nhập từ SecurityContext.
      */
     Long getCurrentUserId();
