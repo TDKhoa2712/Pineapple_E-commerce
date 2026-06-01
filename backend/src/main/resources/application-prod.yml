@@ -28,6 +28,9 @@ jwt:
   refresh-token-expiration-ms: 604800000
 
 app:
+  cookie:
+    secure: true
+
   cloudinary:
     cloud-name: ${CLOUDINARY_CLOUD_NAME}
     api-key: ${CLOUDINARY_API_KEY}

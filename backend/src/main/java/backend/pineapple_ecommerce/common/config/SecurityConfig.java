@@ -29,6 +29,10 @@ import org.springframework.security.oauth2.client.web.HttpSessionOAuth2Authoriza
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.web.csrf.CsrfFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import backend.pineapple_ecommerce.security.CsrfCookieFilter;
 
 
 import java.util.List;
@@ -62,6 +66,9 @@ public class SecurityConfig {
     private final CustomOAuth2UserService            customOAuth2UserService;
     private final OAuth2AuthenticationSuccessHandler oauth2SuccessHandler;
     private final OAuth2AuthenticationFailureHandler oauth2FailureHandler;
+
+    @Value("${app.cookie.secure:true}")
+    private boolean cookieSecure;
 
     // ─────────────────────────────────────────────
     // Public endpoints
@@ -111,6 +118,13 @@ public class SecurityConfig {
         return new HttpSessionOAuth2AuthorizationRequestRepository();
     }
 
+    private CookieCsrfTokenRepository csrfTokenRepository() {
+        CookieCsrfTokenRepository repository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+        repository.setSecure(cookieSecure);
+        repository.setCookiePath("/");
+        return repository;
+    }
+
     // ─────────────────────────────────────────────
     // Security Filter Chain
     // ─────────────────────────────────────────────
@@ -119,7 +133,26 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .csrf(AbstractHttpConfigurer::disable)
+                .csrf(csrf -> csrf
+                        .ignoringRequestMatchers(
+                                // Webhooks & Payment notifications
+                                "/api/v1/webhooks/**",
+                                "/api/v1/webhooks/ghn",
+                                "/api/v1/payments/vnpay-ipn",
+                                // Public Auth endpoints
+                                "/api/v1/auth/login",
+                                "/api/v1/auth/register",
+                                "/api/v1/auth/verify-email",
+                                "/api/v1/auth/resend-verification",
+                                "/api/v1/auth/refresh",
+                                "/api/v1/auth/password-reset/**",
+                                // Swagger/Docs
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html"
+                        )
+                        .csrfTokenRepository(csrfTokenRepository())
+                )
 
                 // IF_REQUIRED: session chỉ tạo khi cần (OAuth2 state param)
                 // Mọi API call vẫn stateless qua JWT
@@ -165,7 +198,8 @@ public class SecurityConfig {
                 )
 
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(new CsrfCookieFilter(), CsrfFilter.class);
 
         return http.build();
     }

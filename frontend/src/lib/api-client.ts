@@ -53,12 +53,27 @@ export const guestCartStorage = {
   },
 }
 
-// ─── Request interceptor: attach access token ────────────────────────────────
+const getCookie = (name: string): string | null => {
+  if (typeof document === 'undefined') return null
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]*)'))
+  return match ? decodeURIComponent(match[2]) : null
+}
+
+// ─── Request interceptor: attach access token & CSRF ──────────────────────────
 apiClient.interceptors.request.use((config) => {
   const token = tokenStorage.get()
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
+
+  // Auto-attach XSRF-TOKEN cookie if present
+  if (typeof window !== 'undefined') {
+    const xsrfToken = getCookie('XSRF-TOKEN')
+    if (xsrfToken && config.headers) {
+      config.headers['X-XSRF-TOKEN'] = xsrfToken
+    }
+  }
+
   return config
 })
 
