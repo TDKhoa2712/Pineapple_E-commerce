@@ -17,5 +17,5 @@ public interface InventoryReportService {
      * @param to   ngày kết thúc (null = đến hiện tại)
      * @return báo cáo gồm tổng hợp và chi tiết theo sản phẩm
      */
-    InventoryReportResponse generateReport(LocalDate from, LocalDate to);
+    InventoryReportResponse generateReport(LocalDate from, LocalDate to, String groupBy);
 }

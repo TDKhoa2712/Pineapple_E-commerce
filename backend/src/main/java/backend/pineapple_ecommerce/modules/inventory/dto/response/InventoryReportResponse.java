@@ -22,6 +22,7 @@ public class InventoryReportResponse {
     private LocalDate to;
     private ReportSummary summary;
     private List<ProductReportDetail> details;
+    private List<ReportTimelinePoint> timeline;
 
     @Getter
     @Builder
@@ -62,5 +63,14 @@ public class InventoryReportResponse {
         private LocalDate earliestImport;
         /** Ngày nhập kho muộn nhất trong kỳ */
         private LocalDate latestImport;
+    }
+
+    @Getter
+    @Builder
+    public static class ReportTimelinePoint {
+        private String label;
+        private LocalDate date;
+        private long quantityImported;
+        private long quantitySold;
     }
 }

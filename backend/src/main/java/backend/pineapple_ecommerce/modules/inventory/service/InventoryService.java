@@ -34,7 +34,7 @@ public interface InventoryService {
 
     List<InventoryBatchResponse> getExpiringSoon(int days);
 
-    PageResponse<InventorySummaryResponse> getInventorySummary(int page, int size);
+    PageResponse<InventorySummaryResponse> getInventorySummary(String keyword, int page, int size, String sortBy, String sortDirection);
 
     StockAdjustmentResponse adjustBatch(Long batchId, Long adminUserId, StockAdjustmentRequest request);
 
@@ -83,5 +83,5 @@ public interface InventoryService {
      */
     List<Long> getDistinctProductIdsByFarm(Long farmId);
 
-    PageResponse<InventoryBatchResponse> getAllBatches(int page, int size);
+    PageResponse<InventoryBatchResponse> getAllBatches(String keyword, int page, int size, String sortBy, String sortDirection);
 }

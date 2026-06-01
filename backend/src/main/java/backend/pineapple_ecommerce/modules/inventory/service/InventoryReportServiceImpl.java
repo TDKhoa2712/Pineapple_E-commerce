@@ -30,7 +30,7 @@ public class InventoryReportServiceImpl implements InventoryReportService {
 
     @Override
     @Transactional(readOnly = true)
-    public InventoryReportResponse generateReport(LocalDate from, LocalDate to) {
+    public InventoryReportResponse generateReport(LocalDate from, LocalDate to, String groupBy) {
         // Validate
         if (from != null && to != null && from.isAfter(to)) {
             throw new BusinessException("Ngày bắt đầu phải trước ngày kết thúc");
@@ -39,23 +39,68 @@ public class InventoryReportServiceImpl implements InventoryReportService {
         LocalDateTime fromDt = from != null ? from.atStartOfDay() : null;
         LocalDateTime toDt   = to   != null ? to.atTime(LocalTime.MAX) : null;
 
-        log.info("Generating inventory report from={} to={}", from, to);
+        log.info("Generating optimized inventory report from={} to={}, groupBy={}", from, to, groupBy);
 
-        // Lấy tất cả lô trong kỳ
-        List<InventoryBatch> batches =
-                inventoryBatchRepository.findByCreatedAtBetween(fromDt, toDt);
+        // Fetch aggregated values from optimized DB queries
+        List<Object[]> importReport = inventoryBatchRepository.findImportReportRaw(fromDt, toDt);
+        List<Object[]> salesReport  = inventoryBatchRepository.findSalesReportRaw(fromDt, toDt);
+        List<Object[]> expiryReport = inventoryBatchRepository.findExpiryReportRaw(from, to);
+        List<Object[]> importDates  = inventoryBatchRepository.findImportDatesRaw(fromDt, toDt);
 
-        // Tổng tồn kho hiện tại (không phụ thuộc kỳ báo cáo)
-        long currentAvailableStock = inventoryBatchRepository.sumAllAvailableStock();
+        // Map containing consolidated builders for each active product ID
+        Map<Long, ProductReportDetail.ProductReportDetailBuilder> detailBuilders = new java.util.LinkedHashMap<>();
+        Map<Long, String> productNames = new java.util.HashMap<>();
 
-        // ── Nhóm theo sản phẩm ──
-        Map<Long, List<InventoryBatch>> byProduct = new LinkedHashMap<>();
-        for (InventoryBatch b : batches) {
-            byProduct.computeIfAbsent(b.getProduct().getId(), k -> new ArrayList<>()).add(b);
+        // Process imports
+        for (Object[] row : importReport) {
+            Long productId = (Long) row[0];
+            String name = (String) row[1];
+            long batches = ((Number) row[2]).longValue();
+            long qty = ((Number) row[3]).longValue();
+
+            productNames.put(productId, name);
+            detailBuilders.computeIfAbsent(productId, k -> ProductReportDetail.builder().productId(k))
+                    .batchesImported(batches)
+                    .quantityImported(qty);
         }
 
-        // ── Lấy tổng tồn kho khả dụng hàng loạt để tránh N+1 ──
-        List<Long> productIds = new ArrayList<>(byProduct.keySet());
+        // Process sales
+        for (Object[] row : salesReport) {
+            Long productId = (Long) row[0];
+            String name = (String) row[1];
+            long qty = ((Number) row[2]).longValue();
+
+            productNames.putIfAbsent(productId, name);
+            detailBuilders.computeIfAbsent(productId, k -> ProductReportDetail.builder().productId(k))
+                    .quantitySold(qty);
+        }
+
+        // Process expirations
+        for (Object[] row : expiryReport) {
+            Long productId = (Long) row[0];
+            String name = (String) row[1];
+            long batches = ((Number) row[2]).longValue();
+            long qty = ((Number) row[3]).longValue();
+
+            productNames.putIfAbsent(productId, name);
+            detailBuilders.computeIfAbsent(productId, k -> ProductReportDetail.builder().productId(k))
+                    .batchesExpired(batches)
+                    .quantityExpired(qty);
+        }
+
+        // Process import date ranges
+        for (Object[] row : importDates) {
+            Long productId = (Long) row[0];
+            LocalDateTime earliest = (LocalDateTime) row[1];
+            LocalDateTime latest = (LocalDateTime) row[2];
+
+            detailBuilders.computeIfAbsent(productId, k -> ProductReportDetail.builder().productId(k))
+                    .earliestImport(earliest != null ? earliest.toLocalDate() : null)
+                    .latestImport(latest != null ? latest.toLocalDate() : null);
+        }
+
+        // Fetch current stock for active products to avoid N+1
+        List<Long> productIds = new ArrayList<>(detailBuilders.keySet());
         Map<Long, Integer> stockMap = new java.util.HashMap<>();
         if (!productIds.isEmpty()) {
             List<Object[]> stockResults = inventoryBatchRepository.getTotalAvailableStockByProductIds(productIds);
@@ -66,7 +111,7 @@ public class InventoryReportServiceImpl implements InventoryReportService {
                     ));
         }
 
-        // ── Build chi tiết theo sản phẩm ──
+        // Build list of details and calculate summary metrics
         List<ProductReportDetail> details = new ArrayList<>();
         long totalImported     = 0;
         long totalQtyImported  = 0;
@@ -74,51 +119,113 @@ public class InventoryReportServiceImpl implements InventoryReportService {
         long totalExpiredBatch = 0;
         long totalQtyExpired   = 0;
 
-        for (Map.Entry<Long, List<InventoryBatch>> entry : byProduct.entrySet()) {
-            List<InventoryBatch> pBatches = entry.getValue();
-            InventoryBatch first = pBatches.get(0);
+        for (Map.Entry<Long, ProductReportDetail.ProductReportDetailBuilder> entry : detailBuilders.entrySet()) {
+            Long productId = entry.getKey();
+            ProductReportDetail.ProductReportDetailBuilder builder = entry.getValue();
 
-            long batchImported = pBatches.size();
-            long qtyImported   = pBatches.stream().mapToLong(InventoryBatch::getQuantity).sum();
-            long qtySold       = pBatches.stream()
-                    .mapToLong(b -> b.getQuantity() - b.getRemainingQuantity())
-                    .sum();
-            long expiredBatch  = pBatches.stream()
-                    .filter(b -> b.getStatus() == BatchStatus.EXPIRED).count();
-            long qtyExpired    = pBatches.stream()
-                    .filter(b -> b.getStatus() == BatchStatus.EXPIRED)
-                    .mapToLong(InventoryBatch::getRemainingQuantity)
-                    .sum();
+            String name = productNames.getOrDefault(productId, "Sản phẩm #" + productId);
+            Integer stock = stockMap.getOrDefault(productId, 0);
 
-            // Tồn kho riêng của sản phẩm này (chỉ lô AVAILABLE, không giới hạn kỳ)
-            Integer stock = stockMap.getOrDefault(entry.getKey(), 0);
+            ProductReportDetail detail = builder
+                    .productName(name)
+                    .currentStock(stock)
+                    .build();
 
-            LocalDate earliest = pBatches.stream()
-                    .map(b -> b.getCreatedAt().toLocalDate())
-                    .min(Comparator.naturalOrder()).orElse(null);
-            LocalDate latest = pBatches.stream()
-                    .map(b -> b.getCreatedAt().toLocalDate())
-                    .max(Comparator.naturalOrder()).orElse(null);
+            details.add(detail);
 
-            details.add(ProductReportDetail.builder()
-                    .productId(entry.getKey())
-                    .productName(first.getProduct().getName())
-                    .batchesImported(batchImported)
-                    .quantityImported(qtyImported)
-                    .quantitySold(qtySold)
-                    .batchesExpired(expiredBatch)
-                    .quantityExpired(qtyExpired)
-                    .currentStock(stock != null ? stock : 0)
-                    .earliestImport(earliest)
-                    .latestImport(latest)
-                    .build());
-
-            totalImported     += batchImported;
-            totalQtyImported  += qtyImported;
-            totalQtySold      += qtySold;
-            totalExpiredBatch += expiredBatch;
-            totalQtyExpired   += qtyExpired;
+            totalImported     += detail.getBatchesImported();
+            totalQtyImported  += detail.getQuantityImported();
+            totalQtySold      += detail.getQuantitySold();
+            totalExpiredBatch += detail.getBatchesExpired();
+            totalQtyExpired   += detail.getQuantityExpired();
         }
+
+        // Fetch daily timeline data from DB
+        List<Object[]> importTimeline = inventoryBatchRepository.findImportTimelineRaw(fromDt, toDt);
+        List<Object[]> salesTimeline  = inventoryBatchRepository.findSalesTimelineRaw(fromDt, toDt);
+
+        Map<LocalDate, Long> importMap = new java.util.HashMap<>();
+        for (Object[] row : importTimeline) {
+            LocalDate date = (LocalDate) row[0];
+            long qty = ((Number) row[1]).longValue();
+            importMap.put(date, qty);
+        }
+
+        Map<LocalDate, Long> salesMap = new java.util.HashMap<>();
+        for (Object[] row : salesTimeline) {
+            LocalDate date = (LocalDate) row[0];
+            long qty = ((Number) row[1]).longValue();
+            salesMap.put(date, qty);
+        }
+
+        // Determine timeline window
+        LocalDate start = from != null ? from : LocalDate.now().minusMonths(1);
+        LocalDate end = to != null ? to : LocalDate.now();
+
+        if (from == null) {
+            LocalDate earliest = LocalDate.now().minusMonths(1);
+            for (LocalDate d : importMap.keySet()) {
+                if (d.isBefore(earliest)) earliest = d;
+            }
+            for (LocalDate d : salesMap.keySet()) {
+                if (d.isBefore(earliest)) earliest = d;
+            }
+            start = earliest;
+        }
+
+        // Generate baseline daily timeline (filling zeroes where there is no activity)
+        List<InventoryReportResponse.ReportTimelinePoint> dailyPoints = new ArrayList<>();
+        for (LocalDate date = start; !date.isAfter(end); date = date.plusDays(1)) {
+            long imported = importMap.getOrDefault(date, 0L);
+            long sold = salesMap.getOrDefault(date, 0L);
+            dailyPoints.add(InventoryReportResponse.ReportTimelinePoint.builder()
+                    .date(date)
+                    .label(date.toString())
+                    .quantityImported(imported)
+                    .quantitySold(sold)
+                    .build());
+        }
+
+        // Process final timeline according to groupBy option
+        List<InventoryReportResponse.ReportTimelinePoint> finalTimeline = dailyPoints;
+        if ("week".equalsIgnoreCase(groupBy)) {
+            Map<LocalDate, long[]> weeklyAccumulator = new java.util.TreeMap<>();
+            for (InventoryReportResponse.ReportTimelinePoint dp : dailyPoints) {
+                LocalDate monday = dp.getDate().with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY));
+                long[] acc = weeklyAccumulator.computeIfAbsent(monday, k -> new long[2]);
+                acc[0] += dp.getQuantityImported();
+                acc[1] += dp.getQuantitySold();
+            }
+            finalTimeline = new ArrayList<>();
+            for (Map.Entry<LocalDate, long[]> entry : weeklyAccumulator.entrySet()) {
+                finalTimeline.add(InventoryReportResponse.ReportTimelinePoint.builder()
+                        .date(entry.getKey())
+                        .label("Tuần " + entry.getKey().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")))
+                        .quantityImported(entry.getValue()[0])
+                        .quantitySold(entry.getValue()[1])
+                        .build());
+            }
+        } else if ("month".equalsIgnoreCase(groupBy)) {
+            Map<LocalDate, long[]> monthlyAccumulator = new java.util.TreeMap<>();
+            for (InventoryReportResponse.ReportTimelinePoint dp : dailyPoints) {
+                LocalDate firstOfMonth = dp.getDate().withDayOfMonth(1);
+                long[] acc = monthlyAccumulator.computeIfAbsent(firstOfMonth, k -> new long[2]);
+                acc[0] += dp.getQuantityImported();
+                acc[1] += dp.getQuantitySold();
+            }
+            finalTimeline = new ArrayList<>();
+            for (Map.Entry<LocalDate, long[]> entry : monthlyAccumulator.entrySet()) {
+                finalTimeline.add(InventoryReportResponse.ReportTimelinePoint.builder()
+                        .date(entry.getKey())
+                        .label(entry.getKey().format(java.time.format.DateTimeFormatter.ofPattern("MM/yyyy")))
+                        .quantityImported(entry.getValue()[0])
+                        .quantitySold(entry.getValue()[1])
+                        .build());
+            }
+        }
+
+        // Total available stock across all products (independent of date range)
+        long currentAvailableStock = inventoryBatchRepository.sumAllAvailableStock();
 
         ReportSummary summary = ReportSummary.builder()
                 .totalBatchesImported(totalImported)
@@ -134,6 +241,7 @@ public class InventoryReportServiceImpl implements InventoryReportService {
                 .to(to)
                 .summary(summary)
                 .details(details)
+                .timeline(finalTimeline)
                 .build();
     }
 }

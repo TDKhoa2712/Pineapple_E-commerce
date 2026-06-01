@@ -145,9 +145,22 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<InventorySummaryResponse> getInventorySummary(int page, int size) {
-        PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "totalStock"));
-        Page<Object[]> rawPage = inventoryBatchRepository.findInventorySummaryRaw(pageable);
+    public PageResponse<InventorySummaryResponse> getInventorySummary(String keyword, int page, int size, String sortBy, String sortDirection) {
+        Sort.Direction direction = "DESC".equalsIgnoreCase(sortDirection) ? Sort.Direction.DESC : Sort.Direction.ASC;
+        String resolvedSortBy = "totalStock";
+        if (sortBy != null && !sortBy.isBlank()) {
+            resolvedSortBy = switch (sortBy) {
+                case "productId", "id" -> "productId";
+                case "productName", "name" -> "productName";
+                case "batchCount" -> "batchCount";
+                default -> "totalStock";
+            };
+        }
+        PageRequest pageable = PageRequest.of(page, size, Sort.by(direction, resolvedSortBy));
+        Page<Object[]> rawPage = inventoryBatchRepository.findInventorySummaryRaw(
+                keyword != null ? keyword.trim() : "",
+                pageable
+        );
         List<InventorySummaryResponse> content = rawPage.getContent().stream()
                 .map(row -> InventorySummaryResponse.builder()
                         .productId(((Number) row[0]).longValue())
@@ -294,9 +307,28 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<InventoryBatchResponse> getAllBatches(int page, int size) {
-        PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<InventoryBatch> rawPage = inventoryBatchRepository.findAllWithProductAndFarm(pageable);
+    public PageResponse<InventoryBatchResponse> getAllBatches(String keyword, int page, int size, String sortBy, String sortDirection) {
+        Sort.Direction direction = "ASC".equalsIgnoreCase(sortDirection) ? Sort.Direction.ASC : Sort.Direction.DESC;
+
+        // Map sort field to JPA entity field name
+        String resolvedSortBy = "createdAt";
+        if (sortBy != null && !sortBy.isBlank()) {
+            resolvedSortBy = switch (sortBy) {
+                case "batchCode" -> "batchCode";
+                case "quantity" -> "quantity";
+                case "remainingQuantity" -> "remainingQuantity";
+                case "harvestDate" -> "harvestDate";
+                case "expiryDate" -> "expiryDate";
+                case "status" -> "status";
+                default -> "createdAt";
+            };
+        }
+
+        PageRequest pageable = PageRequest.of(page, size, Sort.by(direction, resolvedSortBy));
+        Page<InventoryBatch> rawPage = inventoryBatchRepository.findAllWithProductAndFarm(
+                keyword != null ? keyword.trim() : "",
+                pageable
+        );
         List<InventoryBatchResponse> content = rawPage.getContent().stream()
                 .map(inventoryBatchMapper::toResponse)
                 .toList();

@@ -69,20 +69,95 @@ public interface InventoryBatchRepository extends JpaRepository<InventoryBatch, 
     List<InventoryBatch> findExpiringSoon(@Param("threshold") LocalDate threshold);
 
     /**
-     * Tổng hợp tồn kho tất cả sản phẩm còn AVAILABLE.
+     * Tổng hợp tồn kho tất cả sản phẩm, bao gồm sản phẩm có tồn kho bằng 0.
      * Trả về [productId, productName, totalStock, batchCount].
-     * Dùng trong InventoryServiceImpl.getInventorySummary()
+     */
+    @Query(value = """
+        SELECT p.id as productId, p.name as productName,
+               COALESCE(SUM(CASE WHEN b.status = 'AVAILABLE' THEN b.remainingQuantity ELSE 0 END), 0) as totalStock,
+               COUNT(CASE WHEN b.status = 'AVAILABLE' THEN b.id ELSE NULL END) as batchCount
+        FROM Product p
+        LEFT JOIN p.batches b
+        WHERE (:keyword IS NULL OR :keyword = '' OR LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%')))
+        GROUP BY p.id, p.name
+        """,
+        countQuery = """
+        SELECT COUNT(p) FROM Product p
+        WHERE (:keyword IS NULL OR :keyword = '' OR LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%')))
+        """)
+    Page<Object[]> findInventorySummaryRaw(
+            @Param("keyword") String keyword,
+            Pageable pageable);
+
+    /**
+     * Lấy danh sách số lô và số lượng nhập theo từng sản phẩm trong khoảng thời gian.
      */
     @Query("""
-        SELECT b.product.id, b.product.name,
-               SUM(b.remainingQuantity),
-               COUNT(b.id)
+        SELECT b.product.id as productId, b.product.name as productName,
+               COUNT(b.id) as batchesImported,
+               SUM(b.quantity) as quantityImported
         FROM InventoryBatch b
-        WHERE b.status = 'AVAILABLE'
+        WHERE (CAST(:from AS timestamp) IS NULL OR b.createdAt >= :from)
+          AND (CAST(:to   AS timestamp) IS NULL OR b.createdAt <= :to)
         GROUP BY b.product.id, b.product.name
-        ORDER BY SUM(b.remainingQuantity) ASC
     """)
-    Page<Object[]> findInventorySummaryRaw(Pageable pageable);
+    List<Object[]> findImportReportRaw(
+            @Param("from") LocalDateTime from,
+            @Param("to")   LocalDateTime to);
+
+    /**
+     * Lấy tổng số lượng bán trong khoảng thời gian từ các đơn hàng hợp lệ.
+     */
+    @Query("""
+        SELECT oi.product.id as productId, oi.productName as productName,
+               SUM(oi.quantity) as quantitySold
+        FROM OrderItem oi
+        JOIN oi.order o
+        WHERE (CAST(:from AS timestamp) IS NULL OR o.createdAt >= :from)
+          AND (CAST(:to   AS timestamp) IS NULL OR o.createdAt <= :to)
+          AND o.status NOT IN (
+            backend.pineapple_ecommerce.common.enums.OrderStatus.CANCELLED,
+            backend.pineapple_ecommerce.common.enums.OrderStatus.REFUNDED,
+            backend.pineapple_ecommerce.common.enums.OrderStatus.RETURNED
+          )
+        GROUP BY oi.product.id, oi.productName
+    """)
+    List<Object[]> findSalesReportRaw(
+            @Param("from") LocalDateTime from,
+            @Param("to")   LocalDateTime to);
+
+    /**
+     * Lấy số lô và số lượng bị hết hạn trong khoảng thời gian.
+     */
+    @Query("""
+        SELECT b.product.id as productId, b.product.name as productName,
+               COUNT(b.id) as batchesExpired,
+               SUM(b.remainingQuantity) as quantityExpired
+        FROM InventoryBatch b
+        WHERE b.status = 'EXPIRED'
+          AND (CAST(:from AS date) IS NULL OR b.expiryDate >= :from)
+          AND (CAST(:to   AS date) IS NULL OR b.expiryDate <= :to)
+        GROUP BY b.product.id, b.product.name
+    """)
+    List<Object[]> findExpiryReportRaw(
+            @Param("from") LocalDate from,
+            @Param("to")   LocalDate to);
+
+    /**
+     * Lấy ngày nhập hàng sớm nhất và muộn nhất của mỗi sản phẩm trong khoảng thời gian.
+     */
+    @Query("""
+        SELECT b.product.id as productId,
+               MIN(b.createdAt) as earliestImport,
+               MAX(b.createdAt) as latestImport
+        FROM InventoryBatch b
+        WHERE (CAST(:from AS timestamp) IS NULL OR b.createdAt >= :from)
+          AND (CAST(:to   AS timestamp) IS NULL OR b.createdAt <= :to)
+        GROUP BY b.product.id
+    """)
+    List<Object[]> findImportDatesRaw(
+            @Param("from") LocalDateTime from,
+            @Param("to")   LocalDateTime to);
 
     /**
      * Lấy các productId distinct của một farm — dùng cho getFarmProducts().
@@ -101,8 +176,8 @@ public interface InventoryBatchRepository extends JpaRepository<InventoryBatch, 
     @Query("""
         SELECT b FROM InventoryBatch b
         LEFT JOIN FETCH b.product
-        WHERE (:from IS NULL OR b.createdAt >= :from)
-          AND (:to   IS NULL OR b.createdAt <= :to)
+        WHERE (CAST(:from AS timestamp) IS NULL OR b.createdAt >= :from)
+          AND (CAST(:to   AS timestamp) IS NULL OR b.createdAt <= :to)
         ORDER BY b.product.id ASC, b.createdAt ASC
     """)
     List<InventoryBatch> findByCreatedAtBetween(
@@ -132,10 +207,60 @@ public interface InventoryBatchRepository extends JpaRepository<InventoryBatch, 
 
     @Query(value = """
         SELECT b FROM InventoryBatch b
-        LEFT JOIN FETCH b.product
-        LEFT JOIN FETCH b.farm
+        LEFT JOIN FETCH b.product p
+        LEFT JOIN FETCH b.farm f
+        WHERE (:keyword IS NULL OR :keyword = ''
+           OR LOWER(b.batchCode) LIKE LOWER(CONCAT('%', :keyword, '%'))
+           OR LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
+           OR (f IS NOT NULL AND LOWER(f.name) LIKE LOWER(CONCAT('%', :keyword, '%'))))
         """,
-        countQuery = "SELECT COUNT(b) FROM InventoryBatch b")
-    Page<InventoryBatch> findAllWithProductAndFarm(Pageable pageable);
+        countQuery = """
+        SELECT COUNT(b) FROM InventoryBatch b
+        LEFT JOIN b.product p
+        LEFT JOIN b.farm f
+        WHERE (:keyword IS NULL OR :keyword = ''
+           OR LOWER(b.batchCode) LIKE LOWER(CONCAT('%', :keyword, '%'))
+           OR LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
+           OR (f IS NOT NULL AND LOWER(f.name) LIKE LOWER(CONCAT('%', :keyword, '%'))))
+        """)
+    Page<InventoryBatch> findAllWithProductAndFarm(
+            @Param("keyword") String keyword,
+            Pageable pageable);
+
+    /**
+     * Lấy tổng lượng nhập theo ngày trong khoảng thời gian.
+     */
+    @Query("""
+        SELECT CAST(b.createdAt as LocalDate) as dateVal, SUM(b.quantity) as qty
+        FROM InventoryBatch b
+        WHERE (CAST(:from AS timestamp) IS NULL OR b.createdAt >= :from)
+          AND (CAST(:to   AS timestamp) IS NULL OR b.createdAt <= :to)
+        GROUP BY CAST(b.createdAt as LocalDate)
+        ORDER BY CAST(b.createdAt as LocalDate) ASC
+    """)
+    List<Object[]> findImportTimelineRaw(
+            @Param("from") LocalDateTime from,
+            @Param("to")   LocalDateTime to);
+
+    /**
+     * Lấy tổng lượng bán theo ngày trong khoảng thời gian.
+     */
+    @Query("""
+        SELECT CAST(o.createdAt as LocalDate) as dateVal, SUM(oi.quantity) as qty
+        FROM OrderItem oi
+        JOIN oi.order o
+        WHERE (CAST(:from AS timestamp) IS NULL OR o.createdAt >= :from)
+          AND (CAST(:to   AS timestamp) IS NULL OR o.createdAt <= :to)
+          AND o.status NOT IN (
+            backend.pineapple_ecommerce.common.enums.OrderStatus.CANCELLED,
+            backend.pineapple_ecommerce.common.enums.OrderStatus.REFUNDED,
+            backend.pineapple_ecommerce.common.enums.OrderStatus.RETURNED
+          )
+        GROUP BY CAST(o.createdAt as LocalDate)
+        ORDER BY CAST(o.createdAt as LocalDate) ASC
+    """)
+    List<Object[]> findSalesTimelineRaw(
+            @Param("from") LocalDateTime from,
+            @Param("to")   LocalDateTime to);
 }
 

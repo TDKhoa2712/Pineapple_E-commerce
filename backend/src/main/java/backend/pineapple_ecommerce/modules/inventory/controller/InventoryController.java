@@ -81,9 +81,12 @@ public class InventoryController {
     @Operation(summary = "Tong hop ton kho tat ca san pham")
     @GetMapping("/summary")
     public ResponseEntity<ApiResponse<PageResponse<InventorySummaryResponse>>> getSummary(
+            @RequestParam(required = false)     String keyword,
             @RequestParam(defaultValue = "0")  int page,
-            @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(ApiResponse.success(inventoryService.getInventorySummary(page, size)));
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false)     String sortBy,
+            @RequestParam(required = false)     String sortDirection) {
+        return ResponseEntity.ok(ApiResponse.success(inventoryService.getInventorySummary(keyword, page, size, sortBy, sortDirection)));
     }
 
     @Operation(summary = "Dieu chinh so luong lo hang kem ly do")
@@ -127,9 +130,10 @@ public class InventoryController {
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(defaultValue = "day") String groupBy) {
 
-        InventoryReportResponse report = inventoryReportService.generateReport(from, to);
+        InventoryReportResponse report = inventoryReportService.generateReport(from, to, groupBy);
         String message = String.format(
                 "Báo cáo từ %s đến %s — %d sản phẩm",
                 from != null ? from : "đầu kỳ",
@@ -143,8 +147,11 @@ public class InventoryController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<PageResponse<InventoryBatchResponse>>> getAllBatches(
             @RequestParam(defaultValue = "0")  int page,
-            @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(ApiResponse.success(inventoryService.getAllBatches(page, size)));
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDirection) {
+        return ResponseEntity.ok(ApiResponse.success(inventoryService.getAllBatches(keyword, page, size, sortBy, sortDirection)));
     }
 }
 
