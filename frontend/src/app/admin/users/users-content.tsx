@@ -285,7 +285,7 @@ export function UsersContent() {
   });
 
   const updateUserInfo = useMutation({
-    mutationFn: ({ userId, fullName, phone }: { userId: number; fullName: string; phone: string }) =>
+    mutationFn: ({ userId, fullName, phone }: { userId: number; fullName: string; phone?: string }) =>
       adminUserService.updateUserInfo(userId, { fullName, phone }),
     onSuccess: (updated) => {
       toast.success("Cập nhật thông tin người dùng thành công");
