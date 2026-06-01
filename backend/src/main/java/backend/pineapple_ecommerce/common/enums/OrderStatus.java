@@ -19,7 +19,7 @@ public enum OrderStatus {
             Map.entry(PENDING,          Set.of(CONFIRMED, CANCELLED)),
             Map.entry(CONFIRMED,        Set.of(PROCESSING, CANCELLED)),
             Map.entry(PROCESSING,       Set.of(SHIPPING, CANCELLED)),
-            Map.entry(SHIPPING,         Set.of(DELIVERED, CANCELLED)),  // Có thể huỷ khi đang ship (tùy chính sách)
+            Map.entry(SHIPPING,         Set.of(DELIVERED, CANCELLED, RETURNED)),  // Có thể huỷ hoặc hoàn trả khi đang ship
             Map.entry(DELIVERED,        Set.of(REFUND_REQUESTED, RETURNED)),
             Map.entry(REFUND_REQUESTED, Set.of(REFUNDED, RETURNED)),    // Không cho quay lại DELIVERED
             Map.entry(REFUNDED,         Set.of()),                      // Kết thúc

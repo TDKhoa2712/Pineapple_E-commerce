@@ -223,6 +223,16 @@ public class ShippingServiceImpl implements ShippingService {
         }
     }
 
+    @org.springframework.transaction.event.TransactionalEventListener(phase = org.springframework.transaction.event.TransactionPhase.AFTER_COMMIT)
+    public void onOrderCancelled(backend.pineapple_ecommerce.event.OrderCancelledEvent event) {
+        log.info("[Event] Received OrderCancelledEvent for order #{} -> canceling shipment", event.getOrderId());
+        try {
+            this.cancelShipment(event.getOrderId());
+        } catch (Exception e) {
+            log.error("Failed to cancel shipment for order #{} on OrderCancelledEvent: {}", event.getOrderId(), e.getMessage(), e);
+        }
+    }
+
     // ─────────────────────────────────────────────
     // Cancel Shipment
     // ─────────────────────────────────────────────

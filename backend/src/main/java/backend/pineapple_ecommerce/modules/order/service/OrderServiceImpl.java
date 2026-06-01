@@ -32,12 +32,13 @@ import backend.pineapple_ecommerce.modules.farm.repository.FarmRepository;
 import backend.pineapple_ecommerce.modules.order.dto.response.AdminStatisticsResponse;
 import backend.pineapple_ecommerce.common.enums.FarmStatus;
 import backend.pineapple_ecommerce.common.enums.CarrierCode;
+import backend.pineapple_ecommerce.event.OrderCancelledEvent;
 import backend.pineapple_ecommerce.infrastructure.carrier.ShippingProviderRouter;
 import backend.pineapple_ecommerce.infrastructure.carrier.CarrierAddressMetadataHelper;
 import backend.pineapple_ecommerce.infrastructure.carrier.ShippingCarrierClient;
-import backend.pineapple_ecommerce.modules.shipping.service.ShippingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -70,10 +71,7 @@ public class OrderServiceImpl implements OrderService, OrderInternalService {
     private final FarmRepository farmRepository;
     private final ShippingProviderRouter shippingProviderRouter;
     private final CarrierAddressMetadataHelper metadataHelper;
-
-    @org.springframework.beans.factory.annotation.Autowired
-    @org.springframework.context.annotation.Lazy
-    private ShippingService shippingService;
+    private final ApplicationEventPublisher eventPublisher;
 
     // ─────────────────────────────────────────────
     // CREATE ORDER
@@ -258,11 +256,7 @@ public class OrderServiceImpl implements OrderService, OrderInternalService {
             couponService.releaseCouponUsage(orderId);
 
             if (oldStatus == OrderStatus.PROCESSING) {
-                try {
-                    shippingService.cancelShipment(orderId);
-                } catch (Exception e) {
-                    log.error("Failed to automatically cancel shipment for order #{}: {}", orderId, e.getMessage(), e);
-                }
+                eventPublisher.publishEvent(new OrderCancelledEvent(orderId));
             }
         }
 
