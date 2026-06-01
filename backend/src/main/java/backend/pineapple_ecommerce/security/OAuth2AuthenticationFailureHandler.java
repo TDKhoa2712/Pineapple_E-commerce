@@ -39,7 +39,7 @@ public class OAuth2AuthenticationFailureHandler extends SimpleUrlAuthenticationF
                 : "Đăng nhập mạng xã hội thất bại. Vui lòng thử lại.";
 
         String frontendUrl = corsProperties.getAllowedOrigins().stream()
-                .filter(origin -> !origin.equals("*"))
+                .filter(origin -> !origin.contains("*"))
                 .findFirst()
                 .orElse("http://localhost:3000");
 

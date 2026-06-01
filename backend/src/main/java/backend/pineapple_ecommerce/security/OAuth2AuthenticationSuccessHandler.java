@@ -161,7 +161,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
 
     private String resolveFrontendUrl() {
         return corsProperties.getAllowedOrigins().stream()
-                .filter(origin -> !origin.equals("*"))
+                .filter(origin -> !origin.contains("*"))
                 .findFirst()
                 .orElse("http://localhost:3000");
     }
