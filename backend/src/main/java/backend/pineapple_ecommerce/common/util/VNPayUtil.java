@@ -20,11 +20,10 @@ public class VNPayUtil {
      * Generate HMAC SHA512
      */
     public static String hmacSHA512(final String key, final String data) {
+        if (key == null || data == null) {
+            return "";
+        }
         try {
-            if (key == null || data == null) {
-                throw new NullPointerException();
-            }
-
             Mac hmac512 = Mac.getInstance("HmacSHA512");
             SecretKeySpec secretKey = new SecretKeySpec(
                     key.getBytes(StandardCharsets.UTF_8), "HmacSHA512"
@@ -41,7 +40,6 @@ public class VNPayUtil {
             return new String(hexChars);
 
         } catch (Exception ex) {
-            ex.printStackTrace();
             return "";
         }
     }

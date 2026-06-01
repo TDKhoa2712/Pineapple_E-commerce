@@ -192,7 +192,7 @@ public class GhnCarrierClient implements ShippingCarrierClient {
     public void cancelShipment(String externalOrderCode) {
         String url = ghnProperties.getBaseUrl() + "/v2/switch-status/cancel";
         Map<String, Object> body = Map.of("order_codes", List.of(externalOrderCode));
-        postAndExtractData(url, body, false);
+        postAndExtractDataList(url, body, true);
         log.info("GHN shipment cancelled: {}", externalOrderCode);
     }
 

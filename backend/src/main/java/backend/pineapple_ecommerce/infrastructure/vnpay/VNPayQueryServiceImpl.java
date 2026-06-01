@@ -34,7 +34,15 @@ public class VNPayQueryServiceImpl implements VNPayQueryService {
     @Value("${app.vnpay.api-url}")
     private String vnp_ApiUrl;
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate = createRestTemplate();
+
+    private static RestTemplate createRestTemplate() {
+        org.springframework.http.client.SimpleClientHttpRequestFactory factory = 
+                new org.springframework.http.client.SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(3000); // 3s connect timeout
+        factory.setReadTimeout(5000);    // 5s read timeout
+        return new RestTemplate(factory);
+    }
 
     /**
      * Gọi API QueryDR của VNPay để lấy trạng thái thật của giao dịch.
