@@ -46,16 +46,20 @@ public class CartServiceImpl implements CartService {
     // ─────────────────────────────────────────────
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public CartResponse getCart(Long userId) {
         return cartRepository.findByUserIdWithItems(userId)
                 .map(cartMapper::toCartResponse)
-                .orElseGet(() -> CartResponse.builder()
-                        .cartId(null)
-                        .items(new ArrayList<>())
-                        .totalItems(0)
-                        .totalAmount(BigDecimal.ZERO)
-                        .build());
+                .orElseGet(() -> {
+                    User user = userRepository.findById(userId)
+                            .orElseThrow(() -> new ResourceNotFoundException("User", userId));
+                    Cart newCart = Cart.builder()
+                            .user(user)
+                            .items(new ArrayList<>())
+                            .build();
+                    Cart saved = cartRepository.save(newCart);
+                    return cartMapper.toCartResponse(saved);
+                });
     }
 
     // ─────────────────────────────────────────────
