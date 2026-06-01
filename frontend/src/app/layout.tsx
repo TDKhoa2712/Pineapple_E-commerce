@@ -27,7 +27,10 @@ export const metadata: Metadata = {
   description: 'Nông sản hữu cơ, tươi sạch từ trang trại đến bàn ăn của bạn.',
   keywords: ['nông sản', 'organic', 'hữu cơ', 'tươi sạch', 'thực phẩm sạch'],
   authors: [{ name: 'Pineapple Team' }],
-  metadataBase: new URL('http://localhost:3000'),
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+  ),
   openGraph: {
     title: 'Pineapple — Nông sản tươi sạch',
     description: 'Nông sản hữu cơ, tươi sạch từ trang trại đến bàn ăn của bạn.',
