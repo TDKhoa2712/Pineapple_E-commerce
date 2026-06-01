@@ -21,4 +21,5 @@ public class InventoryBatchResponse {
     private LocalDate  expiryDate;
     private BigDecimal sweetnessLevel;
     private String     status;
+    private String     rejectionReason;
 }

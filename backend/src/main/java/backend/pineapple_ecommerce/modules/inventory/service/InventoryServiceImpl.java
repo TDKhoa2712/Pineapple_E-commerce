@@ -85,7 +85,7 @@ public class InventoryServiceImpl implements InventoryService {
             }
         }
 
-        if (farm != null && farm.getStatus() != FarmStatus.ACTIVE) {
+        if (farm != null && farm.getStatus() == FarmStatus.INACTIVE) {
             throw new BusinessException("Trang trai dang ngung hoat dong nen khong the thao tac ton kho.");
         }
 
@@ -96,10 +96,115 @@ public class InventoryServiceImpl implements InventoryService {
         InventoryBatch batch = inventoryBatchMapper.toEntity(request);
         batch.setProduct(product);
         batch.setFarm(farm);
-        batch.setRemainingQuantity(request.getQuantity());
+        // Luong nghiep vu:
+        // - Admin nhap kho: duoc cong thang vao kho (AVAILABLE)
+        // - Farmer nhap kho: tao lo PENDING_APPROVAL, chua cong vao kho
+        if (isAdmin) {
+            batch.setStatus(BatchStatus.AVAILABLE);
+            batch.setRemainingQuantity(request.getQuantity());
+            batch.setRejectionReason(null);
+        } else {
+            batch.setStatus(BatchStatus.PENDING_APPROVAL);
+            batch.setRemainingQuantity(0);
+            // rejectionReason (neu co) mac dinh null
+            batch.setRejectionReason(null);
+        }
+
         InventoryBatch saved = inventoryBatchRepository.save(batch);
-        log.info("Batch added: batchCode={}, productId={}, qty={}", saved.getBatchCode(), product.getId(), saved.getQuantity());
-        eventPublisher.publishEvent(new ProductStockChangedEvent(this, product.getId()));
+        if (isAdmin) {
+            eventPublisher.publishEvent(new ProductStockChangedEvent(this, product.getId()));
+        }
+        log.info(
+                "Batch added: batchCode={}, productId={}, qty={}, status={}, remainingQty={}",
+                saved.getBatchCode(), product.getId(), saved.getQuantity(),
+                saved.getStatus(), saved.getRemainingQuantity());
+        return inventoryBatchMapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public InventoryBatchResponse approveBatch(Long batchId, Long adminUserId) {
+        InventoryBatch batch = inventoryBatchRepository.findByIdWithLock(batchId)
+                .orElseThrow(() -> new ResourceNotFoundException("InventoryBatch", batchId));
+
+        User admin = userRepository.findById(adminUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", adminUserId));
+
+        boolean isAdmin = admin.getRoles().stream().anyMatch(r -> r.getName() == RoleName.ROLE_ADMIN);
+        if (!isAdmin) {
+            throw new UnauthorizedException("Bạn không có quyền duyệt lô hàng nhập");
+        }
+
+        if (batch.getStatus() != BatchStatus.PENDING_APPROVAL) {
+            throw new BusinessException("Chỉ có thể duyệt lô ở trạng thái PENDING_APPROVAL. Trạng thái hiện tại: " + batch.getStatus());
+        }
+
+        if (batch.getFarm() != null && batch.getFarm().getStatus() == FarmStatus.INACTIVE) {
+            throw new BusinessException("Trang trại đang ngừng hoạt động nên không thể duyệt/thêm tồn kho.");
+        }
+
+        batch.setStatus(BatchStatus.AVAILABLE);
+        batch.setRemainingQuantity(batch.getQuantity());
+        batch.setRejectionReason(null);
+        InventoryBatch saved = inventoryBatchRepository.save(batch);
+
+        eventPublisher.publishEvent(new ProductStockChangedEvent(this, saved.getProduct().getId()));
+        return inventoryBatchMapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public InventoryBatchResponse rejectBatch(Long batchId, Long adminUserId, String reason) {
+        InventoryBatch batch = inventoryBatchRepository.findByIdWithLock(batchId)
+                .orElseThrow(() -> new ResourceNotFoundException("InventoryBatch", batchId));
+
+        User admin = userRepository.findById(adminUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", adminUserId));
+
+        boolean isAdmin = admin.getRoles().stream().anyMatch(r -> r.getName() == RoleName.ROLE_ADMIN);
+        if (!isAdmin) {
+            throw new UnauthorizedException("Bạn không có quyền từ chối lô hàng nhập");
+        }
+
+        if (batch.getStatus() != BatchStatus.PENDING_APPROVAL) {
+            throw new BusinessException("Chỉ có thể từ chối lô ở trạng thái PENDING_APPROVAL. Trạng thái hiện tại: " + batch.getStatus());
+        }
+
+        batch.setStatus(BatchStatus.REJECTED);
+        batch.setRemainingQuantity(0);
+        batch.setRejectionReason(reason);
+        InventoryBatch saved = inventoryBatchRepository.save(batch);
+
+        log.info("Batch rejected: batchId={}, by={}, reason={}", batchId, adminUserId, reason);
+        return inventoryBatchMapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public InventoryBatchResponse resubmitBatch(Long batchId, Long farmerUserId) {
+        InventoryBatch batch = inventoryBatchRepository.findByIdWithLock(batchId)
+                .orElseThrow(() -> new ResourceNotFoundException("InventoryBatch", batchId));
+
+        if (batch.getStatus() != BatchStatus.REJECTED) {
+            throw new BusinessException("Chỉ có thể gửi yêu cầu lại cho lô đang ở trạng thái REJECTED. Trạng thái hiện tại: " + batch.getStatus());
+        }
+
+        if (batch.getFarm() == null || batch.getFarm().getOwner() == null) {
+            throw new BusinessException("Lô hàng này không thuộc quyền quản lý của farmer.");
+        }
+
+        if (!batch.getFarm().getOwner().getId().equals(farmerUserId)) {
+            throw new UnauthorizedException("Bạn không có quyền gửi yêu cầu lại cho lô hàng này");
+        }
+
+        if (batch.getFarm().getStatus() == FarmStatus.INACTIVE) {
+            throw new BusinessException("Trang trại đang ngừng hoạt động nên không thể gửi yêu cầu duyệt lô.");
+        }
+
+        batch.setStatus(BatchStatus.PENDING_APPROVAL);
+        batch.setRemainingQuantity(0);
+        // Giữ rejectionReason cho tới khi admin approve lần tiếp theo.
+        InventoryBatch saved = inventoryBatchRepository.save(batch);
         return inventoryBatchMapper.toResponse(saved);
     }
 
@@ -209,8 +314,12 @@ public class InventoryServiceImpl implements InventoryService {
             }
         }
 
-        if (batch.getFarm() != null && batch.getFarm().getStatus() != FarmStatus.ACTIVE) {
+        if (batch.getFarm() != null && batch.getFarm().getStatus() == FarmStatus.INACTIVE) {
             throw new BusinessException("Trang trai dang ngung hoat dong nen khong the thao tac ton kho.");
+        }
+
+        if (batch.getStatus() != BatchStatus.AVAILABLE) {
+            throw new BusinessException("Chỉ có thể điều chỉnh lô ở trạng thái AVAILABLE. Trạng thái hiện tại: " + batch.getStatus());
         }
 
         int qtyBefore = batch.getRemainingQuantity();
@@ -380,7 +489,7 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     @Transactional(readOnly = true)
-    public PageResponse<InventoryBatchResponse> getAllBatches(String keyword, int page, int size, String sortBy, String sortDirection) {
+    public PageResponse<InventoryBatchResponse> getAllBatches(String keyword, BatchStatus status, int page, int size, String sortBy, String sortDirection) {
         Sort.Direction direction = "ASC".equalsIgnoreCase(sortDirection) ? Sort.Direction.ASC : Sort.Direction.DESC;
 
         // Map sort field to JPA entity field name
@@ -400,6 +509,7 @@ public class InventoryServiceImpl implements InventoryService {
         PageRequest pageable = PageRequest.of(page, size, Sort.by(direction, resolvedSortBy));
         Page<InventoryBatch> rawPage = inventoryBatchRepository.findAllWithProductAndFarm(
                 keyword != null ? keyword.trim() : "",
+                status,
                 pageable
         );
         List<InventoryBatchResponse> content = rawPage.getContent().stream()

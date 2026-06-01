@@ -22,6 +22,7 @@ public interface InventoryBatchMapper {
     @Mapping(target = "farmId",      expression = "java(batch.getFarm() != null ? batch.getFarm().getId() : null)")
     @Mapping(target = "farmName",    expression = "java(batch.getFarm() != null ? batch.getFarm().getName() : null)")
     @Mapping(target = "status",      expression = "java(batch.getStatus().name())")
+    @Mapping(target = "rejectionReason", source = "rejectionReason")
     InventoryBatchResponse toResponse(InventoryBatch batch);
 }
 

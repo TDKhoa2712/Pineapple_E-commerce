@@ -9,8 +9,10 @@ import backend.pineapple_ecommerce.common.dto.response.PageResponse;
 import backend.pineapple_ecommerce.modules.inventory.service.InventoryReportService;
 import backend.pineapple_ecommerce.modules.inventory.service.InventoryService;
 import backend.pineapple_ecommerce.modules.inventory.dto.request.CreateInventoryBatchRequest;
+import backend.pineapple_ecommerce.modules.inventory.dto.request.RejectInventoryBatchRequest;
 import backend.pineapple_ecommerce.modules.inventory.dto.request.StockAdjustmentRequest;
 import backend.pineapple_ecommerce.modules.user.service.UserService;
+import backend.pineapple_ecommerce.common.enums.BatchStatus;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -119,6 +121,38 @@ public class InventoryController {
         return ResponseEntity.ok(ApiResponse.success(inventoryService.getBatchAdjustments(batchId)));
     }
 
+    @Operation(summary = "Admin duyệt lô hàng nhập (PENDING_APPROVAL -> AVAILABLE)")
+    @PatchMapping("/admin/batches/{batchId}/approve")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<InventoryBatchResponse>> approveBatch(@PathVariable Long batchId) {
+        Long adminId = userService.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.success(
+                inventoryService.approveBatch(batchId, adminId),
+                "Đã duyệt lô hàng nhập kho"));
+    }
+
+    @Operation(summary = "Admin từ chối lô hàng nhập (PENDING_APPROVAL -> REJECTED)")
+    @PatchMapping("/admin/batches/{batchId}/reject")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<InventoryBatchResponse>> rejectBatch(
+            @PathVariable Long batchId,
+            @Valid @RequestBody RejectInventoryBatchRequest request) {
+        Long adminId = userService.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.success(
+                inventoryService.rejectBatch(batchId, adminId, request.getReason()),
+                "Đã từ chối lô hàng nhập kho"));
+    }
+
+    @Operation(summary = "Farmer gửi yêu cầu duyệt lại lô bị từ chối (REJECTED -> PENDING_APPROVAL)")
+    @PatchMapping("/batches/{batchId}/resubmit")
+    @PreAuthorize("hasRole('FARMER')")
+    public ResponseEntity<ApiResponse<InventoryBatchResponse>> resubmitBatch(@PathVariable Long batchId) {
+        Long farmerId = userService.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.success(
+                inventoryService.resubmitBatch(batchId, farmerId),
+                "Đã gửi yêu cầu duyệt lại"));
+    }
+
     @Operation(summary = "Trigger thu cong danh dau lo het han (Admin)")
     @PostMapping("/admin/mark-expired")
     @PreAuthorize("hasRole('ADMIN')")
@@ -162,9 +196,10 @@ public class InventoryController {
             @RequestParam(defaultValue = "0")  int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) BatchStatus status,
             @RequestParam(required = false) String sortBy,
             @RequestParam(required = false) String sortDirection) {
-        return ResponseEntity.ok(ApiResponse.success(inventoryService.getAllBatches(keyword, page, size, sortBy, sortDirection)));
+        return ResponseEntity.ok(ApiResponse.success(inventoryService.getAllBatches(keyword, status, page, size, sortBy, sortDirection)));
     }
 }
 

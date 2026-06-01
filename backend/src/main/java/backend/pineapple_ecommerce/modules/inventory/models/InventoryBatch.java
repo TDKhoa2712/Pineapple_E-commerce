@@ -55,15 +55,22 @@ public class InventoryBatch extends BaseEntity {
 
     /**
      * Ghi chú về lô hàng (lý do nhập, nguồn gốc đặc biệt, điều chỉnh...).
-     * NEW — 2.3 InventoryService
+     * (Có thể dùng cho các nghiệp vụ mở rộng trong tương lai)
      */
     @Column(columnDefinition = "TEXT")
     private String note;
 
+    /**
+     * Lý do từ chối khi admin reject lô hàng của farmer nhập.
+     * Chỉ có ý nghĩa khi status = REJECTED (hoặc PENDING_APPROVAL sau khi farmer gửi lại).
+     */
+    @Column(name = "rejection_reason", length = 500)
+    private String rejectionReason;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default
-    private BatchStatus status = BatchStatus.AVAILABLE;
+    private BatchStatus status = BatchStatus.PENDING_APPROVAL;
 
     // ─────────────────────────────────────────────
     // Helpers

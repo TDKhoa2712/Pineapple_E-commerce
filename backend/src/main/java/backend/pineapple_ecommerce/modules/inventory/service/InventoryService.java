@@ -19,6 +19,24 @@ public interface InventoryService {
 
     InventoryBatchResponse addBatch(CreateInventoryBatchRequest request);
 
+    /**
+     * Admin duyệt lô hàng nhập: PENDING_APPROVAL -> AVAILABLE,
+     * xóa rejectionReason và cộng vào kho (remainingQuantity = quantity).
+     */
+    InventoryBatchResponse approveBatch(Long batchId, Long adminUserId);
+
+    /**
+     * Admin từ chối lô hàng nhập: PENDING_APPROVAL -> REJECTED,
+     * lưu rejectionReason và không cộng vào kho (remainingQuantity = 0).
+     */
+    InventoryBatchResponse rejectBatch(Long batchId, Long adminUserId, String reason);
+
+    /**
+     * Farmer gửi lại yêu cầu duyệt cho lô bị reject: REJECTED -> PENDING_APPROVAL.
+     * Giữ rejectionReason cho tới khi admin approve lần tiếp theo.
+     */
+    InventoryBatchResponse resubmitBatch(Long batchId, Long farmerUserId);
+
     List<InventoryBatchResponse> getAvailableBatches(Long productId);
 
     List<InventoryBatchResponse> getAllBatchesByProduct(Long productId);
@@ -85,5 +103,5 @@ public interface InventoryService {
 
     PageResponse<InventoryBatchResponse> getFarmBatches(Long farmId, String keyword, int page, int size, String sortBy, String sortDirection);
 
-    PageResponse<InventoryBatchResponse> getAllBatches(String keyword, int page, int size, String sortBy, String sortDirection);
+    PageResponse<InventoryBatchResponse> getAllBatches(String keyword, backend.pineapple_ecommerce.common.enums.BatchStatus status, int page, int size, String sortBy, String sortDirection);
 }
