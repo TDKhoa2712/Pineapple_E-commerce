@@ -27,7 +27,6 @@ Thumbs.db
 
 # ==================== FRONTEND ====================
 frontend/node_modules/
-frontend/
 
 # ==================== SENSITIVE & CONFIG ====================
 BE.xml
