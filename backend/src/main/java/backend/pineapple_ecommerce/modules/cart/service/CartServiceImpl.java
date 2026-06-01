@@ -27,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -47,8 +48,14 @@ public class CartServiceImpl implements CartService {
     @Override
     @Transactional(readOnly = true)
     public CartResponse getCart(Long userId) {
-        Cart cart = getOrCreateCart(userId);
-        return cartMapper.toCartResponse(cart);
+        return cartRepository.findByUserIdWithItems(userId)
+                .map(cartMapper::toCartResponse)
+                .orElseGet(() -> CartResponse.builder()
+                        .cartId(null)
+                        .items(new ArrayList<>())
+                        .totalItems(0)
+                        .totalAmount(BigDecimal.ZERO)
+                        .build());
     }
 
     // ─────────────────────────────────────────────
@@ -144,7 +151,15 @@ public class CartServiceImpl implements CartService {
     @Override
     @Transactional(readOnly = true)
     public CartValidationResponse validateCart(Long userId) {
-        Cart cart = getOrCreateCart(userId);   // ← Lazy create
+        Optional<Cart> cartOpt = cartRepository.findByUserIdWithItems(userId);
+        if (cartOpt.isEmpty()) {
+            return CartValidationResponse.builder()
+                    .isValid(true)
+                    .warnings(new ArrayList<>())
+                    .estimatedTotal(BigDecimal.ZERO)
+                    .build();
+        }
+        Cart cart = cartOpt.get();
         // ... (phần còn lại giữ nguyên)
         List<CartValidationResponse.CartItemWarning> warnings = new ArrayList<>();
         BigDecimal estimatedTotal = BigDecimal.ZERO;
@@ -202,6 +217,22 @@ public class CartServiceImpl implements CartService {
     @Override
     @Transactional
     public MergeCartResponse mergeGuestCart(Long userId, MergeCartRequest request) {
+        if (request.getItems() == null || request.getItems().isEmpty()) {
+            Optional<Cart> cartOpt = cartRepository.findByUserIdWithItems(userId);
+            CartResponse cartResponse = cartOpt.map(cartMapper::toCartResponse)
+                    .orElseGet(() -> CartResponse.builder()
+                            .cartId(null)
+                            .items(new ArrayList<>())
+                            .totalItems(0)
+                            .totalAmount(BigDecimal.ZERO)
+                            .build());
+            return MergeCartResponse.builder()
+                    .cart(cartResponse)
+                    .mergedCount(0)
+                    .skippedItems(new ArrayList<>())
+                    .build();
+        }
+
         Cart cart = getOrCreateCart(userId);   // ← Rất quan trọng
         // ... (phần logic merge giữ nguyên như cũ)
         int mergedCount = 0;
