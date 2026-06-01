@@ -26,6 +26,16 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -47,6 +57,8 @@ jobs:
           DB_URL: jdbc:postgresql://localhost:5432/pineapple_ecommerce
           DB_USERNAME: postgres
           DB_PASSWORD: password
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
           JWT_SECRET: super_secret_jwt_key_for_testing_1234567890
           GOOGLE_CLIENT_ID: dummy_google_client_id
           GOOGLE_CLIENT_SECRET: dummy_google_client_secret
@@ -67,7 +79,7 @@ jobs:
           GHN_WEBHOOK_SECRET: dummy_ghn_webhook_secret
 
   frontend-lint-build:
-    name: Frontend Lint & Build
+    name: Frontend Lint, Test & Build
     runs-on: ubuntu-latest
 
     steps:
@@ -87,6 +99,10 @@ jobs:
 
       - name: Run Lint
         run: npm run lint
+        working-directory: frontend
+
+      - name: Run Tests
+        run: npm run test -- --run
         working-directory: frontend
 
       - name: Run Build
