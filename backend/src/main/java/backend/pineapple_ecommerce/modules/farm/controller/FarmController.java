@@ -157,4 +157,22 @@ public class FarmController {
         return ResponseEntity.ok(ApiResponse.success(
                 farmService.rejectFarm(farmId, request.getReason()), "Đã từ chối trang trại"));
     }
+
+    @Operation(summary = "Kích hoạt trang trại (Admin) — INACTIVE/REJECTED → ACTIVE",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @PatchMapping("/admin/{farmId}/activate")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<FarmResponse>> activateFarm(@PathVariable Long farmId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                farmService.activateFarm(farmId), "Đã kích hoạt trang trại"));
+    }
+
+    @Operation(summary = "Vô hiệu hóa trang trại (Admin) — ACTIVE → INACTIVE",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @PatchMapping("/admin/{farmId}/deactivate")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<FarmResponse>> deactivateFarm(@PathVariable Long farmId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                farmService.deactivateFarm(farmId), "Đã vô hiệu hóa trang trại"));
+    }
 }

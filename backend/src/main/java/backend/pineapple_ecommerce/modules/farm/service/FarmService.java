@@ -45,6 +45,12 @@ public interface FarmService {
     /** Admin từ chối farm: PENDING_APPROVAL → REJECTED, lưu lý do */
     FarmResponse rejectFarm(Long farmId, String reason);
 
+    /** Admin kích hoạt farm: INACTIVE / REJECTED → ACTIVE */
+    FarmResponse activateFarm(Long farmId);
+
+    /** Admin vô hiệu hóa farm: ACTIVE → INACTIVE */
+    FarmResponse deactivateFarm(Long farmId);
+
     /** Upload/thay ảnh farm qua Cloudinary */
     FarmResponse uploadFarmImage(Long farmId, Long requesterId, MultipartFile image);
 

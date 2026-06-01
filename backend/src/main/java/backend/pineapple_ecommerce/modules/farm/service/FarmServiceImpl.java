@@ -212,8 +212,42 @@ public class FarmServiceImpl implements FarmService {
         return farmMapper.toResponse(saved);
     }
 
-    // ─────────────────────────────────────────────
-    // NEW — 2.5: UPLOAD IMAGE
+    @Override
+    @Transactional
+    public FarmResponse activateFarm(Long farmId) {
+        Farm farm = farmRepository.findById(farmId)
+                .orElseThrow(() -> new ResourceNotFoundException("Farm", farmId));
+
+        if (farm.getStatus() == FarmStatus.ACTIVE) {
+            throw new BusinessException("Farm đã đang ở trạng thái ACTIVE.");
+        }
+
+        farm.setStatus(FarmStatus.ACTIVE);
+        farm.setRejectionReason(null);
+        Farm saved = farmRepository.save(farm);
+        log.info("Farm activated by admin: id={}", farmId);
+        return farmMapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public FarmResponse deactivateFarm(Long farmId) {
+        Farm farm = farmRepository.findById(farmId)
+                .orElseThrow(() -> new ResourceNotFoundException("Farm", farmId));
+
+        if (farm.getStatus() != FarmStatus.ACTIVE) {
+            throw new BusinessException(
+                    "Chỉ có thể vô hiệu hóa farm ở trạng thái ACTIVE. " +
+                    "Trạng thái hiện tại: " + farm.getStatus());
+        }
+
+        farm.setStatus(FarmStatus.INACTIVE);
+        Farm saved = farmRepository.save(farm);
+        log.info("Farm deactivated by admin: id={}", farmId);
+        return farmMapper.toResponse(saved);
+    }
+
+
     // ─────────────────────────────────────────────
 
     @Override
