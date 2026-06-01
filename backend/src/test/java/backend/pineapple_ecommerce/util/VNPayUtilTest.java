@@ -1,5 +1,6 @@
 package backend.pineapple_ecommerce.util;
 
+import backend.pineapple_ecommerce.common.util.VNPayUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -93,6 +94,7 @@ class VNPayUtilTest {
         void givenForwardedForHeader_shouldReturnHeaderValue() {
             HttpServletRequest request = mock(HttpServletRequest.class);
             when(request.getHeader("X-FORWARDED-FOR")).thenReturn("203.0.113.42");
+            when(request.getRemoteAddr()).thenReturn("127.0.0.1");
 
             assertThat(VNPayUtil.getIpAddress(request)).isEqualTo("203.0.113.42");
         }

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Xác nhận đơn hàng</title>
+  <style>
+    body { margin:0; padding:0; background:#f5f5f0; font-family: 'Segoe UI', Arial, sans-serif; }
+    .wrapper { max-width:600px; margin:32px auto; background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.08); }
+    .header { background:#2d7a4f; padding:32px 40px; }
+    .header h1 { color:#fff; margin:0 0 4px; font-size:22px; font-weight:600; }
+    .header p { color:rgba(255,255,255,0.85); margin:0; font-size:13px; }
+    .order-badge { float:right; background:rgba(255,255,255,0.2); color:#fff; border-radius:8px; padding:8px 16px; font-size:14px; font-weight:600; margin-top:4px; }
+    .body { padding:32px 40px; }
+    .text { color:#4a4a4a; font-size:15px; line-height:1.7; margin:0 0 20px; }
+    .section-title { font-size:14px; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:0.8px; margin:28px 0 12px; border-bottom:1px solid #eee; padding-bottom:8px; }
+    /* Items table */
+    .item-table { width:100%; border-collapse:collapse; }
+    .item-table th { font-size:12px; color:#888; text-align:left; padding:8px 4px; border-bottom:2px solid #eee; font-weight:500; }
+    .item-table td { font-size:14px; color:#333; padding:12px 4px; border-bottom:1px solid #f0f0f0; vertical-align:top; }
+    .item-name { font-weight:500; }
+    .item-qty { color:#888; font-size:13px; margin-top:2px; }
+    .text-right { text-align:right; }
+    /* Summary */
+    .summary-row { display:flex; justify-content:space-between; padding:8px 0; font-size:14px; color:#555; }
+    .summary-row.total { border-top:2px solid #2d7a4f; margin-top:8px; padding-top:12px; font-size:17px; font-weight:700; color:#2d7a4f; }
+    /* Info cards */
+    .info-grid { display:table; width:100%; }
+    .info-card { display:table-cell; width:50%; padding:4px; vertical-align:top; }
+    .info-card-inner { background:#f8f8f6; border-radius:8px; padding:16px; height:100%; }
+    .info-label { font-size:12px; color:#888; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; }
+    .info-value { font-size:14px; color:#333; line-height:1.6; }
+    /* Status badge */
+    .status-badge { display:inline-block; background:#fff3e0; color:#e65100; border-radius:20px; padding:6px 16px; font-size:13px; font-weight:600; }
+    .btn { display:inline-block; background:#2d7a4f; color:#fff; text-decoration:none; padding:12px 28px; border-radius:8px; font-size:14px; font-weight:600; margin-top:24px; }
+    .footer { background:#f9f9f7; padding:24px 40px; text-align:center; border-top:1px solid #eee; }
+    .footer p { color:#888; font-size:12px; margin:4px 0; }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="order-badge">Đơn #<span th:text="${order.id}">12345</span></div>
+    <h1>✅ Đặt hàng thành công!</h1>
+    <p>Cảm ơn bạn đã tin tưởng Pineapple E-commerce</p>
+  </div>
+
+  <!-- Body -->
+  <div class="body">
+
+    <p class="text">
+      Đơn hàng của bạn đã được ghi nhận và đang chờ xác nhận.
+      Chúng tôi sẽ thông báo ngay khi đơn hàng được xử lý.
+    </p>
+
+    <!-- Order status -->
+    <div>
+      <span class="status-badge">🕐 Đang chờ xác nhận</span>
+    </div>
+
+    <!-- Items -->
+    <div class="section-title">Sản phẩm đã đặt</div>
+    <table class="item-table">
+      <thead>
+        <tr>
+          <th>Sản phẩm</th>
+          <th class="text-right">Đơn giá</th>
+          <th class="text-right">Tổng</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:each="item : ${order.items}">
+          <td>
+            <div class="item-name" th:text="${item.productName}">Rau cải ngọt</div>
+            <div class="item-qty">× <span th:text="${item.quantity}">2</span></div>
+          </td>
+          <td class="text-right">
+            <span th:text="${#numbers.formatDecimal(item.unitPrice, 0, 'COMMA', 0, 'POINT')}">15.000</span>đ
+          </td>
+          <td class="text-right">
+            <span th:text="${#numbers.formatDecimal(item.subtotal, 0, 'COMMA', 0, 'POINT')}">30.000</span>đ
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Summary -->
+    <div style="margin-top:20px; padding-top:4px;">
+      <div class="summary-row">
+        <span>Tạm tính</span>
+        <span><span th:text="${#numbers.formatDecimal(order.subtotal, 0, 'COMMA', 0, 'POINT')}">100.000</span>đ</span>
+      </div>
+      <div class="summary-row">
+        <span>Phí vận chuyển</span>
+        <span><span th:text="${#numbers.formatDecimal(order.shippingFee, 0, 'COMMA', 0, 'POINT')}">0</span>đ</span>
+      </div>
+      <div class="summary-row" th:if="${order.discountAmount != null and order.discountAmount.compareTo(T(java.math.BigDecimal).ZERO) > 0}">
+        <span style="color:#2d7a4f;">Giảm giá</span>
+        <span style="color:#2d7a4f;">-<span th:text="${#numbers.formatDecimal(order.discountAmount, 0, 'COMMA', 0, 'POINT')}">0</span>đ</span>
+      </div>
+      <div class="summary-row total">
+        <span>Tổng thanh toán</span>
+        <span><span th:text="${#numbers.formatDecimal(order.totalAmount, 0, 'COMMA', 0, 'POINT')}">100.000</span>đ</span>
+      </div>
+    </div>
+
+    <!-- Delivery & Payment info -->
+    <div class="section-title">Thông tin giao hàng & thanh toán</div>
+    <div class="info-grid">
+      <div class="info-card">
+        <div class="info-card-inner">
+          <div class="info-label">📍 Địa chỉ giao hàng</div>
+          <div class="info-value" th:text="${order.shippingAddress}">123 Nguyễn Văn A, Q.1, TP.HCM</div>
+        </div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-inner">
+          <div class="info-label">💳 Thanh toán</div>
+          <div class="info-value" th:text="${order.paymentMethod}">COD</div>
+          <div style="margin-top:8px;">
+            <div class="info-label">📋 Ghi chú</div>
+            <div class="info-value" th:text="${order.note != null ? order.note : 'Không có'}">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <a href="https://localhost:3000https://localhost:3000/orders" class="btn">Xem đơn hàng của tôi</a>
+
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <p><strong style="color:#2d7a4f;">🍍 Pineapple E-commerce</strong></p>
+    <p>Mọi thắc mắc, vui lòng liên hệ
+      <a href="mailto:support@pineapple.vn" style="color:#2d7a4f; text-decoration:none;">support@pineapple.vn</a>
+    </p>
+    <p>© 2025 Pineapple. All rights reserved.</p>
+  </div>
+
+</div>
+</body>
+</html>

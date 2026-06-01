@@ -1,14 +1,14 @@
-﻿# ==================== BACKEND ====================
-backend/.env
-backend/.env.local
-backend/application-prod.yml
+# ==================== BACKEND ====================
+.env
+.env.local
+application-prod.yml
 
 # Maven / Build
-backend/target/
-backend/.mvn/wrapper/maven-wrapper.jar
+target/
+.mvn/wrapper/maven-wrapper.jar
 
 # IDE
-backend/.idea/
+.idea/
 *.iml
 .vscode/
 
@@ -24,3 +24,11 @@ logs/
 # OS
 .DS_Store
 Thumbs.db
+
+# ==================== FRONTEND ====================
+frontend/node_modules/
+
+# ==================== SENSITIVE & CONFIG ====================
+BE.xml
+VNPay_account
+VNPay_account/

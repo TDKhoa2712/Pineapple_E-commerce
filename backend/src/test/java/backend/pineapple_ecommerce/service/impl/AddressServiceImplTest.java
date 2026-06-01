@@ -1,15 +1,16 @@
 package backend.pineapple_ecommerce.service.impl;
 
-import backend.pineapple_ecommerce.dto.request.CreateAddressRequest;
-import backend.pineapple_ecommerce.dto.response.AddressResponse;
-import backend.pineapple_ecommerce.entity.Address;
-import backend.pineapple_ecommerce.entity.User;
-import backend.pineapple_ecommerce.exception.BusinessException;
-import backend.pineapple_ecommerce.exception.ResourceNotFoundException;
-import backend.pineapple_ecommerce.exception.UnauthorizedException;
-import backend.pineapple_ecommerce.mapper.AddressMapper;
-import backend.pineapple_ecommerce.repository.AddressRepository;
-import backend.pineapple_ecommerce.repository.UserRepository;
+import backend.pineapple_ecommerce.modules.address.dto.request.CreateAddressRequest;
+import backend.pineapple_ecommerce.modules.address.dto.response.AddressResponse;
+import backend.pineapple_ecommerce.modules.address.models.Address;
+import backend.pineapple_ecommerce.modules.address.service.AddressServiceImpl;
+import backend.pineapple_ecommerce.modules.user.models.User;
+import backend.pineapple_ecommerce.common.exception.BusinessException;
+import backend.pineapple_ecommerce.common.exception.ResourceNotFoundException;
+import backend.pineapple_ecommerce.common.exception.UnauthorizedException;
+import backend.pineapple_ecommerce.modules.address.mapper.AddressMapper;
+import backend.pineapple_ecommerce.modules.address.repository.AddressRepository;
+import backend.pineapple_ecommerce.modules.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Chào mừng đến Pineapple</title>
+  <style>
+    body { margin:0; padding:0; background:#f5f5f0; font-family: 'Segoe UI', Arial, sans-serif; }
+    .wrapper { max-width:600px; margin:32px auto; background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.08); }
+    .header { background:#2d7a4f; padding:36px 40px; text-align:center; }
+    .header h1 { color:#fff; margin:0; font-size:26px; font-weight:600; letter-spacing:-0.5px; }
+    .header p  { color:rgba(255,255,255,0.85); margin:8px 0 0; font-size:14px; }
+    .body { padding:40px; }
+    .greeting { font-size:20px; font-weight:600; color:#1a1a1a; margin:0 0 16px; }
+    .text { color:#4a4a4a; font-size:15px; line-height:1.7; margin:0 0 20px; }
+    .highlight-box { background:#f0faf4; border-left:4px solid #2d7a4f; border-radius:0 8px 8px 0; padding:16px 20px; margin:24px 0; }
+    .highlight-box p { margin:0; color:#1e5c38; font-size:14px; line-height:1.6; }
+    .btn { display:inline-block; background:#2d7a4f; color:#fff; text-decoration:none; padding:14px 32px; border-radius:8px; font-size:15px; font-weight:600; margin:8px 0 24px; }
+    .features { display:table; width:100%; border-collapse:collapse; margin:24px 0; }
+    .feature { display:table-cell; width:33%; padding:12px 8px; text-align:center; vertical-align:top; }
+    .feature-icon { font-size:28px; display:block; margin-bottom:8px; }
+    .feature-label { font-size:13px; color:#555; font-weight:500; }
+    .footer { background:#f9f9f7; padding:28px 40px; text-align:center; border-top:1px solid #eee; }
+    .footer p { color:#888; font-size:12px; margin:4px 0; line-height:1.6; }
+    .logo-text { font-size:18px; font-weight:700; color:#2d7a4f; }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- Header -->
+  <div class="header">
+    <h1>🍍 Pineapple E-commerce</h1>
+    <p>Nông sản sạch từ trang trại đến bàn ăn</p>
+  </div>
+
+  <!-- Body -->
+  <div class="body">
+    <p class="greeting">Chào mừng, <span th:text="${fullName}">Bạn</span>! 🎉</p>
+
+    <p class="text">
+      Tài khoản của bạn trên <strong>Pineapple E-commerce</strong> đã được tạo thành công.
+      Chúng tôi rất vui được chào đón bạn vào cộng đồng người dùng của mình.
+    </p>
+
+    <div class="highlight-box">
+      <p>
+        Với Pineapple, bạn có thể mua sắm trực tiếp từ các trang trại uy tín,
+        đảm bảo nguồn gốc rõ ràng và chất lượng tươi ngon nhất.
+      </p>
+    </div>
+
+    <!-- Features -->
+    <div class="features">
+      <div class="feature">
+        <span class="feature-icon">🌿</span>
+        <span class="feature-label">Nông sản<br/>hữu cơ</span>
+      </div>
+      <div class="feature">
+        <span class="feature-icon">🚚</span>
+        <span class="feature-label">Giao hàng<br/>nhanh chóng</span>
+      </div>
+      <div class="feature">
+        <span class="feature-icon">🔒</span>
+        <span class="feature-label">Thanh toán<br/>an toàn</span>
+      </div>
+    </div>
+
+    <p class="text">Bắt đầu khám phá ngay hôm nay!</p>
+    <a href="https://pineapple.vn/products" class="btn">Khám phá sản phẩm</a>
+
+    <p class="text" style="font-size:13px; color:#888; margin-top:24px;">
+      Nếu bạn không tạo tài khoản này, hãy bỏ qua email này.
+      Không có hành động nào được thực hiện với tài khoản của bạn.
+    </p>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <p class="logo-text">🍍 Pineapple</p>
+    <p>© 2025 Pineapple E-commerce. All rights reserved.</p>
+    <p>
+      <a href="https://localhost:3000" style="color:#2d7a4f; text-decoration:none;">pineapple.vn</a>
+      &nbsp;·&nbsp;
+      <a href="mailto:support@pineapple.vn" style="color:#2d7a4f; text-decoration:none;">support@pineapple.vn</a>
+    </p>
+  </div>
+
+</div>
+</body>
+</html>

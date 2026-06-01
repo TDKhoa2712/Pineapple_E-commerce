@@ -1,15 +1,16 @@
 package backend.pineapple_ecommerce.service.impl;
 
-import backend.pineapple_ecommerce.dto.response.PageResponse;
-import backend.pineapple_ecommerce.dto.response.WishlistResponse;
-import backend.pineapple_ecommerce.entity.Product;
-import backend.pineapple_ecommerce.entity.User;
-import backend.pineapple_ecommerce.entity.Wishlist;
-import backend.pineapple_ecommerce.exception.ResourceNotFoundException;
-import backend.pineapple_ecommerce.mapper.WishlistMapper;
-import backend.pineapple_ecommerce.repository.ProductRepository;
-import backend.pineapple_ecommerce.repository.UserRepository;
-import backend.pineapple_ecommerce.repository.WishlistRepository;
+import backend.pineapple_ecommerce.common.dto.response.PageResponse;
+import backend.pineapple_ecommerce.modules.wishlist.dto.response.WishlistResponse;
+import backend.pineapple_ecommerce.modules.product.models.Product;
+import backend.pineapple_ecommerce.modules.user.models.User;
+import backend.pineapple_ecommerce.modules.wishlist.models.Wishlist;
+import backend.pineapple_ecommerce.common.exception.ResourceNotFoundException;
+import backend.pineapple_ecommerce.modules.wishlist.mapper.WishlistMapper;
+import backend.pineapple_ecommerce.modules.product.repository.ProductRepository;
+import backend.pineapple_ecommerce.modules.user.repository.UserRepository;
+import backend.pineapple_ecommerce.modules.wishlist.service.WishlistServiceImpl;
+import backend.pineapple_ecommerce.modules.wishlist.repository.WishlistRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

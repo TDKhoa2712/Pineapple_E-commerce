@@ -1,5 +1,6 @@
 package backend.pineapple_ecommerce.security;
 
+import backend.pineapple_ecommerce.modules.user.service.UserDetailsServiceImpl;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -13,6 +14,9 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 
 import java.io.IOException;
 
@@ -37,23 +41,44 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     @NonNull FilterChain filterChain)
             throws ServletException, IOException {
 
+        String jwt = null;
         final String authHeader = request.getHeader("Authorization");
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            jwt = authHeader.substring(7);
+        } else if (request.getCookies() != null) {
+            jwt = java.util.Arrays.stream(request.getCookies())
+                    .filter(c -> "access_token".equals(c.getName()))
+                    .map(jakarta.servlet.http.Cookie::getValue)
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        if (jwt == null || jwt.trim().isEmpty()) {
             filterChain.doFilter(request, response);
             return;
         }
-
-        final String jwt = authHeader.substring(7);
+        boolean blocked = false;
 
         try {
-            String email = jwtService.extractUsername(jwt);
+            Claims claims = jwtService.extractAllClaims(jwt);
+            String email = claims.getSubject();
 
-            // Chỉ xử lý nếu chưa authenticated
-            if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            if (email != null) {
+                // Luôn load từ DB để kiểm tra trạng thái mới nhất (ACTIVE / BANNED / INACTIVE)
                 UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
-                if (jwtService.isTokenValid(jwt, userDetails)) {
+                if (!userDetails.isAccountNonLocked()) {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json;charset=UTF-8");
+                    response.getWriter().write("{\"success\":false,\"message\":\"Tài khoản đã bị khoá\"}");
+                    blocked = true;
+                } else if (!userDetails.isEnabled()) {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json;charset=UTF-8");
+                    response.getWriter().write("{\"success\":false,\"message\":\"Tài khoản chưa được kích hoạt\"}");
+                    blocked = true;
+                } else {
                     UsernamePasswordAuthenticationToken authToken =
                             new UsernamePasswordAuthenticationToken(
                                     userDetails,
@@ -61,14 +86,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     userDetails.getAuthorities()
                             );
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    // Ghi đè SecurityContext với thông tin mới nhất từ DB
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
             }
+        } catch (ExpiredJwtException e) {
+            log.warn("JWT is expired: {}", e.getMessage());
+        } catch (JwtException e) {
+            log.warn("JWT is invalid: {}", e.getMessage());
         } catch (Exception e) {
             log.warn("JWT authentication failed: {}", e.getMessage());
-            // Không throw — để filter chain tiếp tục, endpoint sẽ trả 401
         }
 
-        filterChain.doFilter(request, response);
+        if (!blocked) {
+            filterChain.doFilter(request, response);
+        }
     }
 }

@@ -1,24 +1,26 @@
 package backend.pineapple_ecommerce.service.impl;
 
-import backend.pineapple_ecommerce.dto.request.LoginRequest;
-import backend.pineapple_ecommerce.dto.request.RefreshTokenRequest;
-import backend.pineapple_ecommerce.dto.request.RegisterRequest;
-import backend.pineapple_ecommerce.dto.response.AuthResponse;
-import backend.pineapple_ecommerce.entity.Cart;
-import backend.pineapple_ecommerce.entity.RefreshToken;
-import backend.pineapple_ecommerce.entity.Role;
-import backend.pineapple_ecommerce.entity.User;
-import backend.pineapple_ecommerce.enums.RoleName;
-import backend.pineapple_ecommerce.enums.UserStatus;
-import backend.pineapple_ecommerce.exception.BusinessException;
-import backend.pineapple_ecommerce.exception.ResourceNotFoundException;
-import backend.pineapple_ecommerce.exception.UnauthorizedException;
-import backend.pineapple_ecommerce.mapper.UserMapper;
-import backend.pineapple_ecommerce.repository.CartRepository;
-import backend.pineapple_ecommerce.repository.RoleRepository;
-import backend.pineapple_ecommerce.repository.UserRepository;
+import backend.pineapple_ecommerce.modules.auth.dto.request.LoginRequest;
+import backend.pineapple_ecommerce.modules.auth.dto.request.RefreshTokenRequest;
+import backend.pineapple_ecommerce.modules.auth.dto.request.RegisterRequest;
+import backend.pineapple_ecommerce.modules.auth.dto.response.AuthResponse;
+import backend.pineapple_ecommerce.modules.auth.service.AuthServiceImpl;
+import backend.pineapple_ecommerce.modules.cart.models.Cart;
+import backend.pineapple_ecommerce.modules.auth.models.RefreshToken;
+import backend.pineapple_ecommerce.modules.auth.models.Role;
+import backend.pineapple_ecommerce.modules.user.models.User;
+import backend.pineapple_ecommerce.common.enums.RoleName;
+import backend.pineapple_ecommerce.common.enums.UserStatus;
+import backend.pineapple_ecommerce.common.exception.BusinessException;
+import backend.pineapple_ecommerce.common.exception.ResourceNotFoundException;
+import backend.pineapple_ecommerce.common.exception.UnauthorizedException;
+import backend.pineapple_ecommerce.modules.user.mapper.UserMapper;
+import backend.pineapple_ecommerce.modules.cart.repository.CartRepository;
+import backend.pineapple_ecommerce.modules.auth.repository.RoleRepository;
+import backend.pineapple_ecommerce.modules.user.repository.UserRepository;
 import backend.pineapple_ecommerce.security.JwtService;
-import backend.pineapple_ecommerce.service.RefreshTokenService;
+import backend.pineapple_ecommerce.modules.auth.service.RefreshTokenService;
+import backend.pineapple_ecommerce.modules.auth.service.EmailVerificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -34,7 +36,6 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -55,6 +56,7 @@ class AuthServiceImplTest {
     @Mock private JwtService          jwtService;
     @Mock private RefreshTokenService refreshTokenService;
     @Mock private UserDetailsService  userDetailsService;
+    @Mock private EmailVerificationService emailVerificationService;
 
     @InjectMocks
     private AuthServiceImpl authService;
@@ -76,6 +78,7 @@ class AuthServiceImplTest {
                 .password("$2a$encoded")
                 .fullName("Nguyen Van A")
                 .status(UserStatus.ACTIVE)
+                .emailVerified(true)
                 .roles(Set.of(userRole))
                 .build();
 
@@ -110,7 +113,7 @@ class AuthServiceImplTest {
         }
 
         @Test
-        @DisplayName("đăng ký thành công → trả về AuthResponse có accessToken")
+        @DisplayName("đăng ký thành công → trả về AuthResponse pending verification")
         void givenValidRequest_shouldReturnAuthResponse() {
             RegisterRequest req = buildRequest();
 
@@ -127,17 +130,13 @@ class AuthServiceImplTest {
             when(passwordEncoder.encode(req.getPassword())).thenReturn("$2a$new");
             when(roleRepository.findByName(RoleName.ROLE_USER)).thenReturn(Optional.of(userRole));
             when(userRepository.save(newUser)).thenReturn(newUser);
-            when(cartRepository.save(any(Cart.class))).thenReturn(new Cart());
-            when(userDetailsService.loadUserByUsername(newUser.getEmail())).thenReturn(userDetails);
-            when(jwtService.generateAccessToken(userDetails)).thenReturn("access.token.here");
-            when(jwtService.getAccessTokenExpirationMs()).thenReturn(900_000L);
-            when(refreshTokenService.createRefreshToken(newUser)).thenReturn(refreshToken);
 
             AuthResponse response = authService.register(req);
 
-            assertThat(response.getAccessToken()).isEqualTo("access.token.here");
-            assertThat(response.getRefreshToken()).isEqualTo("refresh-token-uuid");
+            assertThat(response.getAccessToken()).isNull();
             assertThat(response.getEmail()).isEqualTo(req.getEmail());
+            assertThat(response.getEmailVerified()).isFalse();
+            verify(emailVerificationService).sendVerificationOtp(req.getEmail());
         }
 
         @Test
@@ -179,30 +178,8 @@ class AuthServiceImplTest {
                     .isInstanceOf(ResourceNotFoundException.class);
         }
 
-        @Test
-        @DisplayName("đăng ký thành công → Cart mới được tạo cho user")
-        void givenSuccessfulRegister_shouldCreateCart() {
-            RegisterRequest req = buildRequest();
-            User newUser = User.builder()
-                    .id(2L).email(req.getEmail()).status(UserStatus.ACTIVE).roles(Set.of(userRole)).build();
+        // Note: Cart creation is handled separately in OTP verification
 
-            when(userRepository.existsByEmail(req.getEmail())).thenReturn(false);
-            when(userMapper.toEntity(req)).thenReturn(newUser);
-            when(passwordEncoder.encode(any())).thenReturn("hashed");
-            when(roleRepository.findByName(RoleName.ROLE_USER)).thenReturn(Optional.of(userRole));
-            when(userRepository.save(newUser)).thenReturn(newUser);
-            when(cartRepository.save(any())).thenReturn(new Cart());
-            when(userDetailsService.loadUserByUsername(any())).thenReturn(userDetails);
-            when(jwtService.generateAccessToken(any())).thenReturn("tok");
-            when(jwtService.getAccessTokenExpirationMs()).thenReturn(900_000L);
-            when(refreshTokenService.createRefreshToken(any())).thenReturn(refreshToken);
-
-            authService.register(req);
-
-            ArgumentCaptor<Cart> cartCaptor = ArgumentCaptor.forClass(Cart.class);
-            verify(cartRepository).save(cartCaptor.capture());
-            assertThat(cartCaptor.getValue().getUser()).isEqualTo(newUser);
-        }
     }
 
     // ─────────────────────────────────────────────────────────────────

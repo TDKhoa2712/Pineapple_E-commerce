@@ -1,0 +1,94 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  backend-build-test:
+    name: Backend Build & Test
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: pineapple_ecommerce
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+          cache-dependency-path: backend/pom.xml
+
+      - name: Run Backend Tests
+        run: |
+          chmod +x ./mvnw
+          ./mvnw clean test
+        working-directory: backend
+        env:
+          DB_URL: jdbc:postgresql://localhost:5432/pineapple_ecommerce
+          DB_USERNAME: postgres
+          DB_PASSWORD: password
+          JWT_SECRET: super_secret_jwt_key_for_testing_1234567890
+          GOOGLE_CLIENT_ID: dummy_google_client_id
+          GOOGLE_CLIENT_SECRET: dummy_google_client_secret
+          FACEBOOK_CLIENT_ID: dummy_facebook_client_id
+          FACEBOOK_CLIENT_SECRET: dummy_facebook_client_secret
+          MAIL_USERNAME: dummy_mail_username
+          MAIL_PASSWORD: dummy_mail_password
+          MAIL_FROM_ADDRESS: pineappleecommerce.example@gmail.com
+          FRONTEND_URL: http://localhost:3000
+          CLOUDINARY_CLOUD_NAME: dummy_cloudinary_name
+          CLOUDINARY_API_KEY: dummy_cloudinary_key
+          CLOUDINARY_API_SECRET: dummy_cloudinary_secret
+          VNPAY_TMN_CODE: dummy_vnpay_tmn_code
+          VNPAY_HASH_SECRET: dummy_vnpay_hash_secret
+          VNP_URL: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+          GHN_TOKEN: dummy_ghn_token
+          GHN_SHOP_ID: dummy_ghn_shop_id
+          GHN_WEBHOOK_SECRET: dummy_ghn_webhook_secret
+
+  frontend-lint-build:
+    name: Frontend Lint & Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Run Lint
+        run: npm run lint
+        working-directory: frontend
+
+      - name: Run Build
+        run: npm run build
+        working-directory: frontend

@@ -1,6 +1,10 @@
 package backend.pineapple_ecommerce.exception;
 
-import backend.pineapple_ecommerce.dto.response.ApiResponse;
+import backend.pineapple_ecommerce.common.exception.BusinessException;
+import backend.pineapple_ecommerce.common.exception.GlobalExceptionHandler;
+import backend.pineapple_ecommerce.common.exception.ResourceNotFoundException;
+import backend.pineapple_ecommerce.common.exception.UnauthorizedException;
+import backend.pineapple_ecommerce.common.dto.response.ApiResponse;
 import jakarta.validation.ConstraintViolationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
