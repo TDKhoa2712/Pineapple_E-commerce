@@ -100,8 +100,8 @@ public class ProductSpecification {
             String cleanKeyword = keyword.trim().toLowerCase();
 
             // PostgreSQL unaccent and lower for accent-insensitive search
-            Expression<String> unaccentName = cb.function("unaccent", String.class, cb.lower(root.get("name")));
-            Expression<String> unaccentKeyword = cb.function("unaccent", String.class, cb.literal(cleanKeyword));
+            Expression<String> unaccentName = cb.function("immutable_unaccent", String.class, cb.lower(root.get("name")));
+            Expression<String> unaccentKeyword = cb.function("immutable_unaccent", String.class, cb.literal(cleanKeyword));
 
             // Trigram Index matches text with LIKE/ILIKE using %wildcard%
             Predicate likePredicate = cb.like(unaccentName, cb.concat(cb.concat("%", unaccentKeyword), "%"));

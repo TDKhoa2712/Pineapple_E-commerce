@@ -45,17 +45,17 @@ app:
   mail:
     from-address: ${MAIL_FROM_ADDRESS:pineappleecommerce.example@gmail.com}
     from-name: "Pineapple E-commerce"
-    base-url: "https://yourdomain.com"          # Thay bằng domain thật tạm thời chưa
+    base-url: ${APP_MAIL_BASE_URL:https://yourdomain.com}
     support-email: "support@pineapple.vn"
 
   vnpay:
     tmn-code: ${VNPAY_TMN_CODE}
     hash-secret: ${VNPAY_HASH_SECRET}
     pay-url: ${VNP_URL}
-    return-url: "https://yourdomain.com/api/v1/payments/vnpay-return"
-    ipn-url: "https://yourdomain.com/api/v1/payments/vnpay-ipn"
+    return-url: ${APP_VNPAY_RETURN_URL:https://yourdomain.com/api/v1/payments/vnpay-return}
+    ipn-url: ${APP_VNPAY_IPN_URL:https://yourdomain.com/api/v1/payments/vnpay-ipn}
     api-url: "https://sandbox.vnpayment.vn/merchant_webapi/api/transaction" // đổi khi deloy https://merchant.vnpayment.vn/api/transaction"
-    frontend-result-url: "https://yourdomain.com/payment/result"
+    frontend-result-url: ${APP_VNPAY_FRONTEND_RESULT_URL:https://yourdomain.com/payment/result}
 
   ghn:
     token: ${GHN_TOKEN}
@@ -72,7 +72,7 @@ app:
       - 10.0.0.0/8
       - 172.16.0.0/12
       - 192.168.0.0/16
-    trust-all-proxies: false
+    trust-all-proxies: true
 
   # Thêm khi tích hợp GHTK
   # ghtk:

@@ -43,6 +43,7 @@ public class CacheConfig {
             cacheConfigurations.put("products_related", RedisCacheConfiguration.defaultCacheConfig().entryTtl(Duration.ofHours(2)));
             cacheConfigurations.put("products_by_ids", RedisCacheConfiguration.defaultCacheConfig().entryTtl(Duration.ofHours(2)));
             cacheConfigurations.put("oauth2_codes", RedisCacheConfiguration.defaultCacheConfig().entryTtl(Duration.ofMinutes(2)));
+            cacheConfigurations.put("user_details", RedisCacheConfiguration.defaultCacheConfig().entryTtl(Duration.ofMinutes(2)));
 
             return RedisCacheManager.builder(connectionFactory)
                     .cacheDefaults(defaultCacheConfig)
@@ -63,7 +64,8 @@ public class CacheConfig {
                     new CaffeineCache("products", Caffeine.newBuilder().expireAfterWrite(Duration.ofHours(2)).build()),
                     new CaffeineCache("products_related", Caffeine.newBuilder().expireAfterWrite(Duration.ofHours(2)).build()),
                     new CaffeineCache("products_by_ids", Caffeine.newBuilder().expireAfterWrite(Duration.ofHours(2)).build()),
-                    new CaffeineCache("oauth2_codes", Caffeine.newBuilder().expireAfterWrite(Duration.ofMinutes(2)).build())
+                    new CaffeineCache("oauth2_codes", Caffeine.newBuilder().expireAfterWrite(Duration.ofMinutes(2)).build()),
+                    new CaffeineCache("user_details", Caffeine.newBuilder().expireAfterWrite(Duration.ofMinutes(2)).build())
             );
             cacheManager.setCaches(caches);
             return cacheManager;

@@ -19,7 +19,7 @@ export const tokenStorage = {
   get: (): string | null => {
     return null
   },
-  set: (token: string): void => {
+  set: (_token: string): void => {
     // No-op: stored in HttpOnly cookie set by backend
   },
   remove: (): void => {
@@ -124,7 +124,11 @@ apiClient.interceptors.response.use(
         })
           .then((token) => {
             if (originalRequest.headers) {
-              originalRequest.headers['Authorization'] = `Bearer ${token}`
+              if (token) {
+                originalRequest.headers['Authorization'] = `Bearer ${token}`
+              } else {
+                delete originalRequest.headers['Authorization']
+              }
             }
             return apiClient(originalRequest)
           })
@@ -142,10 +146,14 @@ apiClient.interceptors.response.use(
           { withCredentials: true }
         )
         const newToken = data.data.accessToken
-        tokenStorage.set(newToken)
+        tokenStorage.set(newToken || '')
         processQueue(null, newToken)
         if (originalRequest.headers) {
-          originalRequest.headers['Authorization'] = `Bearer ${newToken}`
+          if (newToken) {
+            originalRequest.headers['Authorization'] = `Bearer ${newToken}`
+          } else {
+            delete originalRequest.headers['Authorization']
+          }
         }
         return apiClient(originalRequest)
       } catch (refreshError) {
