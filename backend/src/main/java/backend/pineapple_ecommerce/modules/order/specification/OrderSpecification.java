@@ -22,6 +22,31 @@ public class OrderSpecification {
 
     private OrderSpecification() {}
 
+    public static Specification<Order> searchKeyword(String keyword) {
+        return (root, query, cb) -> {
+            if (keyword == null || keyword.isBlank()) return null;
+
+            String pattern = "%" + keyword.trim().toLowerCase() + "%";
+
+            var userJoin = root.join("user");
+
+            var emailPredicate = cb.like(cb.lower(userJoin.get("email")), pattern);
+            var fullNamePredicate = cb.like(cb.lower(userJoin.get("fullName")), pattern);
+            var addressPredicate = cb.like(cb.lower(root.get("shippingAddress")), pattern);
+            var couponPredicate = cb.like(cb.lower(root.get("couponCode")), pattern);
+
+            var finalPredicate = cb.or(emailPredicate, fullNamePredicate, addressPredicate, couponPredicate);
+
+            try {
+                Long idVal = Long.parseLong(keyword.trim());
+                var idPredicate = cb.equal(root.get("id"), idVal);
+                finalPredicate = cb.or(finalPredicate, idPredicate);
+            } catch (NumberFormatException ignored) {}
+
+            return finalPredicate;
+        };
+    }
+
     public static Specification<Order> hasStatus(OrderStatus status) {
         return (root, query, cb) ->
                 status == null ? null : cb.equal(root.get("status"), status);

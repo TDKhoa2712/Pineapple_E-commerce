@@ -31,6 +31,10 @@ import backend.pineapple_ecommerce.modules.user.repository.UserRepository;
 import backend.pineapple_ecommerce.modules.farm.repository.FarmRepository;
 import backend.pineapple_ecommerce.modules.order.dto.response.AdminStatisticsResponse;
 import backend.pineapple_ecommerce.common.enums.FarmStatus;
+import backend.pineapple_ecommerce.common.enums.CarrierCode;
+import backend.pineapple_ecommerce.infrastructure.carrier.ShippingProviderRouter;
+import backend.pineapple_ecommerce.infrastructure.carrier.CarrierAddressMetadataHelper;
+import backend.pineapple_ecommerce.infrastructure.carrier.ShippingCarrierClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -63,6 +67,8 @@ public class OrderServiceImpl implements OrderService, OrderInternalService {
     private final CouponService couponService;
     private final UserRepository userRepository;
     private final FarmRepository farmRepository;
+    private final ShippingProviderRouter shippingProviderRouter;
+    private final CarrierAddressMetadataHelper metadataHelper;
 
     // ─────────────────────────────────────────────
     // CREATE ORDER
@@ -136,7 +142,7 @@ public class OrderServiceImpl implements OrderService, OrderInternalService {
             }
         }
 
-        BigDecimal shippingFee = calculateShippingFee(subtotal);
+        BigDecimal shippingFee = calculateShippingFee(address, subtotal);
         order.setItems(orderItems);
         order.setSubtotal(subtotal);
         order.setShippingFee(shippingFee);
@@ -203,6 +209,7 @@ public class OrderServiceImpl implements OrderService, OrderInternalService {
             PaymentMethod paymentMethod,
             LocalDateTime from,
             LocalDateTime to,
+            String keyword,
             String sortBy,
             String sortDirection,
             int page,
@@ -212,7 +219,8 @@ public class OrderServiceImpl implements OrderService, OrderInternalService {
                 OrderSpecification.hasStatus(status)
                         .and(OrderSpecification.hasUserId(userId))
                         .and(OrderSpecification.hasPaymentMethod(paymentMethod))
-                        .and(OrderSpecification.createdBetween(from, to));
+                        .and(OrderSpecification.createdBetween(from, to))
+                        .and(OrderSpecification.searchKeyword(keyword));
 
         Sort sort = Sort.by("createdAt").descending();
         if (sortBy != null && !sortBy.isBlank()) {
@@ -370,10 +378,39 @@ public class OrderServiceImpl implements OrderService, OrderInternalService {
                 address.getDistrict(), address.getProvince());
     }
 
-    private BigDecimal calculateShippingFee(BigDecimal subtotal) {
-        return subtotal.compareTo(new BigDecimal("500000")) >= 0
-                ? BigDecimal.ZERO
-                : new BigDecimal("30000");
+    private BigDecimal calculateShippingFee(Address address, BigDecimal subtotal) {
+        if (subtotal.compareTo(new BigDecimal("500000")) >= 0) {
+            return BigDecimal.ZERO;
+        }
+
+        String districtId = metadataHelper.getGhnDistrictId(address.getCarrierMetadata());
+        String wardCode = metadataHelper.getGhnWardCode(address.getCarrierMetadata());
+
+        if (districtId != null && !districtId.isBlank() && wardCode != null && !wardCode.isBlank()) {
+            try {
+                ShippingCarrierClient client = shippingProviderRouter.getClient(CarrierCode.GHN);
+                ShippingCarrierClient.FeeRequest feeReq = new ShippingCarrierClient.FeeRequest(
+                        null,
+                        districtId,
+                        wardCode,
+                        500, // weightGram
+                        20,  // lengthCm
+                        20,  // widthCm
+                        10,  // heightCm
+                        0,   // insuranceValue
+                        null, // serviceTypeId
+                        null  // coupon
+                );
+                ShippingCarrierClient.FeeResult result = client.calculateFee(feeReq);
+                if (result != null && result.totalFee() != null) {
+                    return result.totalFee();
+                }
+            } catch (Exception e) {
+                log.warn("Lỗi tính phí giao hàng GHN tự động, sử dụng phí mặc định 30,000đ: {}", e.getMessage());
+            }
+        }
+
+        return new BigDecimal("30000");
     }
 
     private void createInitialPayment(Order order, PaymentMethod method) {

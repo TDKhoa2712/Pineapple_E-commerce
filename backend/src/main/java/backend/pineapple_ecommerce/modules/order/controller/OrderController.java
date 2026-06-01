@@ -111,13 +111,14 @@ public class OrderController {
             @RequestParam(required = false) PaymentMethod paymentMethod,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
+            @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String sortBy,
             @RequestParam(required = false) String sortDirection,
             @RequestParam(defaultValue = "0")  int page,
             @RequestParam(defaultValue = "20") int size) {
 
         return ResponseEntity.ok(ApiResponse.success(
-                orderService.getAllOrders(status, userId, paymentMethod, from, to, sortBy, sortDirection, page, size)));
+                orderService.getAllOrders(status, userId, paymentMethod, from, to, keyword, sortBy, sortDirection, page, size)));
     }
 
     @Operation(summary = "Chi tiết đơn hàng bất kỳ (Admin)")

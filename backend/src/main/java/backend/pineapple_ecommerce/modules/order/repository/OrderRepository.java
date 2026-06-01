@@ -47,6 +47,16 @@ public interface OrderRepository extends JpaRepository<Order, Long>,
             @Param("userId")    Long userId,
             @Param("productId") Long productId);
 
+    @Query("""
+        SELECT COALESCE(SUM(oi.quantity), 0) FROM OrderItem oi
+        WHERE oi.order.user.id = :userId
+          AND oi.product.id   = :productId
+          AND oi.order.status = 'DELIVERED'
+    """)
+    long countDeliveredQuantityByUserIdAndProductId(
+            @Param("userId")    Long userId,
+            @Param("productId") Long productId);
+
     /** Lấy tất cả orderIds theo danh sách — dùng cho bulk update */
     @Query("SELECT o FROM Order o WHERE o.id IN :ids")
     java.util.List<Order> findAllByIdIn(@Param("ids") java.util.List<Long> ids);
