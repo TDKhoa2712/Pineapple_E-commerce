@@ -35,6 +35,10 @@ public interface FarmService {
     /** Soft delete — không xoá dữ liệu thật */
     void deleteFarm(Long farmId, Long requesterId);
 
+    FarmResponse requestDeactivation(Long farmId, Long requesterId);
+
+    FarmResponse requestReactivation(Long farmId, Long requesterId);
+
     // ─────────────────────────────────────────────
     // NEW — 2.5
     // ─────────────────────────────────────────────

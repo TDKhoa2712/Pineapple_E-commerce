@@ -8,6 +8,7 @@ import backend.pineapple_ecommerce.common.dto.response.UploadResponse;
 import backend.pineapple_ecommerce.modules.product.service.ProductService;
 import backend.pineapple_ecommerce.modules.product.dto.request.CreateProductRequest;
 import backend.pineapple_ecommerce.modules.product.dto.request.UpdateProductRequest;
+import backend.pineapple_ecommerce.modules.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -30,6 +31,7 @@ import java.util.List;
 public class ProductController {
 
     private final ProductService productService;
+    private final UserService userService;
 
     // ─────────────────────────────────────────────
     // PUBLIC
@@ -149,6 +151,22 @@ public class ProductController {
                 productService.getAllProductsForAdmin(page, size, keyword, status, sortBy, sortDirection)));
     }
 
+    @Operation(summary = "Lấy tất cả sản phẩm của tôi (Farmer/Admin)",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @GetMapping("/my")
+    @PreAuthorize("hasAnyRole('FARMER', 'ADMIN')")
+    public ResponseEntity<ApiResponse<PageResponse<ProductSummaryResponse>>> getMyProducts(
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDirection) {
+        Long ownerId = userService.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.success(
+                productService.getMyProducts(ownerId, page, size, keyword, status, sortBy, sortDirection)));
+    }
+
     @Operation(summary = "Cập nhật sản phẩm (Admin/Farmer)",
             security = @SecurityRequirement(name = "bearerAuth"))
     @PutMapping("/{id}")
@@ -160,12 +178,13 @@ public class ProductController {
                 productService.updateProduct(id, request), "Cập nhật sản phẩm thành công"));
     }
 
-    @Operation(summary = "Xoá sản phẩm — soft delete, chuyển INACTIVE (Admin)",
+    @Operation(summary = "Xoá sản phẩm — soft delete, chuyển INACTIVE (Admin/Farmer)",
             security = @SecurityRequirement(name = "bearerAuth"))
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('FARMER', 'ADMIN')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
-        productService.deleteProduct(id);
+        Long requesterId = userService.getCurrentUserId();
+        productService.deleteProduct(id, requesterId);
         return ResponseEntity.ok(ApiResponse.success(null, "Đã xoá sản phẩm"));
     }
 }

@@ -7,6 +7,7 @@ import backend.pineapple_ecommerce.common.dto.response.UploadResponse;
 import backend.pineapple_ecommerce.modules.product.mapper.ProductMapper;
 import backend.pineapple_ecommerce.modules.product.repository.ProductRepository;
 import backend.pineapple_ecommerce.common.enums.ProductStatus;
+import backend.pineapple_ecommerce.common.enums.FarmStatus;
 import backend.pineapple_ecommerce.modules.product.models.Product;
 import backend.pineapple_ecommerce.modules.product.models.ProductImage;
 import backend.pineapple_ecommerce.modules.product.dto.request.CreateProductRequest;
@@ -22,6 +23,11 @@ import backend.pineapple_ecommerce.infrastructure.cloudinary.CloudinaryService;
 import backend.pineapple_ecommerce.common.util.FileValidator;
 import backend.pineapple_ecommerce.common.util.SlugUtils;
 import backend.pineapple_ecommerce.modules.product.specification.ProductSpecification;
+import backend.pineapple_ecommerce.modules.farm.repository.FarmRepository;
+import backend.pineapple_ecommerce.modules.user.service.UserService;
+import backend.pineapple_ecommerce.modules.user.models.User;
+import backend.pineapple_ecommerce.common.enums.RoleName;
+import backend.pineapple_ecommerce.common.exception.UnauthorizedException;
 import org.springframework.data.jpa.domain.Specification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -50,6 +56,8 @@ public class ProductServiceImpl implements ProductService {
     private final CloudinaryService cloudinaryService;
     private final FileValidator fileValidator;
     private final CacheManager cacheManager;
+    private final FarmRepository farmRepository;
+    private final UserService userService;
 
     // ─────────────────────────────────────────────
     // CREATE
@@ -85,6 +93,14 @@ public class ProductServiceImpl implements ProductService {
             product.setImages(images);
         }
 
+        User current = userService.getEntityUser(userService.getCurrentUserId());
+        product.setCreatedBy(current);
+        boolean isAdmin = current.getRoles().stream().anyMatch(r -> r.getName() == RoleName.ROLE_ADMIN);
+        if (!isAdmin) {
+            ensureUserHasActiveFarm(current.getId());
+            product.setStatus(ProductStatus.INACTIVE);
+        }
+
         Product saved = productRepository.save(product);
         log.info("Product created: id={}, slug={}", saved.getId(), saved.getSlug());
         return enrichDetailResponse(saved);
@@ -99,6 +115,16 @@ public class ProductServiceImpl implements ProductService {
     public List<UploadResponse> uploadProductImages(Long productId, List<MultipartFile> files) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm"));
+
+        User current = userService.getEntityUser(userService.getCurrentUserId());
+        boolean isAdmin = current.getRoles().stream().anyMatch(r -> r.getName() == RoleName.ROLE_ADMIN);
+        if (!isAdmin) {
+            if (product.getCreatedBy() == null || !product.getCreatedBy().getId().equals(current.getId())) {
+                throw new UnauthorizedException("Bạn không có quyền chỉnh sửa sản phẩm này");
+            }
+            ensureProductFarmIsActive(product, current.getId());
+            product.setStatus(ProductStatus.INACTIVE);
+        }
 
         if (files == null || files.isEmpty()) {
             throw new BusinessException("Vui lòng chọn ít nhất một ảnh");
@@ -131,6 +157,16 @@ public class ProductServiceImpl implements ProductService {
     public UploadResponse uploadThumbnail(Long productId, MultipartFile file) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy sản phẩm"));
+
+        User current = userService.getEntityUser(userService.getCurrentUserId());
+        boolean isAdmin = current.getRoles().stream().anyMatch(r -> r.getName() == RoleName.ROLE_ADMIN);
+        if (!isAdmin) {
+            if (product.getCreatedBy() == null || !product.getCreatedBy().getId().equals(current.getId())) {
+                throw new UnauthorizedException("Bạn không có quyền chỉnh sửa sản phẩm này");
+            }
+            ensureProductFarmIsActive(product, current.getId());
+            product.setStatus(ProductStatus.INACTIVE);
+        }
 
         // Validate file
         fileValidator.validateImage(file);
@@ -291,6 +327,16 @@ public class ProductServiceImpl implements ProductService {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product", id));
 
+        User current = userService.getEntityUser(userService.getCurrentUserId());
+        boolean isAdmin = current.getRoles().stream().anyMatch(r -> r.getName() == RoleName.ROLE_ADMIN);
+        if (!isAdmin) {
+            if (product.getCreatedBy() == null || !product.getCreatedBy().getId().equals(current.getId())) {
+                throw new UnauthorizedException("Bạn không có quyền chỉnh sửa sản phẩm này");
+            }
+            ensureProductFarmIsActive(product, current.getId());
+            product.setStatus(ProductStatus.INACTIVE);
+        }
+
         if (request.getCategoryId() != null
                 && !request.getCategoryId().equals(product.getCategory().getId())) {
             Category category = categoryRepository.findById(request.getCategoryId())
@@ -336,13 +382,59 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
-    public void deleteProduct(Long id) {
+    public void deleteProduct(Long id, Long requesterId) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product", id));
+
+        User current = userService.getEntityUser(requesterId);
+        boolean isAdmin = current.getRoles().stream().anyMatch(r -> r.getName() == RoleName.ROLE_ADMIN);
+        if (!isAdmin) {
+            if (product.getCreatedBy() == null || !product.getCreatedBy().getId().equals(current.getId())) {
+                throw new UnauthorizedException("Bạn không có quyền xoá sản phẩm này");
+            }
+            ensureProductFarmIsActive(product, current.getId());
+        }
+
         product.setStatus(ProductStatus.INACTIVE);
         productRepository.save(product);
-        log.info("Product soft-deleted (INACTIVE): id={}", id);
+        log.info("Product soft-deleted (INACTIVE): id={} by user={}", id, requesterId);
         evictProductCache(product.getId(), product.getSlug());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<ProductSummaryResponse> getMyProducts(
+            Long ownerId, int page, int size, String keyword, String statusStr, String sortBy, String sortDirection) {
+
+        String safeKeyword = (keyword == null || keyword.isBlank()) ? null : keyword.trim();
+        ProductStatus status = null;
+        if (statusStr != null && !statusStr.isBlank()) {
+            try {
+                status = ProductStatus.valueOf(statusStr.toUpperCase());
+            } catch (IllegalArgumentException ignored) {}
+        }
+
+        Specification<Product> spec = Specification.allOf(
+                ProductSpecification.fetchCategory(),
+                ProductSpecification.createdByUser(ownerId),
+                ProductSpecification.hasStatus(status),
+                ProductSpecification.searchByKeyword(safeKeyword, safeKeyword != null)
+        );
+
+        Pageable pageable;
+        if (safeKeyword != null && (sortBy == null || sortBy.isBlank())) {
+            pageable = PageRequest.of(page, size, Sort.unsorted());
+        } else {
+            Sort.Direction direction = "asc".equalsIgnoreCase(sortDirection) ? Sort.Direction.ASC : Sort.Direction.DESC;
+            String resolvedSortBy = resolveSortField(sortBy);
+            pageable = PageRequest.of(page, size, Sort.by(direction, resolvedSortBy));
+        }
+        Page<Product> productPage = productRepository.findAll(spec, pageable);
+
+        List<ProductSummaryResponse> enrichedList = enrichSummaryResponses(productPage.getContent());
+        Page<ProductSummaryResponse> summaryPage = new PageImpl<>(enrichedList, productPage.getPageable(), productPage.getTotalElements());
+
+        return PageResponse.of(summaryPage);
     }
 
     // ─────────────────────────────────────────────
@@ -390,6 +482,19 @@ public class ProductServiceImpl implements ProductService {
     // PRIVATE HELPERS
     // ─────────────────────────────────────────────
 
+    private void ensureUserHasActiveFarm(Long ownerId) {
+        if (!farmRepository.existsByOwnerIdAndStatusAndIsDeletedFalse(ownerId, FarmStatus.ACTIVE)) {
+            throw new BusinessException("Trang trai cua ban chua hoat dong nen khong the thao tac san pham.");
+        }
+    }
+
+    private void ensureProductFarmIsActive(Product product, Long ownerId) {
+        if (inventoryBatchRepository.existsProductInNonActiveFarm(product.getId(), ownerId)) {
+            throw new BusinessException("Trang trai cua san pham dang ngung hoat dong nen khong the thao tac san pham.");
+        }
+        ensureUserHasActiveFarm(ownerId);
+    }
+
     private ProductDetailResponse enrichDetailResponse(Product product) {
         ProductDetailResponse response = productMapper.toDetailResponse(product);
         int stock = getAvailableStock(product.getId());
@@ -398,6 +503,14 @@ public class ProductServiceImpl implements ProductService {
         response.setAverageRating(avgRating != null ? avgRating : 0.0);
         int reviewCount = reviewRepository.countByProductId(product.getId());
         response.setReviewCount(reviewCount);
+
+        if (product.getCreatedBy() != null) {
+            farmRepository.findByOwnerIdAndIsDeletedFalse(product.getCreatedBy().getId())
+                    .stream().findFirst().ifPresent(farm -> {
+                        response.setFarmId(farm.getId());
+                        response.setFarmName(farm.getName());
+                    });
+        }
         return response;
     }
 
@@ -418,6 +531,14 @@ public class ProductServiceImpl implements ProductService {
                 .map(p -> {
                     ProductSummaryResponse summary = productMapper.toSummaryResponse(p);
                     summary.setTotalStock(stockMap.getOrDefault(p.getId(), 0));
+
+                    if (p.getCreatedBy() != null) {
+                        farmRepository.findByOwnerIdAndIsDeletedFalse(p.getCreatedBy().getId())
+                                .stream().findFirst().ifPresent(farm -> {
+                                    summary.setFarmId(farm.getId());
+                                    summary.setFarmName(farm.getName());
+                                });
+                    }
                     return summary;
                 })
                 .toList();

@@ -20,6 +20,10 @@ import backend.pineapple_ecommerce.modules.inventory.service.InventoryService;
 import backend.pineapple_ecommerce.modules.product.service.ProductService;
 import backend.pineapple_ecommerce.modules.user.service.UserService;
 import backend.pineapple_ecommerce.common.util.FileValidator;
+import backend.pineapple_ecommerce.modules.user.repository.UserRepository;
+import backend.pineapple_ecommerce.modules.auth.repository.RoleRepository;
+import backend.pineapple_ecommerce.modules.auth.models.Role;
+import backend.pineapple_ecommerce.common.enums.RoleName;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import backend.pineapple_ecommerce.modules.farm.specification.FarmSpecification;
@@ -40,6 +44,8 @@ import java.util.List;
 public class FarmServiceImpl implements FarmService {
 
     private final FarmRepository farmRepository;
+    private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     private final FarmMapper farmMapper;
     private final CloudinaryService cloudinaryService;
     private final UserService userService;
@@ -135,6 +141,14 @@ public class FarmServiceImpl implements FarmService {
         verifyOwnership(farm, requesterId);
 
         farmMapper.updateFromRequest(request, farm);
+
+        User requester = userService.getEntityUser(requesterId);
+        boolean isAdmin = requester.getRoles().stream()
+                .anyMatch(r -> r.getName() == RoleName.ROLE_ADMIN);
+        if (!isAdmin) {
+            farm.setStatus(FarmStatus.PENDING_APPROVAL);
+        }
+
         Farm saved = farmRepository.save(farm);
         log.info("Farm updated: id={}", farmId);
         return farmMapper.toResponse(saved);
@@ -150,14 +164,58 @@ public class FarmServiceImpl implements FarmService {
         Farm farm = findActiveById(farmId);
         verifyOwnership(farm, requesterId);
 
-        farm.setIsDeleted(true);  // Soft delete — giữ lại dữ liệu cho audit
+        if (isAdmin(requesterId)) {
+            farm.setStatus(FarmStatus.INACTIVE);
+        } else {
+            if (farm.getStatus() != FarmStatus.ACTIVE) {
+                throw new BusinessException("Chi co the xin ngung hoat dong khi farm dang ACTIVE.");
+            }
+            farm.setStatus(FarmStatus.PENDING_DEACTIVATION);
+        }
         farmRepository.save(farm);
-        log.info("Farm soft-deleted: id={}, by userId={}", farmId, requesterId);
+        log.info("Farm deactivation requested/deactivated: id={}, by userId={}", farmId, requesterId);
     }
 
     // ─────────────────────────────────────────────
     // NEW — 2.5: APPROVAL WORKFLOW
     // ─────────────────────────────────────────────
+
+    @Override
+    @Transactional
+    public FarmResponse requestDeactivation(Long farmId, Long requesterId) {
+        Farm farm = findActiveById(farmId);
+        verifyOwnership(farm, requesterId);
+
+        if (isAdmin(requesterId)) {
+            farm.setStatus(FarmStatus.INACTIVE);
+        } else {
+            if (farm.getStatus() != FarmStatus.ACTIVE) {
+                throw new BusinessException("Chi co the xin ngung hoat dong khi farm dang ACTIVE.");
+            }
+            farm.setStatus(FarmStatus.PENDING_DEACTIVATION);
+        }
+
+        return farmMapper.toResponse(farmRepository.save(farm));
+    }
+
+    @Override
+    @Transactional
+    public FarmResponse requestReactivation(Long farmId, Long requesterId) {
+        Farm farm = findActiveById(farmId);
+        verifyOwnership(farm, requesterId);
+
+        if (isAdmin(requesterId)) {
+            farm.setStatus(FarmStatus.ACTIVE);
+            farm.setRejectionReason(null);
+        } else {
+            if (farm.getStatus() != FarmStatus.INACTIVE) {
+                throw new BusinessException("Chi co the xin hoat dong lai khi farm dang INACTIVE.");
+            }
+            farm.setStatus(FarmStatus.PENDING_REACTIVATION);
+        }
+
+        return farmMapper.toResponse(farmRepository.save(farm));
+    }
 
     @Override
     @Transactional
@@ -172,6 +230,17 @@ public class FarmServiceImpl implements FarmService {
         }
 
         farm.setStatus(FarmStatus.ACTIVE);
+
+        User owner = farm.getOwner();
+        boolean hasFarmerRole = owner.getRoles().stream()
+                .anyMatch(r -> r.getName() == RoleName.ROLE_FARMER);
+        if (!hasFarmerRole) {
+            Role farmerRole = roleRepository.findByName(RoleName.ROLE_FARMER)
+                    .orElseThrow(() -> new ResourceNotFoundException("Role", "name", RoleName.ROLE_FARMER));
+            owner.addRole(farmerRole);
+            userRepository.save(owner);
+        }
+
         Farm saved = farmRepository.save(farm);
         log.info("Farm approved: id={}", farmId);
 
@@ -221,6 +290,9 @@ public class FarmServiceImpl implements FarmService {
         if (farm.getStatus() == FarmStatus.ACTIVE) {
             throw new BusinessException("Farm đã đang ở trạng thái ACTIVE.");
         }
+        if (farm.getStatus() == FarmStatus.PENDING_APPROVAL) {
+            throw new BusinessException("Farm dang cho duyet lan dau. Hay dung endpoint approve.");
+        }
 
         farm.setStatus(FarmStatus.ACTIVE);
         farm.setRejectionReason(null);
@@ -235,9 +307,9 @@ public class FarmServiceImpl implements FarmService {
         Farm farm = farmRepository.findById(farmId)
                 .orElseThrow(() -> new ResourceNotFoundException("Farm", farmId));
 
-        if (farm.getStatus() != FarmStatus.ACTIVE) {
+        if (farm.getStatus() != FarmStatus.ACTIVE && farm.getStatus() != FarmStatus.PENDING_DEACTIVATION) {
             throw new BusinessException(
-                    "Chỉ có thể vô hiệu hóa farm ở trạng thái ACTIVE. " +
+                    "Chỉ có thể vô hiệu hóa farm ở trạng thái ACTIVE/PENDING_DEACTIVATION. " +
                     "Trạng thái hiện tại: " + farm.getStatus());
         }
 
@@ -267,6 +339,13 @@ public class FarmServiceImpl implements FarmService {
         // Cập nhật thông tin ảnh mới
         farm.setImageUrl(uploaded.getUrl());
         farm.setImagePublicId(uploaded.getPublicId());
+
+        User requester = userService.getEntityUser(requesterId);
+        boolean isAdmin = requester.getRoles().stream()
+                .anyMatch(r -> r.getName() == RoleName.ROLE_ADMIN);
+        if (!isAdmin) {
+            farm.setStatus(FarmStatus.PENDING_APPROVAL);
+        }
 
         Farm saved = farmRepository.save(farm);
 
@@ -325,8 +404,17 @@ public class FarmServiceImpl implements FarmService {
     }
 
     private void verifyOwnership(Farm farm, Long requesterId) {
+        if (isAdmin(requesterId)) {
+            return;
+        }
         if (!farm.getOwner().getId().equals(requesterId)) {
             throw new UnauthorizedException("Bạn không có quyền thao tác trang trại này");
         }
+    }
+
+    private boolean isAdmin(Long userId) {
+        User requester = userService.getEntityUser(userId);
+        return requester.getRoles().stream()
+                .anyMatch(r -> r.getName() == RoleName.ROLE_ADMIN);
     }
 }

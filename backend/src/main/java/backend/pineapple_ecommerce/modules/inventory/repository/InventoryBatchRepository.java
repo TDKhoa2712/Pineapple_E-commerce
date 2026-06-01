@@ -23,7 +23,9 @@ public interface InventoryBatchRepository extends JpaRepository<InventoryBatch, 
         SELECT b FROM InventoryBatch b
         LEFT JOIN FETCH b.product
         LEFT JOIN FETCH b.farm
-        WHERE b.product.id = :productId AND b.status = :status
+        WHERE b.product.id = :productId
+          AND b.status = :status
+          AND (b.farm IS NULL OR b.farm.status = 'ACTIVE')
         """)
     List<InventoryBatch> findByProductIdAndStatus(
             @Param("productId") Long productId,
@@ -32,7 +34,8 @@ public interface InventoryBatchRepository extends JpaRepository<InventoryBatch, 
     List<InventoryBatch> findByStatus(BatchStatus status);
 
     @Query("SELECT SUM(b.remainingQuantity) FROM InventoryBatch b " +
-           "WHERE b.product.id = :productId AND b.status = 'AVAILABLE'")
+           "WHERE b.product.id = :productId AND b.status = 'AVAILABLE' " +
+           "AND (b.farm IS NULL OR b.farm.status = 'ACTIVE')")
     Integer getTotalAvailableStock(@Param("productId") Long productId);
 
     Optional<InventoryBatch> findByBatchCode(String batchCode);
@@ -42,8 +45,9 @@ public interface InventoryBatchRepository extends JpaRepository<InventoryBatch, 
     Optional<InventoryBatch> findByIdWithLock(@Param("id") Long id);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT b FROM InventoryBatch b LEFT JOIN FETCH b.product " +
+    @Query("SELECT b FROM InventoryBatch b LEFT JOIN FETCH b.product LEFT JOIN FETCH b.farm " +
            "WHERE b.product.id = :productId AND b.status = :status " +
+           "AND (b.farm IS NULL OR b.farm.status = 'ACTIVE') " +
            "ORDER BY b.expiryDate ASC NULLS LAST")
     List<InventoryBatch> findByProductIdAndStatusWithLock(
             @Param("productId") Long productId,
@@ -164,7 +168,7 @@ public interface InventoryBatchRepository extends JpaRepository<InventoryBatch, 
      */
     @Query("""
         SELECT DISTINCT b.product.id FROM InventoryBatch b
-        WHERE b.farm.id = :farmId AND b.status = 'AVAILABLE'
+        WHERE b.farm.id = :farmId AND b.status = 'AVAILABLE' AND b.farm.status = 'ACTIVE'
     """)
     List<Long> findDistinctProductIdsByFarmId(@Param("farmId") Long farmId);
 
@@ -190,10 +194,23 @@ public interface InventoryBatchRepository extends JpaRepository<InventoryBatch, 
     @Query("""
         SELECT b.product.id, SUM(b.remainingQuantity)
         FROM InventoryBatch b
-        WHERE b.product.id IN :productIds AND b.status = 'AVAILABLE'
+        WHERE b.product.id IN :productIds
+          AND b.status = 'AVAILABLE'
+          AND (b.farm IS NULL OR b.farm.status = 'ACTIVE')
         GROUP BY b.product.id
     """)
     List<Object[]> getTotalAvailableStockByProductIds(@Param("productIds") List<Long> productIds);
+
+    @Query("""
+        SELECT COUNT(b) > 0
+        FROM InventoryBatch b
+        WHERE b.product.id = :productId
+          AND b.farm.owner.id = :ownerId
+          AND b.farm.status <> 'ACTIVE'
+    """)
+    boolean existsProductInNonActiveFarm(
+            @Param("productId") Long productId,
+            @Param("ownerId") Long ownerId);
 
     /**
      * Tổng tồn kho khả dụng hiện tại của tất cả sản phẩm — dùng cho summary.
@@ -202,6 +219,7 @@ public interface InventoryBatchRepository extends JpaRepository<InventoryBatch, 
         SELECT COALESCE(SUM(b.remainingQuantity), 0)
         FROM InventoryBatch b
         WHERE b.status = 'AVAILABLE'
+          AND (b.farm IS NULL OR b.farm.status = 'ACTIVE')
     """)
     long sumAllAvailableStock();
 
@@ -262,5 +280,24 @@ public interface InventoryBatchRepository extends JpaRepository<InventoryBatch, 
     List<Object[]> findSalesTimelineRaw(
             @Param("from") LocalDateTime from,
             @Param("to")   LocalDateTime to);
-}
 
+    @Query(value = """
+        SELECT b FROM InventoryBatch b
+        LEFT JOIN FETCH b.product p
+        LEFT JOIN FETCH b.farm f
+        WHERE b.farm.id = :farmId AND (:keyword IS NULL OR :keyword = ''
+           OR LOWER(b.batchCode) LIKE LOWER(CONCAT('%', :keyword, '%'))
+           OR LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%')))
+        """,
+        countQuery = """
+        SELECT COUNT(b) FROM InventoryBatch b
+        LEFT JOIN b.product p
+        WHERE b.farm.id = :farmId AND (:keyword IS NULL OR :keyword = ''
+           OR LOWER(b.batchCode) LIKE LOWER(CONCAT('%', :keyword, '%'))
+           OR LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%')))
+        """)
+    Page<InventoryBatch> findAllByFarmIdAndKeyword(
+            @Param("farmId") Long farmId,
+            @Param("keyword") String keyword,
+            Pageable pageable);
+}

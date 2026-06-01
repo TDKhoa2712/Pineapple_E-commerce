@@ -64,7 +64,9 @@ public interface ProductService {
 
     ProductDetailResponse updateProduct(Long id, UpdateProductRequest request);
 
-    void deleteProduct(Long id);
+    void deleteProduct(Long id, Long requesterId);
+
+    PageResponse<ProductSummaryResponse> getMyProducts(Long ownerId, int page, int size, String keyword, String status, String sortBy, String sortDirection);
 
     int getAvailableStock(Long productId);
 

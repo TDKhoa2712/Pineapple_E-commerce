@@ -64,6 +64,19 @@ public class InventoryController {
         return ResponseEntity.ok(ApiResponse.success(inventoryService.getAllBatchesByProduct(productId)));
     }
 
+    @Operation(summary = "Lấy danh sách lô hàng của trang trại phân trang (Farmer/Admin)")
+    @GetMapping("/farms/{farmId}/batches")
+    public ResponseEntity<ApiResponse<PageResponse<InventoryBatchResponse>>> getFarmBatches(
+            @PathVariable Long farmId,
+            @RequestParam(required = false)     String keyword,
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false)     String sortBy,
+            @RequestParam(required = false)     String sortDirection) {
+        return ResponseEntity.ok(ApiResponse.success(
+                inventoryService.getFarmBatches(farmId, keyword, page, size, sortBy, sortDirection)));
+    }
+
     @Operation(summary = "Tong ton kho kha dung cua san pham")
     @GetMapping("/products/{productId}/stock")
     public ResponseEntity<ApiResponse<Integer>> getTotalStock(@PathVariable Long productId) {

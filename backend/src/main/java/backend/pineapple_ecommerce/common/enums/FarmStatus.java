@@ -1,25 +1,24 @@
 package backend.pineapple_ecommerce.common.enums;
 
 /**
- * Trạng thái của trang trại trong marketplace.
- *
- * <pre>
- * PENDING_APPROVAL → ACTIVE     (Admin duyệt)
- * PENDING_APPROVAL → REJECTED   (Admin từ chối)
- * ACTIVE           → INACTIVE   (Admin/Farmer tạm khoá)
- * INACTIVE         → ACTIVE     (Admin kích hoạt lại)
- * </pre>
+ * Trang thai cua trang trai trong marketplace.
  */
 public enum FarmStatus {
-    /** Farm mới tạo, chờ Admin duyệt — chưa public */
+    /** Farm moi tao hoac vua cap nhat, cho Admin duyet. */
     PENDING_APPROVAL,
 
-    /** Farm đã được duyệt — hiển thị cho public */
+    /** Farm dang xin phep ngung hoat dong, cho Admin duyet. */
+    PENDING_DEACTIVATION,
+
+    /** Farm dang xin phep hoat dong lai, cho Admin duyet. */
+    PENDING_REACTIVATION,
+
+    /** Farm da duoc duyet va dang hien thi public. */
     ACTIVE,
 
-    /** Farm bị tạm khoá (chủ động hoặc vi phạm) */
+    /** Farm tam ngung hoat dong, khong duoc thao tac san pham/ton kho. */
     INACTIVE,
 
-    /** Farm bị từ chối — có rejectionReason */
+    /** Farm bi tu choi, co rejectionReason. */
     REJECTED
 }

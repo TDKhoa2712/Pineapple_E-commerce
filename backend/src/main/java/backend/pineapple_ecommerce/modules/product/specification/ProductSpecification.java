@@ -1,6 +1,7 @@
 package backend.pineapple_ecommerce.modules.product.specification;
 
 import backend.pineapple_ecommerce.common.enums.BatchStatus;
+import backend.pineapple_ecommerce.common.enums.FarmStatus;
 import backend.pineapple_ecommerce.common.enums.OrderStatus;
 import backend.pineapple_ecommerce.common.enums.ProductStatus;
 import backend.pineapple_ecommerce.modules.inventory.models.InventoryBatch;
@@ -66,7 +67,11 @@ public class ProductSpecification {
                     .where(
                             cb.equal(subRoot.get("product"), root),
                             cb.equal(subRoot.get("status"), BatchStatus.AVAILABLE),
-                            cb.greaterThan(subRoot.get("remainingQuantity"), 0)
+                            cb.greaterThan(subRoot.get("remainingQuantity"), 0),
+                            cb.or(
+                                    cb.isNull(subRoot.get("farm")),
+                                    cb.equal(subRoot.get("farm").get("status"), FarmStatus.ACTIVE)
+                            )
                     );
             return cb.exists(subquery);
         };
@@ -81,7 +86,8 @@ public class ProductSpecification {
             subquery.select(cb.literal(1))
                     .where(
                             cb.equal(subRoot.get("product"), root),
-                            cb.equal(subRoot.get("farm").get("id"), farmId)
+                            cb.equal(subRoot.get("farm").get("id"), farmId),
+                            cb.equal(subRoot.get("farm").get("status"), FarmStatus.ACTIVE)
                     );
             return cb.exists(subquery);
         };
@@ -124,5 +130,10 @@ public class ProductSpecification {
             }
             return null;
         };
+    }
+
+    public static Specification<Product> createdByUser(Long userId) {
+        return (root, query, cb) ->
+                userId == null ? null : cb.equal(root.get("createdBy").get("id"), userId);
     }
 }

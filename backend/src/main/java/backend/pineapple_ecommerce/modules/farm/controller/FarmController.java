@@ -64,19 +64,19 @@ public class FarmController {
     // FARMER
     // ─────────────────────────────────────────────
 
-    @Operation(summary = "Trang trại của tôi (Farmer/Admin)",
+    @Operation(summary = "Trang trại của tôi (User/Farmer/Admin)",
             security = @SecurityRequirement(name = "bearerAuth"))
     @GetMapping("/my")
-    @PreAuthorize("hasAnyRole('FARMER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'FARMER', 'ADMIN')")
     public ResponseEntity<ApiResponse<List<FarmResponse>>> getMyFarms() {
         Long ownerId = userService.getCurrentUserId();
         return ResponseEntity.ok(ApiResponse.success(farmService.getMyFarms(ownerId)));
     }
 
-    @Operation(summary = "Tạo trang trại mới (Farmer/Admin) — sẽ ở trạng thái PENDING_APPROVAL",
+    @Operation(summary = "Tạo trang trại mới (User/Farmer/Admin) — sẽ ở trạng thái PENDING_APPROVAL",
             security = @SecurityRequirement(name = "bearerAuth"))
     @PostMapping
-    @PreAuthorize("hasAnyRole('FARMER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'FARMER', 'ADMIN')")
     public ResponseEntity<ApiResponse<FarmResponse>> create(
             @Valid @RequestBody CreateFarmRequest request) {
         Long ownerId = userService.getCurrentUserId();
@@ -88,7 +88,7 @@ public class FarmController {
     @Operation(summary = "Cập nhật trang trại (chủ trang trại hoặc Admin)",
             security = @SecurityRequirement(name = "bearerAuth"))
     @PutMapping("/{farmId}")
-    @PreAuthorize("hasAnyRole('FARMER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'FARMER', 'ADMIN')")
     public ResponseEntity<ApiResponse<FarmResponse>> update(
             @PathVariable Long farmId,
             @Valid @RequestBody CreateFarmRequest request) {
@@ -100,7 +100,7 @@ public class FarmController {
     @Operation(summary = "Upload ảnh trang trại (chủ trang trại hoặc Admin)",
             security = @SecurityRequirement(name = "bearerAuth"))
     @PostMapping(value = "/{farmId}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyRole('FARMER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'FARMER', 'ADMIN')")
     public ResponseEntity<ApiResponse<FarmResponse>> uploadImage(
             @PathVariable Long farmId,
             @RequestParam("file") MultipartFile file) {
@@ -112,11 +112,31 @@ public class FarmController {
     @Operation(summary = "Xoá trang trại — soft delete (chủ trang trại hoặc Admin)",
             security = @SecurityRequirement(name = "bearerAuth"))
     @DeleteMapping("/{farmId}")
-    @PreAuthorize("hasAnyRole('FARMER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('USER', 'FARMER', 'ADMIN')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long farmId) {
         Long requesterId = userService.getCurrentUserId();
         farmService.deleteFarm(farmId, requesterId);
-        return ResponseEntity.ok(ApiResponse.success(null, "Đã xoá trang trại"));
+        return ResponseEntity.ok(ApiResponse.success(null, "Da gui yeu cau/ngung hoat dong trang trai"));
+    }
+
+    @Operation(summary = "Xin phep ngung hoat dong trang trai (chu trang trai) hoac ngung ngay (Admin)",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @PatchMapping("/{farmId}/request-deactivation")
+    @PreAuthorize("hasAnyRole('USER', 'FARMER', 'ADMIN')")
+    public ResponseEntity<ApiResponse<FarmResponse>> requestDeactivation(@PathVariable Long farmId) {
+        Long requesterId = userService.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.success(
+                farmService.requestDeactivation(farmId, requesterId), "Da gui yeu cau/ngung hoat dong trang trai"));
+    }
+
+    @Operation(summary = "Xin phep hoat dong lai trang trai (chu trang trai) hoac kich hoat ngay (Admin)",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    @PatchMapping("/{farmId}/request-reactivation")
+    @PreAuthorize("hasAnyRole('USER', 'FARMER', 'ADMIN')")
+    public ResponseEntity<ApiResponse<FarmResponse>> requestReactivation(@PathVariable Long farmId) {
+        Long requesterId = userService.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.success(
+                farmService.requestReactivation(farmId, requesterId), "Da gui yeu cau/kich hoat lai trang trai"));
     }
 
     // ─────────────────────────────────────────────

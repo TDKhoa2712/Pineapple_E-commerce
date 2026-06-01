@@ -83,5 +83,7 @@ public interface InventoryService {
      */
     List<Long> getDistinctProductIdsByFarm(Long farmId);
 
+    PageResponse<InventoryBatchResponse> getFarmBatches(Long farmId, String keyword, int page, int size, String sortBy, String sortDirection);
+
     PageResponse<InventoryBatchResponse> getAllBatches(String keyword, int page, int size, String sortBy, String sortDirection);
 }

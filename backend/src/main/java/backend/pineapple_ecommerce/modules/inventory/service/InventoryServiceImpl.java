@@ -18,9 +18,13 @@ import backend.pineapple_ecommerce.modules.product.models.Product;
 import backend.pineapple_ecommerce.modules.user.models.User;
 import backend.pineapple_ecommerce.common.exception.BusinessException;
 import backend.pineapple_ecommerce.common.exception.ResourceNotFoundException;
+import backend.pineapple_ecommerce.common.exception.UnauthorizedException;
+import backend.pineapple_ecommerce.common.enums.RoleName;
+import backend.pineapple_ecommerce.common.enums.FarmStatus;
 import backend.pineapple_ecommerce.modules.farm.repository.FarmRepository;
 import backend.pineapple_ecommerce.modules.product.repository.ProductRepository;
 import backend.pineapple_ecommerce.modules.user.repository.UserRepository;
+import backend.pineapple_ecommerce.modules.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -49,6 +53,7 @@ public class InventoryServiceImpl implements InventoryService {
     private final UserRepository            userRepository;
     private final InventoryBatchMapper inventoryBatchMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final UserService               userService;
 
     // ─────────────────────────────────────────────
     // Batch management (existing)
@@ -67,6 +72,23 @@ public class InventoryServiceImpl implements InventoryService {
             farm = farmRepository.findById(request.getFarmId())
                     .orElseThrow(() -> new ResourceNotFoundException("Farm", request.getFarmId()));
         }
+
+        Long currentUserId = userService.getCurrentUserId();
+        User currentUser = userService.getEntityUser(currentUserId);
+        boolean isAdmin = currentUser.getRoles().stream().anyMatch(r -> r.getName() == RoleName.ROLE_ADMIN);
+        if (!isAdmin) {
+            if (farm == null) {
+                throw new BusinessException("Farmer must specify a farm for the batch");
+            }
+            if (!farm.getOwner().getId().equals(currentUserId)) {
+                throw new UnauthorizedException("Bạn không có quyền thêm lô hàng vào trang trại này");
+            }
+        }
+
+        if (farm != null && farm.getStatus() != FarmStatus.ACTIVE) {
+            throw new BusinessException("Trang trai dang ngung hoat dong nen khong the thao tac ton kho.");
+        }
+
         if (request.getHarvestDate() != null && request.getExpiryDate() != null
                 && !request.getExpiryDate().isAfter(request.getHarvestDate())) {
             throw new BusinessException("Ngay het han phai sau ngay thu hoach");
@@ -179,6 +201,17 @@ public class InventoryServiceImpl implements InventoryService {
                 .orElseThrow(() -> new ResourceNotFoundException("InventoryBatch", batchId));
         User admin = userRepository.findById(adminUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", adminUserId));
+
+        boolean isAdmin = admin.getRoles().stream().anyMatch(r -> r.getName() == RoleName.ROLE_ADMIN);
+        if (!isAdmin) {
+            if (batch.getFarm() == null || !batch.getFarm().getOwner().getId().equals(adminUserId)) {
+                throw new UnauthorizedException("Bạn không có quyền điều chỉnh lô hàng của trang trại này");
+            }
+        }
+
+        if (batch.getFarm() != null && batch.getFarm().getStatus() != FarmStatus.ACTIVE) {
+            throw new BusinessException("Trang trai dang ngung hoat dong nen khong the thao tac ton kho.");
+        }
 
         int qtyBefore = batch.getRemainingQuantity();
         int qtyAfter  = qtyBefore + request.getAdjustmentQty();
@@ -303,6 +336,46 @@ public class InventoryServiceImpl implements InventoryService {
     @Transactional(readOnly = true)
     public List<Long> getDistinctProductIdsByFarm(Long farmId) {
         return inventoryBatchRepository.findDistinctProductIdsByFarmId(farmId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<InventoryBatchResponse> getFarmBatches(Long farmId, String keyword, int page, int size, String sortBy, String sortDirection) {
+        Long currentUserId = userService.getCurrentUserId();
+        User currentUser = userService.getEntityUser(currentUserId);
+        boolean isAdmin = currentUser.getRoles().stream().anyMatch(r -> r.getName() == RoleName.ROLE_ADMIN);
+
+        Farm farm = farmRepository.findById(farmId)
+                .orElseThrow(() -> new ResourceNotFoundException("Farm", farmId));
+
+        if (!isAdmin && !farm.getOwner().getId().equals(currentUserId)) {
+            throw new UnauthorizedException("Bạn không có quyền xem lô hàng của trang trại này");
+        }
+
+        Sort.Direction direction = "ASC".equalsIgnoreCase(sortDirection) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        String resolvedSortBy = "createdAt";
+        if (sortBy != null && !sortBy.isBlank()) {
+            resolvedSortBy = switch (sortBy) {
+                case "batchCode" -> "batchCode";
+                case "quantity" -> "quantity";
+                case "remainingQuantity" -> "remainingQuantity";
+                case "harvestDate" -> "harvestDate";
+                case "expiryDate" -> "expiryDate";
+                case "status" -> "status";
+                default -> "createdAt";
+            };
+        }
+
+        PageRequest pageable = PageRequest.of(page, size, Sort.by(direction, resolvedSortBy));
+        Page<InventoryBatch> rawPage = inventoryBatchRepository.findAllByFarmIdAndKeyword(
+                farmId,
+                keyword != null ? keyword.trim() : "",
+                pageable
+        );
+        List<InventoryBatchResponse> content = rawPage.getContent().stream()
+                .map(inventoryBatchMapper::toResponse)
+                .toList();
+        return PageResponse.of(new PageImpl<>(content, pageable, rawPage.getTotalElements()));
     }
 
     @Override
