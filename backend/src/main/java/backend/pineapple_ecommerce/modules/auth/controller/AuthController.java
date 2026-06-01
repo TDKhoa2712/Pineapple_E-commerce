@@ -87,7 +87,8 @@ public class AuthController {
     @PostMapping("/verify-email")
     @RateLimit(maxRequests = 5, windowSeconds = 60, type = RateLimitType.IP_AND_EMAIL)
     public ResponseEntity<ApiResponse<AuthResponse>> verifyEmail(
-            @Valid @RequestBody VerifyEmailRequest request) {
+            @Valid @RequestBody VerifyEmailRequest request,
+            HttpServletResponse servletResponse) {
         log.info("verify email run controller 1");
         // 1. Xác thực OTP, set emailVerified = true
         emailVerificationService.verifyEmail(request.getEmail(), request.getOtp());
@@ -97,6 +98,13 @@ public class AuthController {
         //    Dùng lại buildAuthResponse nội bộ qua login không cần password
         //    (user đã được trust sau khi verify OTP)
         AuthResponse authResponse = authService.loginAfterVerification(request.getEmail());
+
+        if (Boolean.TRUE.equals(authResponse.getEmailVerified())) {
+            setAccessTokenCookie(servletResponse, authResponse.getAccessToken());
+            setRefreshTokenCookie(servletResponse, authResponse.getRefreshToken());
+            authResponse.setAccessToken(null);
+            authResponse.setRefreshToken(null);
+        }
 
         return ResponseEntity.ok(ApiResponse.success(authResponse, "Email xác thực thành công!"));
     }
@@ -131,9 +139,16 @@ public class AuthController {
     @PostMapping("/login")
     @RateLimit(maxRequests = 5, windowSeconds = 60, type = RateLimitType.IP_AND_EMAIL)
     public ResponseEntity<ApiResponse<AuthResponse>> login(
-            @Valid @RequestBody LoginRequest request) {
+            @Valid @RequestBody LoginRequest request,
+            HttpServletResponse servletResponse) {
 
         AuthResponse response = authService.login(request);
+        if (Boolean.TRUE.equals(response.getEmailVerified())) {
+            setAccessTokenCookie(servletResponse, response.getAccessToken());
+            setRefreshTokenCookie(servletResponse, response.getRefreshToken());
+            response.setAccessToken(null);
+            response.setRefreshToken(null);
+        }
         return ResponseEntity.ok(ApiResponse.success(response, "Đăng nhập thành công"));
     }
 
@@ -163,12 +178,13 @@ public class AuthController {
         // Xoá code khỏi cache để đảm bảo sử dụng 1 lần duy nhất (Single-Use)
         cache.evict(request.getCode());
 
-        // Lấy refresh token từ response và set vào HttpOnly Cookie
-        String refreshToken = authResponse.getRefreshToken();
-        setRefreshTokenCookie(servletResponse, refreshToken);
+        // Lấy tokens từ response và set vào HttpOnly Cookies
+        setRefreshTokenCookie(servletResponse, authResponse.getRefreshToken());
+        setAccessTokenCookie(servletResponse, authResponse.getAccessToken());
 
-        // Xoá refresh token khỏi response body để tăng tính bảo mật
+        // Xoá tokens khỏi response body để tăng tính bảo mật
         authResponse.setRefreshToken(null);
+        authResponse.setAccessToken(null);
 
         return ResponseEntity.ok(ApiResponse.success(authResponse, "Đăng nhập OAuth2 thành công!"));
     }
@@ -191,9 +207,11 @@ public class AuthController {
 
         AuthResponse response = authService.refreshToken(new RefreshTokenRequest(token));
 
-        // Thiết lập Cookie Refresh Token mới do rotation
+        // Thiết lập Cookie Refresh Token và Access Token mới
         setRefreshTokenCookie(servletResponse, response.getRefreshToken());
+        setAccessTokenCookie(servletResponse, response.getAccessToken());
         response.setRefreshToken(null);
+        response.setAccessToken(null);
 
         return ResponseEntity.ok(ApiResponse.success(response, "Token đã được làm mới"));
     }
@@ -214,8 +232,9 @@ public class AuthController {
             authService.logout(token);
         }
 
-        // Xoá cookie refresh token
+        // Xoá cookie refresh token và access token
         setRefreshTokenCookie(servletResponse, null);
+        setAccessTokenCookie(servletResponse, null);
 
         return ResponseEntity.ok(ApiResponse.success(null, "Đăng xuất thành công"));
     }
@@ -223,6 +242,18 @@ public class AuthController {
     // ─────────────────────────────────────────────
     // Cookie Helpers (NEW)
     // ─────────────────────────────────────────────
+
+    private void setAccessTokenCookie(HttpServletResponse response, String accessToken) {
+        long maxAge = accessToken == null ? 0 : jwtProperties.getAccessTokenExpirationMs() / 1000;
+        ResponseCookie cookie = ResponseCookie.from("access_token", accessToken == null ? "" : accessToken)
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite("Lax")
+                .path("/")
+                .maxAge(maxAge)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
 
     private void setRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
         long maxAge = refreshToken == null ? 0 : jwtProperties.getRefreshTokenExpirationMs() / 1000;
