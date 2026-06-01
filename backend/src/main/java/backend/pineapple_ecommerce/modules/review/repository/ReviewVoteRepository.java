@@ -4,6 +4,8 @@ import backend.pineapple_ecommerce.modules.review.models.ReviewVote;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -16,4 +18,6 @@ public interface ReviewVoteRepository extends JpaRepository<ReviewVote, Long> {
     Optional<ReviewVote> findByReviewIdAndUserId(Long reviewId, Long userId);
 
     boolean existsByReviewIdAndUserId(Long reviewId, Long userId);
+
+    List<ReviewVote> findByUserIdAndReviewIdIn(Long userId, Collection<Long> reviewIds);
 }

@@ -26,11 +26,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import backend.pineapple_ecommerce.security.CustomUserDetails;
+import backend.pineapple_ecommerce.modules.user.models.User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -139,6 +144,7 @@ public class ReviewServiceImpl implements ReviewService {
                 .findByProductIdAndRating(productId, rating,
                         PageRequest.of(page, size, Sort.by("createdAt").descending()))
                 .map(reviewMapper::toResponse);
+        populateUserVotes(result);
         return PageResponse.of(result);
     }
 
@@ -313,7 +319,7 @@ public class ReviewServiceImpl implements ReviewService {
                 .findAllForAdmin(safeKeyword, rating, productId, userId,
                         PageRequest.of(page, size, sort))
                 .map(reviewMapper::toResponse);
-
+        populateUserVotes(result);
         return PageResponse.of(result);
     }
 
@@ -327,5 +333,44 @@ public class ReviewServiceImpl implements ReviewService {
                 .purchasedQuantity(purchasedQty)
                 .reviewedCount(reviewsCount)
                 .build();
+    }
+
+    private void populateUserVotes(Page<ReviewResponse> responsePage) {
+        if (responsePage.isEmpty()) {
+            return;
+        }
+        Long currentUserId = getCurrentUserIdOptional();
+        if (currentUserId == null) {
+            return;
+        }
+
+        List<Long> reviewIds = responsePage.stream()
+                .map(ReviewResponse::getId)
+                .toList();
+
+        List<ReviewVote> votes = reviewVoteRepository.findByUserIdAndReviewIdIn(currentUserId, reviewIds);
+        Map<Long, Boolean> voteMap = votes.stream()
+                .collect(Collectors.toMap(
+                        v -> v.getReview().getId(),
+                        ReviewVote::getIsHelpful,
+                        (v1, v2) -> v1
+                ));
+
+        responsePage.forEach(resp -> resp.setUserVote(voteMap.get(resp.getId())));
+    }
+
+    private Long getCurrentUserIdOptional() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getPrincipal())) {
+            return null;
+        }
+        Object principal = auth.getPrincipal();
+        if (principal instanceof CustomUserDetails cud) {
+            return cud.getUserId();
+        }
+        String email = auth.getName();
+        return userRepository.findByEmail(email)
+                .map(User::getId)
+                .orElse(null);
     }
 }

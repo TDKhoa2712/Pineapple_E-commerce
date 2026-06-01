@@ -1,13 +1,19 @@
 package backend.pineapple_ecommerce.modules.review.dto.response;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
+@Setter
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class ReviewResponse {
     private Long    id;
     private Long    userId;
@@ -30,6 +36,12 @@ public class ReviewResponse {
      * Admin API: trả thật để Admin biết review nào đang bị ẩn.
      */
     private Boolean isHidden;
+
+    /**
+     * NEW: Trạng thái vote của user hiện tại đối với review này.
+     * true: Hữu ích (Like), false: Không hữu ích (Dislike), null: Chưa vote / chưa đăng nhập
+     */
+    private Boolean userVote;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
