@@ -122,7 +122,12 @@ public class ShippingController {
     public ResponseEntity<ApiResponse<ShippingTrackingResponse>> getTracking(
             @PathVariable Long orderId) {
         Long userId = userService.getCurrentUserId();
-        return ResponseEntity.ok(ApiResponse.success(shippingService.getTracking(orderId, userId)));
+        boolean isAdmin = org.springframework.security.core.context.SecurityContextHolder.getContext()
+                .getAuthentication()
+                .getAuthorities()
+                .stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        return ResponseEntity.ok(ApiResponse.success(shippingService.getTracking(orderId, isAdmin ? null : userId)));
     }
 
     // ─────────────────────────────────────────────

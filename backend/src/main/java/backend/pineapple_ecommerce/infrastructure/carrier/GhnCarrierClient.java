@@ -53,7 +53,7 @@ public class GhnCarrierClient implements ShippingCarrierClient {
         String url = ghnProperties.getBaseUrl() + "/v2/shipping-order/fee";
 
         Map<String, Object> body = new HashMap<>();
-        body.put("to_district_id", Integer.parseInt(req.toDistrictId()));
+        body.put("to_district_id", parseDistrictId(req.toDistrictId()));
         body.put("to_ward_code", req.toWardCode());
         body.put("weight", req.weightGram());
         body.put("length", req.lengthCm());
@@ -91,7 +91,7 @@ public class GhnCarrierClient implements ShippingCarrierClient {
         body.put("to_phone", req.toPhone());
         body.put("to_address", req.toAddress());
         body.put("to_ward_code", req.toWardCode());
-        body.put("to_district_id", Integer.parseInt(req.toDistrictId()));
+        body.put("to_district_id", parseDistrictId(req.toDistrictId()));
         body.put("cod_amount", req.isCod() ? req.codAmount() : 0);
         body.put("weight", req.weightGram());
         body.put("length", req.lengthCm());
@@ -343,5 +343,16 @@ public class GhnCarrierClient implements ShippingCarrierClient {
         if (serviceType == null) return defaultVal;
         try { return Integer.parseInt(serviceType); }
         catch (Exception e) { return defaultVal; }
+    }
+
+    private int parseDistrictId(String districtId) {
+        if (districtId == null || districtId.trim().isEmpty()) {
+            throw new BusinessException("Mã quận/huyện nhận hàng (to_district_id) không được để trống.");
+        }
+        try {
+            return Integer.parseInt(districtId.trim());
+        } catch (NumberFormatException e) {
+            throw new BusinessException("Mã quận/huyện nhận hàng (to_district_id) của GHN không hợp lệ (phải là số nguyên): " + districtId);
+        }
     }
 }
