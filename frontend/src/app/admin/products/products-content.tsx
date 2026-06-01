@@ -34,6 +34,7 @@ import { DataTable } from "@/components/shared/data-table";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { formatCurrency } from "@/lib/utils";
 import type { ProductSummaryResponse, ProductStatus, CategoryResponse } from "@/types";
+import Image from "next/image";
 
 // ─── Product form schema ─────────────────────────────────────
 const productSchema = z.object({
@@ -154,8 +155,9 @@ export function ProductsContent() {
       setShowForm(false);
       reset();
     },
-    onError: (err: any) => {
-      toast.error(err?.response?.data?.message || "Tạo sản phẩm thất bại");
+    onError: (err: unknown) => {
+      const error = err as { response?: { data?: { message?: string } } };
+      toast.error(error.response?.data?.message || "Tạo sản phẩm thất bại");
     },
   });
 
@@ -183,8 +185,9 @@ export function ProductsContent() {
       setEditTarget(null);
       reset();
     },
-    onError: (err: any) => {
-      toast.error(err?.response?.data?.message || "Cập nhật thất bại");
+    onError: (err: unknown) => {
+      const error = err as { response?: { data?: { message?: string } } };
+      toast.error(error.response?.data?.message || "Cập nhật thất bại");
     },
   });
 
@@ -195,8 +198,9 @@ export function ProductsContent() {
       qc.invalidateQueries({ queryKey: ["products"] });
       setDeleteTarget(null);
     },
-    onError: (err: any) => {
-      toast.error(err?.response?.data?.message || "Xóa sản phẩm thất bại");
+    onError: (err: unknown) => {
+      const error = err as { response?: { data?: { message?: string } } };
+      toast.error(error.response?.data?.message || "Xóa sản phẩm thất bại");
     },
   });
 
@@ -229,8 +233,9 @@ export function ProductsContent() {
       }
 
       toast.success(`Đã tải lên thành công ${urls.length} hình ảnh!`);
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Tải ảnh thất bại");
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      toast.error(error.response?.data?.message || "Tải ảnh thất bại");
     } finally {
       setUploadingImages(false);
       e.target.value = "";
@@ -328,9 +333,11 @@ export function ProductsContent() {
       ),
       cell: ({ row }) => (
         <div className="flex items-center gap-3">
-          <img
+          <Image
             src={row.original.thumbnail}
             alt={row.original.name}
+            width={40}
+            height={40}
             className="h-10 w-10 rounded-lg object-cover border border-slate-700 bg-slate-800 shrink-0"
           />
           <div className="min-w-0">
@@ -567,16 +574,20 @@ export function ProductsContent() {
                 <div className="mt-4 space-y-5">
                   {/* Images */}
                   <div className="flex gap-3 overflow-x-auto pb-2">
-                    <img
+                    <Image
                       src={productDetail.thumbnail}
                       alt={productDetail.name}
+                      width={96}
+                      height={96}
                       className="h-24 w-24 shrink-0 rounded-xl object-cover border border-slate-700"
                     />
                     {productDetail.imageUrls.map((url, i) => (
-                      <img
+                      <Image
                         key={i}
                         src={url}
                         alt={`img-${i}`}
+                        width={96}
+                        height={96}
                         className="h-24 w-24 shrink-0 rounded-xl object-cover border border-slate-700"
                       />
                     ))}
@@ -786,10 +797,11 @@ export function ProductsContent() {
                             isThumbnail ? "border-pine-500 ring-2 ring-pine-500/20" : "border-slate-700 hover:border-slate-500"
                           }`}
                         >
-                          <img
+                          <Image
                             src={url}
                             alt={`Preview ${index}`}
-                            className="h-full w-full object-cover"
+                            fill
+                            className="object-cover"
                           />
                           
                           {/* Thumbnail Indicator/Button */}

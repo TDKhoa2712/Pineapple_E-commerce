@@ -54,8 +54,9 @@ export function useVoteReview() {
       queryClient.invalidateQueries({ queryKey: ['reviews'] })
       toast.success('Đã ghi nhận phản hồi của bạn!')
     },
-    onError: (err: any) => {
-      const msg = err.response?.data?.message || 'Có lỗi xảy ra khi thực hiện vote'
+    onError: (err: unknown) => {
+      const error = err as { response?: { data?: { message?: string } } };
+      const msg = error.response?.data?.message || 'Có lỗi xảy ra khi thực hiện vote'
       toast.error(msg)
     },
   })
