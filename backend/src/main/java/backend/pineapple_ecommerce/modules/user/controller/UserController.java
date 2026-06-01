@@ -10,6 +10,11 @@ import backend.pineapple_ecommerce.modules.user.dto.request.UpdateUserStatusRequ
 import backend.pineapple_ecommerce.common.dto.response.ApiResponse;
 import backend.pineapple_ecommerce.common.dto.response.PageResponse;
 import backend.pineapple_ecommerce.modules.user.dto.response.UserResponse;
+import backend.pineapple_ecommerce.modules.address.service.AddressService;
+import backend.pineapple_ecommerce.modules.wishlist.service.WishlistService;
+import backend.pineapple_ecommerce.modules.address.dto.response.AddressResponse;
+import backend.pineapple_ecommerce.modules.wishlist.dto.response.WishlistResponse;
+import backend.pineapple_ecommerce.modules.address.dto.request.CreateAddressRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -20,6 +25,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import java.util.List;
 
 @Tag(name = "Users", description = "Quản lý thông tin người dùng")
 @RestController
@@ -29,6 +35,8 @@ import org.springframework.web.multipart.MultipartFile;
 public class UserController {
 
     private final UserService userService;
+    private final AddressService addressService;
+    private final WishlistService wishlistService;
 
     // ─────────────────────────────────────────────
     // AUTHENTICATED USER — tự quản lý tài khoản
@@ -183,5 +191,77 @@ public class UserController {
 
         userService.adminResetPassword(userId, request);
         return ResponseEntity.ok(ApiResponse.success(null, "Đặt lại mật khẩu thành công"));
+    }
+
+    @Operation(summary = "Lấy danh sách địa chỉ của người dùng (Admin)")
+    @GetMapping("/{userId}/addresses")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<List<AddressResponse>>> getUserAddresses(
+            @PathVariable Long userId) {
+        return ResponseEntity.ok(ApiResponse.success(addressService.getMyAddresses(userId)));
+    }
+
+    @Operation(summary = "Lấy danh sách yêu thích của người dùng (Admin)")
+    @GetMapping("/{userId}/wishlist")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<PageResponse<WishlistResponse>>> getUserWishlist(
+            @PathVariable Long userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(ApiResponse.success(wishlistService.getMyWishlist(userId, page, size)));
+    }
+
+    @Operation(summary = "Thêm địa chỉ mới cho người dùng (Admin)")
+    @PostMapping("/{userId}/addresses")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<AddressResponse>> adminAddAddress(
+            @PathVariable Long userId,
+            @Valid @RequestBody CreateAddressRequest request) {
+        AddressResponse response = addressService.addAddress(userId, request);
+        return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED)
+                .body(ApiResponse.success(response, "Thêm địa chỉ thành công"));
+    }
+
+    @Operation(summary = "Cập nhật địa chỉ của người dùng (Admin)")
+    @PutMapping("/{userId}/addresses/{addressId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<AddressResponse>> adminUpdateAddress(
+            @PathVariable Long userId,
+            @PathVariable Long addressId,
+            @Valid @RequestBody CreateAddressRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(
+                addressService.updateAddress(userId, addressId, request), "Cập nhật địa chỉ thành công"));
+    }
+
+    @Operation(summary = "Đặt địa chỉ mặc định cho người dùng (Admin)")
+    @PatchMapping("/{userId}/addresses/{addressId}/default")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<AddressResponse>> adminSetDefaultAddress(
+            @PathVariable Long userId,
+            @PathVariable Long addressId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                addressService.setDefault(userId, addressId), "Đã đặt làm địa chỉ mặc định"));
+    }
+
+    @Operation(summary = "Xoá địa chỉ của người dùng (Admin)")
+    @DeleteMapping("/{userId}/addresses/{addressId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> adminDeleteAddress(
+            @PathVariable Long userId,
+            @PathVariable Long addressId) {
+        addressService.deleteAddress(userId, addressId);
+        return ResponseEntity.ok(ApiResponse.success(null, "Đã xoá địa chỉ của người dùng"));
+    }
+
+    @Operation(summary = "Xóa sản phẩm khỏi danh sách yêu thích của người dùng (Admin)")
+    @DeleteMapping("/{userId}/wishlist/{productId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> adminRemoveFromWishlist(
+            @PathVariable Long userId,
+            @PathVariable Long productId) {
+        if (wishlistService.isInWishlist(userId, productId)) {
+            wishlistService.toggleWishlist(userId, productId);
+        }
+        return ResponseEntity.ok(ApiResponse.success(null, "Đã xóa sản phẩm khỏi danh sách yêu thích"));
     }
 }
