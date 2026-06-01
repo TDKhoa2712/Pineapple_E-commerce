@@ -54,7 +54,7 @@ app:
     pay-url: ${VNP_URL}
     return-url: ${APP_VNPAY_RETURN_URL:https://yourdomain.com/api/v1/payments/vnpay-return}
     ipn-url: ${APP_VNPAY_IPN_URL:https://yourdomain.com/api/v1/payments/vnpay-ipn}
-    api-url: "https://sandbox.vnpayment.vn/merchant_webapi/api/transaction" // đổi khi deloy https://merchant.vnpayment.vn/api/transaction"
+    api-url: ${VNPAY_API_URL:https://sandbox.vnpayment.vn/merchant_webapi/api/transaction} # đổi khi deploy: https://merchant.vnpayment.vn/api/transaction
     frontend-result-url: ${APP_VNPAY_FRONTEND_RESULT_URL:https://yourdomain.com/payment/result}
 
   ghn:
