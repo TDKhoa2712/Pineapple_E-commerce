@@ -25,6 +25,7 @@ import { queryKeys } from "@/lib/query-keys";
 import { DataTable } from "@/components/shared/data-table";
 import { formatDateTime, getInitials, truncate } from "@/lib/utils";
 import type { ReviewResponse } from "@/types";
+import Image from "next/image";
 
 function StarRating({ value }: { value: number }) {
   return (
@@ -137,9 +138,11 @@ export function ReviewsContent() {
       cell: ({ row }) => (
         <div className="flex items-center gap-2.5">
           {row.original.userAvatar ? (
-            <img
+            <Image
               src={row.original.userAvatar}
               alt={row.original.userFullName}
+              width={28}
+              height={28}
               className="h-7 w-7 shrink-0 rounded-full object-cover border border-slate-700"
             />
           ) : (
@@ -198,10 +201,12 @@ export function ReviewsContent() {
           {row.original.imageUrls.length > 0 && (
             <div className="mt-1 flex gap-1">
               {row.original.imageUrls.slice(0, 3).map((url, i) => (
-                <img
+                <Image
                   key={i}
                   src={url}
                   alt=""
+                  width={32}
+                  height={32}
                   className="h-8 w-8 rounded-lg object-cover border border-slate-700"
                 />
               ))}
@@ -506,7 +511,7 @@ export function ReviewsContent() {
                     <div className="flex flex-wrap gap-2">
                       {inspectingReview.imageUrls.map((url, i) => (
                         <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="relative w-20 h-20 rounded-xl overflow-hidden border border-slate-800 bg-slate-950 hover:scale-105 transition-transform">
-                          <img src={url} alt="" className="w-full h-full object-cover" />
+                          <Image src={url} alt="" fill className="object-cover" />
                         </a>
                       ))}
                     </div>
