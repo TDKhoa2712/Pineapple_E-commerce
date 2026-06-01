@@ -145,6 +145,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/v1/farms/**").hasAnyRole("FARMER", "ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/farms/**").hasAnyRole("FARMER", "ADMIN")
                         .requestMatchers("/api/v1/inventory/**").hasAnyRole("FARMER", "ADMIN")
+                        .requestMatchers("/api/v1/upload/**").hasAnyRole("USER", "FARMER", "ADMIN")
                         .anyRequest().authenticated()
                 )
 

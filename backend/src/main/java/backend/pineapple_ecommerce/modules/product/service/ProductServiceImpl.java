@@ -65,6 +65,26 @@ public class ProductServiceImpl implements ProductService {
         product.setCategory(category);
         product.setSlug(generateUniqueSlug(request.getName(), request.getSlug()));
 
+        // Extract public ID for thumbnail if it's Cloudinary
+        if (product.getThumbnail() != null) {
+            product.setThumbnailPublicId(extractPublicId(product.getThumbnail()));
+        }
+
+        // Map request.getImageUrls() to product.getImages()
+        if (request.getImageUrls() != null && !request.getImageUrls().isEmpty()) {
+            List<ProductImage> images = new ArrayList<>();
+            for (int i = 0; i < request.getImageUrls().size(); i++) {
+                String url = request.getImageUrls().get(i);
+                images.add(ProductImage.builder()
+                        .product(product)
+                        .imageUrl(url)
+                        .publicId(extractPublicId(url))
+                        .sortOrder(i)
+                        .build());
+            }
+            product.setImages(images);
+        }
+
         Product saved = productRepository.save(product);
         log.info("Product created: id={}, slug={}", saved.getId(), saved.getSlug());
         return enrichDetailResponse(saved);
@@ -284,6 +304,25 @@ public class ProductServiceImpl implements ProductService {
             product.setSlug(generateUniqueSlug(request.getName(), null));
         }
 
+        // Extract public ID for thumbnail if updated
+        if (request.getThumbnail() != null) {
+            product.setThumbnailPublicId(extractPublicId(request.getThumbnail()));
+        }
+
+        // Map request.getImageUrls() to product.getImages()
+        if (request.getImageUrls() != null) {
+            product.getImages().clear();
+            for (int i = 0; i < request.getImageUrls().size(); i++) {
+                String url = request.getImageUrls().get(i);
+                product.getImages().add(ProductImage.builder()
+                        .product(product)
+                        .imageUrl(url)
+                        .publicId(extractPublicId(url))
+                        .sortOrder(i)
+                        .build());
+            }
+        }
+
         Product saved = productRepository.save(product);
         log.info("Product updated: id={}", saved.getId());
         ProductDetailResponse response = enrichDetailResponse(saved);
@@ -416,5 +455,34 @@ public class ProductServiceImpl implements ProductService {
                     .build());
         }
         return images;
+    }
+
+    private String extractPublicId(String url) {
+        if (url == null || !url.startsWith("https://res.cloudinary.com/")) {
+            return null;
+        }
+        try {
+            int uploadIndex = url.indexOf("/upload/");
+            if (uploadIndex == -1) return null;
+            String path = url.substring(uploadIndex + 8); // after "/upload/"
+            
+            // Skip version if present (e.g. "v123456789/")
+            if (path.startsWith("v")) {
+                int firstSlash = path.indexOf('/');
+                if (firstSlash != -1) {
+                    path = path.substring(firstSlash + 1);
+                }
+            }
+            
+            // Remove file extension (e.g. ".jpg")
+            int lastDot = path.lastIndexOf('.');
+            if (lastDot != -1) {
+                path = path.substring(0, lastDot);
+            }
+            return path;
+        } catch (Exception e) {
+            log.warn("Failed to extract publicId from Cloudinary URL: {}", url, e);
+            return null;
+        }
     }
 }

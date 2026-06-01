@@ -32,7 +32,8 @@ public class CreateProductRequest {
     @Digits(integer = 6, fraction = 2)
     private BigDecimal weight;   // gram
 
-    @DecimalMin(value = "0.0", inclusive = false)
+    @DecimalMin(value = "0.0", inclusive = false, message = "Calories phải > 0")
+    @Digits(integer = 4, fraction = 2, message = "Calories phải có tối đa 4 chữ số nguyên và 2 chữ số thập phân")
     private BigDecimal calories;
 
     @Size(max = 100)
