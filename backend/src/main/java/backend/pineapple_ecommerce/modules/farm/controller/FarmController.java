@@ -109,14 +109,18 @@ public class FarmController {
                 farmService.uploadFarmImage(farmId, requesterId, file), "Upload ảnh thành công"));
     }
 
-    @Operation(summary = "Xoá trang trại — soft delete (chủ trang trại hoặc Admin)",
-            security = @SecurityRequirement(name = "bearerAuth"))
+    @Operation(summary = "Xoá trang trại — chủ trang trại xin phép ngừng hoạt động (PENDING_DEACTIVATION), Admin ngừng ngay (INACTIVE)",
+            security = @SecurityRequirement(name = "bearerAuth"),
+            description = "WORKFLOW: " +
+                    "- Chủ trang trại: farm chuyển PENDING_DEACTIVATION (vẫn được tính ACTIVE cho phép kinh doanh)" +
+                    "- Admin: farm chuyển INACTIVE ngay lập tức " +
+                    "- Admin duyệt deactivation: PENDING_DEACTIVATION → INACTIVE")
     @DeleteMapping("/{farmId}")
     @PreAuthorize("hasAnyRole('USER', 'FARMER', 'ADMIN')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long farmId) {
         Long requesterId = userService.getCurrentUserId();
         farmService.deleteFarm(farmId, requesterId);
-        return ResponseEntity.ok(ApiResponse.success(null, "Da gui yeu cau/ngung hoat dong trang trai"));
+        return ResponseEntity.ok(ApiResponse.success(null, "Đã gửi yêu cầu/ngừng hoạt động trang trại"));
     }
 
     @Operation(summary = "Xin phep ngung hoat dong trang trai (chu trang trai) hoac ngung ngay (Admin)",

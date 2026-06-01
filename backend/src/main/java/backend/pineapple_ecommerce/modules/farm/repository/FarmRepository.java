@@ -29,5 +29,8 @@ public interface FarmRepository extends JpaRepository<Farm, Long>, JpaSpecificat
 
     boolean existsByOwnerIdAndStatusAndIsDeletedFalse(Long ownerId, FarmStatus status);
 
+    boolean existsByOwnerIdAndStatusInAndIsDeletedFalse(Long ownerId, List<FarmStatus> statuses);
+
     long countByStatus(FarmStatus status);
 }
+

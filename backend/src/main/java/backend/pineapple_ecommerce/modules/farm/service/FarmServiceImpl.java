@@ -87,10 +87,10 @@ public class FarmServiceImpl implements FarmService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<FarmResponse> getAllFarms(int page, int size) {
-        // Public: chỉ ACTIVE farm, chưa bị xoá
+        // Public: chỉ ACTIVE farm hoặc PENDING_DEACTIVATION farm, chưa bị xoá
         Specification<Farm> spec = Specification.allOf(
                 FarmSpecification.fetchOwner(),
-                FarmSpecification.hasStatus(FarmStatus.ACTIVE),
+                FarmSpecification.hasStatusIn(List.of(FarmStatus.ACTIVE, FarmStatus.PENDING_DEACTIVATION)),
                 FarmSpecification.isDeleted(false)
         );
 
@@ -307,9 +307,11 @@ public class FarmServiceImpl implements FarmService {
         Farm farm = farmRepository.findById(farmId)
                 .orElseThrow(() -> new ResourceNotFoundException("Farm", farmId));
 
-        if (farm.getStatus() != FarmStatus.ACTIVE && farm.getStatus() != FarmStatus.PENDING_DEACTIVATION) {
+        if (farm.getStatus() != FarmStatus.ACTIVE 
+                && farm.getStatus() != FarmStatus.PENDING_DEACTIVATION
+                && farm.getStatus() != FarmStatus.PENDING_REACTIVATION) {
             throw new BusinessException(
-                    "Chỉ có thể vô hiệu hóa farm ở trạng thái ACTIVE/PENDING_DEACTIVATION. " +
+                    "Chỉ có thể vô hiệu hóa farm ở trạng thái ACTIVE/PENDING_DEACTIVATION/PENDING_REACTIVATION. " +
                     "Trạng thái hiện tại: " + farm.getStatus());
         }
 

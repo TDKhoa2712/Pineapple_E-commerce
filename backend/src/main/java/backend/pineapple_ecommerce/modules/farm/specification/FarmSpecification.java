@@ -25,6 +25,11 @@ public class FarmSpecification {
                 status == null ? null : cb.equal(root.get("status"), status);
     }
 
+    public static Specification<Farm> hasStatusIn(java.util.List<FarmStatus> statuses) {
+        return (root, query, cb) ->
+                statuses == null || statuses.isEmpty() ? null : root.get("status").in(statuses);
+    }
+
     public static Specification<Farm> isDeleted(Boolean isDeleted) {
         return (root, query, cb) ->
                 isDeleted == null ? null : cb.equal(root.get("isDeleted"), isDeleted);
