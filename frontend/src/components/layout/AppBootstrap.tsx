@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { useAuthStore } from '@/stores/auth-store'
 import { useCartStore } from '@/stores/cart-store'
 import { authApi, cartApi } from '@/services/api'
-import { tokenStorage } from '@/lib/api-client'
 
 export function AppBootstrap({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false)
@@ -14,7 +13,7 @@ export function AppBootstrap({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!isHydrated) return
 
-    if (!isAuthenticated || !tokenStorage.get()) {
+    if (!isAuthenticated) {
       setReady(true)
       return
     }
