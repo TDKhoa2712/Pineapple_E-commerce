@@ -35,6 +35,7 @@ import backend.pineapple_ecommerce.common.enums.CarrierCode;
 import backend.pineapple_ecommerce.infrastructure.carrier.ShippingProviderRouter;
 import backend.pineapple_ecommerce.infrastructure.carrier.CarrierAddressMetadataHelper;
 import backend.pineapple_ecommerce.infrastructure.carrier.ShippingCarrierClient;
+import backend.pineapple_ecommerce.modules.shipping.service.ShippingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -69,6 +70,10 @@ public class OrderServiceImpl implements OrderService, OrderInternalService {
     private final FarmRepository farmRepository;
     private final ShippingProviderRouter shippingProviderRouter;
     private final CarrierAddressMetadataHelper metadataHelper;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    @org.springframework.context.annotation.Lazy
+    private ShippingService shippingService;
 
     // ─────────────────────────────────────────────
     // CREATE ORDER
@@ -249,7 +254,16 @@ public class OrderServiceImpl implements OrderService, OrderInternalService {
         order.setStatus(newStatus);
 
         if (newStatus == OrderStatus.CANCELLED) {
+            restoreStock(order);
             couponService.releaseCouponUsage(orderId);
+
+            if (oldStatus == OrderStatus.PROCESSING) {
+                try {
+                    shippingService.cancelShipment(orderId);
+                } catch (Exception e) {
+                    log.error("Failed to automatically cancel shipment for order #{}: {}", orderId, e.getMessage(), e);
+                }
+            }
         }
 
         if (newStatus == OrderStatus.DELIVERED && order.getPaymentMethod() == PaymentMethod.COD) {
@@ -432,19 +446,7 @@ public class OrderServiceImpl implements OrderService, OrderInternalService {
     }
 
     private void validateStatusTransition(OrderStatus current, OrderStatus next) {
-        boolean valid = switch (current) {
-            case PENDING           -> Set.of(OrderStatus.CONFIRMED, OrderStatus.CANCELLED).contains(next);
-            case CONFIRMED         -> Set.of(OrderStatus.PROCESSING, OrderStatus.CANCELLED).contains(next);
-            case PROCESSING        -> next == OrderStatus.SHIPPING;
-            case SHIPPING          -> next == OrderStatus.DELIVERED;
-            case DELIVERED         -> next == OrderStatus.RETURNED;
-            case CANCELLED         -> false;
-            case RETURNED          -> false;
-            case REFUND_REQUESTED  -> next == OrderStatus.REFUNDED;
-            case REFUNDED          -> false;
-        };
-
-        if (!valid) {
+        if (!current.canTransitionTo(next)) {
             throw new BusinessException(
                     String.format("Không thể chuyển trạng thái đơn hàng từ %s sang %s", current, next));
         }
@@ -456,18 +458,24 @@ public class OrderServiceImpl implements OrderService, OrderInternalService {
         long totalUsers = userRepository.count();
         long pendingFarms = farmRepository.countByStatus(FarmStatus.PENDING_APPROVAL);
 
-        List<Order> allOrders = orderRepository.findAllByOrderByCreatedAtAsc();
-
-        BigDecimal totalRevenue = BigDecimal.ZERO;
-        long totalOrdersCount = allOrders.size();
+        long totalOrdersCount = orderRepository.count();
+        BigDecimal totalRevenue = orderRepository.sumTotalAmountByStatusNot(OrderStatus.CANCELLED);
+        if (totalRevenue == null) {
+            totalRevenue = BigDecimal.ZERO;
+        }
 
         java.util.Map<String, Long> statusDistribution = new java.util.HashMap<>();
-        for (backend.pineapple_ecommerce.common.enums.OrderStatus status : backend.pineapple_ecommerce.common.enums.OrderStatus.values()) {
+        for (OrderStatus status : OrderStatus.values()) {
             statusDistribution.put(status.name(), 0L);
+        }
+        List<Object[]> statusCounts = orderRepository.countOrdersByStatus();
+        for (Object[] row : statusCounts) {
+            OrderStatus status = (OrderStatus) row[0];
+            Long count = (Long) row[1];
+            statusDistribution.put(status.name(), count);
         }
 
         java.util.Map<String, AdminStatisticsResponse.MonthlyRevenue> monthlyMap = new java.util.LinkedHashMap<>();
-
         java.time.format.DateTimeFormatter monthFormatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM");
         LocalDateTime now = LocalDateTime.now();
         for (int i = 11; i >= 0; i--) {
@@ -475,20 +483,18 @@ public class OrderServiceImpl implements OrderService, OrderInternalService {
             monthlyMap.put(m, new AdminStatisticsResponse.MonthlyRevenue(m, BigDecimal.ZERO, 0L));
         }
 
-        for (Order order : allOrders) {
-            statusDistribution.put(order.getStatus().name(), statusDistribution.getOrDefault(order.getStatus().name(), 0L) + 1);
-
-            if (order.getStatus() != OrderStatus.CANCELLED) {
-                totalRevenue = totalRevenue.add(order.getTotalAmount());
-                
-                String orderMonth = order.getCreatedAt().format(monthFormatter);
-                if (monthlyMap.containsKey(orderMonth)) {
-                    AdminStatisticsResponse.MonthlyRevenue monthly = monthlyMap.get(orderMonth);
-                    monthly.setRevenue(monthly.getRevenue().add(order.getTotalAmount()));
-                    monthly.setOrderCount(monthly.getOrderCount() + 1);
-                } else {
-                    monthlyMap.put(orderMonth, new AdminStatisticsResponse.MonthlyRevenue(orderMonth, order.getTotalAmount(), 1L));
-                }
+        LocalDateTime cutoff = now.minusMonths(11).withDayOfMonth(1).toLocalDate().atStartOfDay();
+        List<Object[]> monthlyStats = orderRepository.getMonthlyRevenueAndCount(cutoff, OrderStatus.CANCELLED);
+        for (Object[] row : monthlyStats) {
+            String monthStr = (String) row[0];
+            BigDecimal revenue = (BigDecimal) row[1];
+            Long count = (Long) row[2];
+            if (monthlyMap.containsKey(monthStr)) {
+                AdminStatisticsResponse.MonthlyRevenue mr = monthlyMap.get(monthStr);
+                mr.setRevenue(revenue != null ? revenue : BigDecimal.ZERO);
+                mr.setOrderCount(count != null ? count : 0L);
+            } else {
+                monthlyMap.put(monthStr, new AdminStatisticsResponse.MonthlyRevenue(monthStr, revenue != null ? revenue : BigDecimal.ZERO, count != null ? count : 0L));
             }
         }
 

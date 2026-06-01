@@ -24,7 +24,7 @@ public enum OrderStatus {
             Map.entry(REFUND_REQUESTED, Set.of(REFUNDED, RETURNED)),    // Không cho quay lại DELIVERED
             Map.entry(REFUNDED,         Set.of()),                      // Kết thúc
             Map.entry(RETURNED,         Set.of()),                      // Kết thúc
-            Map.entry(CANCELLED,        Set.of())                       // Kết thúc
+            Map.entry(CANCELLED,        Set.of(REFUND_REQUESTED, REFUNDED))                       // Cho phép hoàn tiền sau khi hủy
     );
 
     /**

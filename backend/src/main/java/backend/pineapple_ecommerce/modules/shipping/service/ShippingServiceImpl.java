@@ -210,8 +210,7 @@ public class ShippingServiceImpl implements ShippingService {
             if (mappedOrderStatus != null) {
                 Order order = shipment.getOrder();
 
-//                if (order.getStatus() != mappedOrderStatus && order.getStatus().canTransitionTo(mappedOrderStatus)) {
-                if (order.getStatus() != mappedOrderStatus) {
+                if (order.getStatus() != mappedOrderStatus && order.getStatus().canTransitionTo(mappedOrderStatus)) {
                     orderInternalService.updateOrderStatus(order.getId(), mappedOrderStatus);
                     log.info("Updated order #{} status to {}", order.getId(), mappedOrderStatus);
                 }

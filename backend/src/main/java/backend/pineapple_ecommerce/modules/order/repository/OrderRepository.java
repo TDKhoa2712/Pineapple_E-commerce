@@ -67,4 +67,24 @@ public interface OrderRepository extends JpaRepository<Order, Long>,
     Optional<Order> findById(Long id);
 
     java.util.List<Order> findAllByOrderByCreatedAtAsc();
+
+    @Query("SELECT SUM(o.totalAmount) FROM Order o WHERE o.status <> :cancelledStatus")
+    java.math.BigDecimal sumTotalAmountByStatusNot(@Param("cancelledStatus") OrderStatus cancelledStatus);
+
+    @Query("SELECT o.status, COUNT(o) FROM Order o GROUP BY o.status")
+    java.util.List<Object[]> countOrdersByStatus();
+
+    @Query("""
+        SELECT function('to_char', o.createdAt, 'YYYY-MM') as monthStr,
+               SUM(o.totalAmount) as revenue,
+               COUNT(o) as orderCount
+        FROM Order o
+        WHERE o.status <> :cancelledStatus
+          AND o.createdAt >= :cutoff
+        GROUP BY function('to_char', o.createdAt, 'YYYY-MM')
+        ORDER BY monthStr ASC
+    """)
+    java.util.List<Object[]> getMonthlyRevenueAndCount(
+            @Param("cutoff") java.time.LocalDateTime cutoff,
+            @Param("cancelledStatus") OrderStatus cancelledStatus);
 }
