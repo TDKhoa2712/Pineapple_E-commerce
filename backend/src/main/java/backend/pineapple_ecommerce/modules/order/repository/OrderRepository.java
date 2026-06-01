@@ -4,6 +4,8 @@ import backend.pineapple_ecommerce.common.enums.OrderStatus;
 import backend.pineapple_ecommerce.modules.order.models.Order;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -16,11 +18,18 @@ import java.util.Optional;
 public interface OrderRepository extends JpaRepository<Order, Long>,
         JpaSpecificationExecutor<Order> {
 
+    @Override
+    @EntityGraph(attributePaths = {"user"})
+    Page<Order> findAll(Specification<Order> spec, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"user"})
     Page<Order> findByUserId(Long userId, Pageable pageable);
 
     /** NEW: filter user + status cùng lúc — cho getMyOrders(status) */
+    @EntityGraph(attributePaths = {"user"})
     Page<Order> findByUserIdAndStatus(Long userId, OrderStatus status, Pageable pageable);
 
+    @EntityGraph(attributePaths = {"user"})
     Page<Order> findByStatus(OrderStatus status, Pageable pageable);
 
     @Query("""

@@ -4,6 +4,8 @@ import backend.pineapple_ecommerce.common.enums.ProductStatus;
 import backend.pineapple_ecommerce.modules.product.models.Product;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -18,12 +20,18 @@ import java.util.Optional;
 public interface ProductRepository extends JpaRepository<Product, Long>,
         JpaSpecificationExecutor<Product> {
 
+    @Override
+    @EntityGraph(attributePaths = {"category"})
+    Page<Product> findAll(Specification<Product> spec, Pageable pageable);
+
     Optional<Product> findBySlug(String slug);
 
     boolean existsBySlug(String slug);
 
+    @EntityGraph(attributePaths = {"category"})
     Page<Product> findByStatus(ProductStatus status, Pageable pageable);
 
+    @EntityGraph(attributePaths = {"category"})
     Page<Product> findByCategoryId(Long categoryId, Pageable pageable);
 
     @Query("SELECT p FROM Product p LEFT JOIN FETCH p.images WHERE p.slug = :slug AND p.status = 'ACTIVE'")
