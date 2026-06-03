@@ -82,6 +82,7 @@ public class EmailServiceImpl implements EmailService {
     @Retryable(retryFor = MailException.class, maxAttempts = 3,
                backoff = @Backoff(delay = 2000, multiplier = 2))
     public void sendPasswordResetOtp(String toEmail, String otp) {
+        log.info("[Email] Attempting to send password-reset OTP to {}", toEmail);
         try {
             Context ctx = new Context(Locale.forLanguageTag("vi"));
             ctx.setVariable("otp", otp);
@@ -93,9 +94,10 @@ public class EmailServiceImpl implements EmailService {
                  ctx,
                  buildOtpPlainText(otp));
 
-            log.info("[Email] OTP sent to {}", toEmail);
+            log.info("[Email] Password-reset OTP successfully sent to {}", toEmail);
         } catch (Exception ex) {
-            log.error("[Email] Failed to send OTP to {}: {}", toEmail, ex.getMessage(), ex);
+            log.error("[Email] FAILED to send password-reset OTP to {} — cause: {} | detail: {}",
+                      toEmail, ex.getClass().getSimpleName(), ex.getMessage(), ex);
         }
     }
 
@@ -104,6 +106,7 @@ public class EmailServiceImpl implements EmailService {
     @Retryable(retryFor = MailException.class, maxAttempts = 3,
             backoff = @Backoff(delay = 2000, multiplier = 2))
     public void sendEmailVerificationOtp(String toEmail, String otp) {
+        log.info("[Email] Attempting to send email-verification OTP to {}", toEmail);
         try {
             Context ctx = new Context(Locale.forLanguageTag("vi"));
             ctx.setVariable("otp", otp);
@@ -115,9 +118,10 @@ public class EmailServiceImpl implements EmailService {
                     ctx,
                     buildEmailVerificationPlainText(otp));
 
-            log.info("[Email] Email verification OTP sent to {}", toEmail);
+            log.info("[Email] Email verification OTP successfully sent to {}", toEmail);
         } catch (Exception ex) {
-            log.error("[Email] Failed to send verification OTP to {}: {}", toEmail, ex.getMessage(), ex);
+            log.error("[Email] FAILED to send email-verification OTP to {} — cause: {} | detail: {}",
+                      toEmail, ex.getClass().getSimpleName(), ex.getMessage(), ex);
         }
     }
 
@@ -234,6 +238,9 @@ public class EmailServiceImpl implements EmailService {
      */
     private void send(String toEmail, String subject, String templateName, Context ctx, String plainText) {
 
+        log.debug("[Email] send() → to={} template={} fromAddress={}",
+                  toEmail, templateName, mailProperties.getFromAddress());
+
         try {
             ctx.setVariable("baseUrl", mailProperties.getBaseUrl());
 
@@ -255,9 +262,12 @@ public class EmailServiceImpl implements EmailService {
 
             mailSender.send(mime);
 
+            log.debug("[Email] send() → SUCCESS to={} subject={}", toEmail, subject);
+
         } catch (Exception ex) {
 
-            log.error("[Email] Failed sending email to={} subject={}", toEmail, subject, ex);
+            log.error("[Email] send() FAILED → to={} subject={} cause={} msg={}",
+                      toEmail, subject, ex.getClass().getSimpleName(), ex.getMessage(), ex);
 
             throw new org.springframework.mail.MailSendException("Failed to send email", ex);
         }

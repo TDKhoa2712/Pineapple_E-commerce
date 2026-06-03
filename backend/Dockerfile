@@ -31,4 +31,4 @@ EXPOSE 8080
 # Cấu hình tham số JVM tối ưu cho Production, đặc biệt khi chạy trên tài nguyên hạn chế (Render/Koyeb Free Tier 512MB RAM):
 # - MaxRAMPercentage=75.0: Cho phép JVM sử dụng tối đa 75% lượng RAM cấp cho container.
 # - ActiveProcessorCount=1: Giới hạn nhận diện CPU core ảo là 1.
-ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75.0", "-XX:ActiveProcessorCount=1", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75.0", "-XX:ActiveProcessorCount=1", "-Dspring.profiles.active=prod", "-jar", "app.jar"]
