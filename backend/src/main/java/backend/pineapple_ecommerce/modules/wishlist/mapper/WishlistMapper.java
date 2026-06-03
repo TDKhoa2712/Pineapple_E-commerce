@@ -18,6 +18,7 @@ public interface WishlistMapper {
     @Mapping(target = "productPrice", expression = "java(wl.getProduct().getPrice())")
     @Mapping(target = "productDiscountPrice", expression = "java(wl.getProduct().getDiscountPrice())")
     @Mapping(target = "productStatus", expression = "java(wl.getProduct().getStatus().name())")
+    @Mapping(target = "productUnit", expression = "java(wl.getProduct().getUnit())")
     WishlistResponse toResponse(Wishlist wl);
 
     List<WishlistResponse> toResponseList(List<Wishlist> wishlists);

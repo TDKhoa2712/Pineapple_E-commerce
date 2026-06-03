@@ -1,19 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { type ColumnDef, type PaginationState } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Search, Lock, Unlock, Shield, Key, X, ArrowUpDown, ArrowUp, ArrowDown, Eye, Globe, Calendar, Mail, Phone, Trash2, Plus, Star, Edit2, Check } from "lucide-react";
+import { Search, Lock, Unlock, Shield, Key, X, ArrowUpDown, ArrowUp, ArrowDown, Eye, Globe, Calendar, Mail, Phone, Trash2, Plus, Star, Edit2 } from "lucide-react";
 import { adminUserService } from "@/services/admin.service";
 import { queryKeys } from "@/lib/query-keys";
 import { DataTable } from "@/components/shared/data-table";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { formatDate, getInitials, formatCurrency } from "@/lib/utils";
-import type { UserResponse, UserStatus, RoleName } from "@/types";
+import type { UserResponse, UserStatus, RoleName, AddressRequest, LocationItem } from "@/types";
 import { useProvinces, useDistricts, useWards } from "@/hooks";
 import { addressSchema } from "@/lib/validations";
+import Image from "next/image";
 
 export function UsersContent() {
   const qc = useQueryClient();
@@ -62,20 +63,20 @@ export function UsersContent() {
   const [selectedWardCode, setSelectedWardCode] = useState<string | null>(null);
 
   const { data: provincesRes } = useProvinces();
-  const provinces = provincesRes?.data ?? [];
+  const provinces = useMemo(() => provincesRes?.data ?? [], [provincesRes]);
 
   const { data: districtsRes } = useDistricts(selectedProvinceId);
-  const districts = districtsRes?.data ?? [];
+  const districts = useMemo(() => districtsRes?.data ?? [], [districtsRes]);
 
   const { data: wardsRes } = useWards(selectedDistrictId);
-  const wards = wardsRes?.data ?? [];
+  const wards = useMemo(() => wardsRes?.data ?? [], [wardsRes]);
 
   // Auto-resolve GHN ID from names when editing
   useEffect(() => {
     if (!editingAddressId || !viewingUser || !showAddressForm) return;
 
     if (provinces.length > 0 && !selectedProvinceId) {
-      const match = provinces.find((p: any) => p.name === addressData.province);
+      const match = provinces.find((p: LocationItem) => p.name === addressData.province);
       if (match) {
         setSelectedProvinceId(match.id);
       }
@@ -86,7 +87,7 @@ export function UsersContent() {
     if (!editingAddressId || !viewingUser || !showAddressForm || !selectedProvinceId) return;
 
     if (districts.length > 0 && !selectedDistrictId) {
-      const match = districts.find((d: any) => d.name === addressData.district);
+      const match = districts.find((d: LocationItem) => d.name === addressData.district);
       if (match) {
         setSelectedDistrictId(match.id);
       }
@@ -97,7 +98,7 @@ export function UsersContent() {
     if (!editingAddressId || !viewingUser || !showAddressForm || !selectedDistrictId) return;
 
     if (wards.length > 0 && !selectedWardCode) {
-      const match = wards.find((w: any) => w.name === addressData.ward);
+      const match = wards.find((w: LocationItem) => w.name === addressData.ward);
       if (match) {
         setSelectedWardCode(match.id);
       }
@@ -191,8 +192,9 @@ export function UsersContent() {
       qc.invalidateQueries({ queryKey: ["users"] });
       setRoleTarget(null);
     },
-    onError: (error: any) => {
-      const msg = error?.response?.data?.message || "Cập nhật quyền thất bại";
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } };
+      const msg = err.response?.data?.message || "Cập nhật quyền thất bại";
       toast.error(msg);
     },
   });
@@ -205,8 +207,9 @@ export function UsersContent() {
       setResetPasswordTarget(null);
       setNewPassword("");
     },
-    onError: (error: any) => {
-      const msg = error?.response?.data?.message || "Đặt lại mật khẩu thất bại";
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } };
+      const msg = err.response?.data?.message || "Đặt lại mật khẩu thất bại";
       toast.error(msg);
     },
   });
@@ -219,8 +222,9 @@ export function UsersContent() {
       toast.success("Đã xóa địa chỉ thành công");
       qc.invalidateQueries({ queryKey: ["user-addresses", viewingUser?.id] });
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Xóa địa chỉ thất bại");
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || "Xóa địa chỉ thất bại");
     },
   });
 
@@ -231,13 +235,14 @@ export function UsersContent() {
       toast.success("Đã đặt làm địa chỉ mặc định");
       qc.invalidateQueries({ queryKey: ["user-addresses", viewingUser?.id] });
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Đặt mặc định thất bại");
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || "Đặt mặc định thất bại");
     },
   });
 
   const addAddressMutation = useMutation({
-    mutationFn: (payload: any) =>
+    mutationFn: (payload: AddressRequest) =>
       adminUserService.addAddress(viewingUser!.id, payload),
     onSuccess: () => {
       toast.success("Đã thêm địa chỉ mới");
@@ -245,13 +250,14 @@ export function UsersContent() {
       setShowAddressForm(false);
       resetAddressForm();
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Thêm địa chỉ thất bại");
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || "Thêm địa chỉ thất bại");
     },
   });
 
   const updateAddressMutation = useMutation({
-    mutationFn: ({ addressId, payload }: { addressId: number; payload: any }) =>
+    mutationFn: ({ addressId, payload }: { addressId: number; payload: AddressRequest }) =>
       adminUserService.updateAddress(viewingUser!.id, addressId, payload),
     onSuccess: () => {
       toast.success("Đã cập nhật địa chỉ thành công");
@@ -259,8 +265,9 @@ export function UsersContent() {
       setShowAddressForm(false);
       resetAddressForm();
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Cập nhật thất bại");
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || "Cập nhật thất bại");
     },
   });
 
@@ -271,13 +278,14 @@ export function UsersContent() {
       toast.success("Đã xóa sản phẩm khỏi yêu thích");
       qc.invalidateQueries({ queryKey: ["user-wishlist", viewingUser?.id] });
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Xóa sản phẩm thất bại");
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || "Xóa sản phẩm thất bại");
     },
   });
 
   const updateUserInfo = useMutation({
-    mutationFn: ({ userId, fullName, phone }: { userId: number; fullName: string; phone: string }) =>
+    mutationFn: ({ userId, fullName, phone }: { userId: number; fullName: string; phone?: string }) =>
       adminUserService.updateUserInfo(userId, { fullName, phone }),
     onSuccess: (updated) => {
       toast.success("Cập nhật thông tin người dùng thành công");
@@ -285,8 +293,9 @@ export function UsersContent() {
       setViewingUser((prev) => (prev && prev.id === updated.id ? updated : prev));
       setEditingUserId(null);
     },
-    onError: (error: any) => {
-      const msg = error?.response?.data?.message || "Cập nhật thông tin thất bại";
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } };
+      const msg = err.response?.data?.message || "Cập nhật thông tin thất bại";
       toast.error(msg);
     },
   });
@@ -301,8 +310,9 @@ export function UsersContent() {
       setSelectedAvatarFile(null);
       setAvatarPreview(null);
     },
-    onError: (error: any) => {
-      const msg = error?.response?.data?.message || "Cập nhật avatar thất bại";
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } };
+      const msg = err.response?.data?.message || "Cập nhật avatar thất bại";
       toast.error(msg);
     },
   });
@@ -563,9 +573,9 @@ export function UsersContent() {
                 <div className="flex flex-col items-center border-b border-slate-800/60 pb-6 text-center">
                   {/* Avatar display with edit overlay */}
                   <div className="relative group">
-                    <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-pine-600 to-pine-800 text-2xl font-bold text-white shadow-xl shadow-pine-500/20 overflow-hidden">
+                    <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-pine-600 to-pine-800 text-2xl font-bold text-white shadow-xl shadow-pine-500/20 overflow-hidden">
                       {viewingUser.avatar ? (
-                        <img src={viewingUser.avatar} alt={viewingUser.fullName} className="h-full w-full object-cover" />
+                        <Image src={viewingUser.avatar} alt={viewingUser.fullName} width={80} height={80} className="h-full w-full object-cover" />
                       ) : (
                         getInitials(viewingUser.fullName)
                       )}
@@ -662,7 +672,7 @@ export function UsersContent() {
                             toast.error("Họ tên không được để trống");
                             return;
                           }
-                          const requestData: any = {
+                          const requestData: { userId: number; fullName: string; phone?: string } = {
                             userId: viewingUser.id,
                             fullName: editFormData.fullName,
                           };
@@ -1048,7 +1058,7 @@ export function UsersContent() {
                               value={selectedProvinceId || ""}
                               onChange={(e) => {
                                 const id = e.target.value;
-                                const name = provinces.find((p: any) => p.id === id)?.name || "";
+                                const name = provinces.find((p: LocationItem) => p.id === id)?.name || "";
                                 setSelectedProvinceId(id || null);
                                 setSelectedDistrictId(null);
                                 setSelectedWardCode(null);
@@ -1057,7 +1067,7 @@ export function UsersContent() {
                               className="mt-1 h-8 w-full rounded-md border border-slate-700 bg-slate-850 px-2 text-slate-200 outline-none focus:border-pine-500 text-xs"
                             >
                               <option value="">Chọn Tỉnh / Thành phố</option>
-                              {provinces.map((p: any) => (
+                              {provinces.map((p: LocationItem) => (
                                 <option key={p.id} value={p.id}>{p.name}</option>
                               ))}
                             </select>
@@ -1069,7 +1079,7 @@ export function UsersContent() {
                               disabled={!selectedProvinceId}
                               onChange={(e) => {
                                 const id = e.target.value;
-                                const name = districts.find((d: any) => d.id === id)?.name || "";
+                                const name = districts.find((d: LocationItem) => d.id === id)?.name || "";
                                 setSelectedDistrictId(id || null);
                                 setSelectedWardCode(null);
                                 setAddressData({ ...addressData, district: name, ward: "" });
@@ -1077,7 +1087,7 @@ export function UsersContent() {
                               className="mt-1 h-8 w-full rounded-md border border-slate-700 bg-slate-850 px-2 text-slate-200 outline-none focus:border-pine-500 text-xs disabled:opacity-50"
                             >
                               <option value="">Chọn Quận / Huyện</option>
-                              {districts.map((d: any) => (
+                              {districts.map((d: LocationItem) => (
                                 <option key={d.id} value={d.id}>{d.name}</option>
                               ))}
                             </select>
@@ -1089,14 +1099,14 @@ export function UsersContent() {
                               disabled={!selectedDistrictId}
                               onChange={(e) => {
                                 const id = e.target.value;
-                                const name = wards.find((w: any) => w.id === id)?.name || "";
+                                const name = wards.find((w: LocationItem) => w.id === id)?.name || "";
                                 setSelectedWardCode(id || null);
                                 setAddressData({ ...addressData, ward: name });
                               }}
                               className="mt-1 h-8 w-full rounded-md border border-slate-700 bg-slate-850 px-2 text-slate-200 outline-none focus:border-pine-500 text-xs disabled:opacity-50"
                             >
                               <option value="">Chọn Phường / Xã</option>
-                              {wards.map((w: any) => (
+                              {wards.map((w: LocationItem) => (
                                 <option key={w.id} value={w.id}>{w.name}</option>
                               ))}
                             </select>
@@ -1253,9 +1263,11 @@ export function UsersContent() {
                             className="rounded-xl border border-slate-800/50 bg-slate-950/40 p-2.5 flex items-center justify-between gap-3 text-xs"
                           >
                             <div className="flex items-center gap-3">
-                              <img
+                              <Image
                                 src={item.productThumbnail}
                                 alt={item.productName}
+                                width={40}
+                                height={40}
                                 className="h-10 w-10 rounded-lg object-cover bg-slate-800 border border-slate-800 shrink-0"
                               />
                               <div>

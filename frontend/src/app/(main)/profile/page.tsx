@@ -40,7 +40,7 @@ export default function ProfilePage() {
     { href: '/profile/change-password', icon: <Lock className="w-4 h-4" />, label: 'Đổi mật khẩu' },
     { href: '/orders', icon: <Package className="w-4 h-4" />, label: 'Đơn hàng' },
     { href: '/wishlist', icon: <Heart className="w-4 h-4" />, label: 'Yêu thích' },
-    { href: '/my-farms', icon: <Tractor className="w-4 h-4" />, label: 'Nông trại của tôi' },
+    { href: '/my-farms', icon: <Tractor className="w-4 h-4" />, label: 'Trang trại của tôi' },
   ]
 
   return (

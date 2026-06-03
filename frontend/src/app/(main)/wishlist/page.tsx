@@ -71,8 +71,13 @@ export default function WishlistPage() {
                     </Link>
                     <div className="flex items-center justify-between gap-2">
                       <div>
-                        <p className="text-[var(--color-orange-500)] font-bold text-sm">
-                          {formatPrice(item.productDiscountPrice ?? item.productPrice)}
+                        <p className="text-[var(--color-orange-500)] font-bold text-sm flex items-baseline gap-0.5">
+                          <span>{formatPrice(item.productDiscountPrice ?? item.productPrice)}</span>
+                          {item.productUnit && (
+                            <span className="text-xs font-normal text-[var(--color-text-muted)] ml-0.5">
+                              / {item.productUnit}
+                            </span>
+                          )}
                         </p>
                         {item.productDiscountPrice && (
                           <p className="text-xs text-[var(--color-text-subtle)] line-through">

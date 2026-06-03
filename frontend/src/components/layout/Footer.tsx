@@ -42,15 +42,15 @@ export function Footer() {
             </p>
             <div className="flex items-center gap-2 mb-2 text-sm">
               <MapPin className="w-4 h-4 text-[var(--color-gold-500)] flex-shrink-0" />
-              <span>123 Đường Nông Nghiệp, Quận 1, TP.HCM</span>
+              <span>273 An Dương Vương, Phường Chợ Quán, Thành phố Hồ Chí Minh</span>
             </div>
             <div className="flex items-center gap-2 mb-2 text-sm">
               <Phone className="w-4 h-4 text-[var(--color-gold-500)] flex-shrink-0" />
-              <span>1800 PINE (7463)</span>
+              <span>0822864563</span>
             </div>
             <div className="flex items-center gap-2 text-sm">
               <Mail className="w-4 h-4 text-[var(--color-gold-500)] flex-shrink-0" />
-              <span>hello@pineapple.vn</span>
+              <span>pineappleecommerce.example@gmail.com</span>
             </div>
 
             {/* Social */}

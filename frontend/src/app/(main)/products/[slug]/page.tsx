@@ -24,6 +24,24 @@ export default function ProductDetailPage() {
   const { data: productRes, isLoading } = useProduct(slug)
   const product = productRes?.data
 
+  const weightLabel = (() => {
+    if (!product) return null
+    const u = (product.unit || '').toLowerCase()
+    if (['hộp', 'gói', 'túi', 'hũ', 'lon', 'khay', 'thùng', 'hộp giấy', 'túi zip'].includes(u)) {
+      return 'Khối lượng tịnh'
+    }
+    if (['chai', 'lọ', 'ly'].includes(u)) {
+      return 'Thể tích thực'
+    }
+    if (['quả', 'trái', 'củ', 'bắp', 'nhánh', 'cây', 'bông'].includes(u)) {
+      return 'Trọng lượng/quả'
+    }
+    if (['kg', 'g', 'l', 'ml'].includes(u)) {
+      return null
+    }
+    return 'Trọng lượng'
+  })()
+
   const { data: reviewsRes } = useProductReviews(product?.id ?? 0)
   const { data: ratingRes } = useProductRating(product?.id ?? 0)
   const addToCart = useAddToCart()
@@ -182,6 +200,36 @@ export default function ProductDetailPage() {
               </div>
             )}
 
+            {/* Highlights */}
+            {(product.brand || product.origin || (product.weight && weightLabel) || product.calories) && (
+              <div className="grid grid-cols-2 gap-3 mb-6 text-sm bg-white/50 rounded-xl p-3 border border-[var(--color-border)]">
+                {product.brand && (
+                  <div>
+                    <span className="text-[var(--color-text-muted)] text-xs block">Thương hiệu</span>
+                    <span className="font-semibold text-[var(--color-brown-900)]">{product.brand}</span>
+                  </div>
+                )}
+                {product.origin && (
+                  <div>
+                    <span className="text-[var(--color-text-muted)] text-xs block">Xuất xứ</span>
+                    <span className="font-semibold text-[var(--color-brown-900)]">{product.origin}</span>
+                  </div>
+                )}
+                {product.weight && weightLabel && (
+                  <div>
+                    <span className="text-[var(--color-text-muted)] text-xs block">{weightLabel}</span>
+                    <span className="font-semibold text-[var(--color-brown-900)]">{product.weight} g</span>
+                  </div>
+                )}
+                {product.calories && (
+                  <div>
+                    <span className="text-[var(--color-text-muted)] text-xs block">Năng lượng</span>
+                    <span className="font-semibold text-[var(--color-brown-900)]">{product.calories} kcal</span>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Quantity + CTA */}
             <div className="flex items-center gap-4 mb-6">
               {!isOutOfStock && (
@@ -249,10 +297,36 @@ export default function ProductDetailPage() {
               style={{ fontFamily: 'var(--font-display)' }}>
               Mô tả sản phẩm
             </h2>
-            <div className="bg-white rounded-2xl border border-[var(--color-border)] p-6">
-              <p className="text-sm text-[var(--color-text)] leading-relaxed whitespace-pre-wrap">
-                {product.description || 'Chưa có mô tả.'}
-              </p>
+            <div className="bg-white rounded-2xl border border-[var(--color-border)] p-6 space-y-6">
+              <div>
+                <p className="text-sm text-[var(--color-text)] leading-relaxed whitespace-pre-wrap">
+                  {product.description || 'Chưa có mô tả.'}
+                </p>
+              </div>
+
+              {((product.brand) || (product.origin) || (product.weight && weightLabel) || (product.calories) || (product.isOrganic) || (product.unit)) && (
+                <div className="pt-6 border-t border-[var(--color-border)]">
+                  <h3 className="text-base font-bold text-[var(--color-brown-900)] mb-3"
+                    style={{ fontFamily: 'var(--font-display)' }}>
+                    Thông số sản phẩm
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
+                    {[
+                      { label: 'Thương hiệu', value: product.brand },
+                      { label: 'Xuất xứ', value: product.origin },
+                      { label: weightLabel || '', value: (product.weight && weightLabel) ? `${product.weight} g` : null },
+                      { label: 'Hàm lượng Calo', value: product.calories ? `${product.calories} kcal` : null },
+                      { label: 'Chứng nhận', value: product.isOrganic ? 'Hữu cơ (Organic)' : null },
+                      { label: 'Đơn vị tính', value: product.unit },
+                    ].filter(spec => spec.value !== null && spec.value !== undefined && spec.value !== '').map((spec) => (
+                      <div key={spec.label} className="flex justify-between py-2 border-b border-dashed border-[var(--color-border)] text-sm">
+                        <span className="text-[var(--color-text-muted)] font-medium">{spec.label}</span>
+                        <span className="text-[var(--color-brown-900)] font-semibold">{spec.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

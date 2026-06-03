@@ -34,6 +34,7 @@ import { DataTable } from "@/components/shared/data-table";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { formatCurrency } from "@/lib/utils";
 import type { ProductSummaryResponse, ProductStatus, CategoryResponse } from "@/types";
+import Image from "next/image";
 
 // ─── Product form schema ─────────────────────────────────────
 const productSchema = z.object({
@@ -45,6 +46,7 @@ const productSchema = z.object({
   calories: z.coerce.number().min(0).max(9999.99, "Calories tối đa là 9,999.99 kcal").optional(),
   brand: z.string().optional(),
   origin: z.string().optional(),
+  unit: z.string().min(1, "Đơn vị tính là bắt buộc").max(50),
   isOrganic: z.boolean().default(false),
   thumbnail: z.string().min(1, "Vui lòng chọn một ảnh làm thumbnail"),
   categoryId: z.coerce.number().positive("Chọn danh mục"),
@@ -143,6 +145,7 @@ export function ProductsContent() {
         calories: payload.calories || undefined,
         brand: payload.brand || undefined,
         origin: payload.origin || undefined,
+        unit: payload.unit,
         isOrganic: payload.isOrganic,
         thumbnail: payload.thumbnail,
         categoryId: payload.categoryId,
@@ -154,8 +157,9 @@ export function ProductsContent() {
       setShowForm(false);
       reset();
     },
-    onError: (err: any) => {
-      toast.error(err?.response?.data?.message || "Tạo sản phẩm thất bại");
+    onError: (err: unknown) => {
+      const error = err as { response?: { data?: { message?: string } } };
+      toast.error(error.response?.data?.message || "Tạo sản phẩm thất bại");
     },
   });
 
@@ -170,6 +174,7 @@ export function ProductsContent() {
         calories: payload.calories || undefined,
         brand: payload.brand || undefined,
         origin: payload.origin || undefined,
+        unit: payload.unit,
         isOrganic: payload.isOrganic,
         thumbnail: payload.thumbnail,
         categoryId: payload.categoryId,
@@ -183,8 +188,9 @@ export function ProductsContent() {
       setEditTarget(null);
       reset();
     },
-    onError: (err: any) => {
-      toast.error(err?.response?.data?.message || "Cập nhật thất bại");
+    onError: (err: unknown) => {
+      const error = err as { response?: { data?: { message?: string } } };
+      toast.error(error.response?.data?.message || "Cập nhật thất bại");
     },
   });
 
@@ -195,8 +201,9 @@ export function ProductsContent() {
       qc.invalidateQueries({ queryKey: ["products"] });
       setDeleteTarget(null);
     },
-    onError: (err: any) => {
-      toast.error(err?.response?.data?.message || "Xóa sản phẩm thất bại");
+    onError: (err: unknown) => {
+      const error = err as { response?: { data?: { message?: string } } };
+      toast.error(error.response?.data?.message || "Xóa sản phẩm thất bại");
     },
   });
 
@@ -229,8 +236,9 @@ export function ProductsContent() {
       }
 
       toast.success(`Đã tải lên thành công ${urls.length} hình ảnh!`);
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Tải ảnh thất bại");
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      toast.error(error.response?.data?.message || "Tải ảnh thất bại");
     } finally {
       setUploadingImages(false);
       e.target.value = "";
@@ -257,7 +265,7 @@ export function ProductsContent() {
     formState: { errors },
   } = useForm<ProductForm>({
     resolver: zodResolver(productSchema),
-    defaultValues: { isOrganic: false },
+    defaultValues: { isOrganic: false, unit: "kg" },
   });
 
   const isOrganic = watch("isOrganic");
@@ -283,6 +291,7 @@ export function ProductsContent() {
       setValue("calories", editDetail.calories ?? 0);
       setValue("brand", editDetail.brand ?? "");
       setValue("origin", editDetail.origin ?? "");
+      setValue("unit", editDetail.unit ?? "kg");
       setValue("isOrganic", editDetail.isOrganic);
       setValue("thumbnail", editDetail.thumbnail);
       setValue("categoryId", editDetail.categoryId);
@@ -328,9 +337,11 @@ export function ProductsContent() {
       ),
       cell: ({ row }) => (
         <div className="flex items-center gap-3">
-          <img
+          <Image
             src={row.original.thumbnail}
             alt={row.original.name}
+            width={40}
+            height={40}
             className="h-10 w-10 rounded-lg object-cover border border-slate-700 bg-slate-800 shrink-0"
           />
           <div className="min-w-0">
@@ -368,6 +379,11 @@ export function ProductsContent() {
             <>
               <p className="text-xs font-bold text-pine-400">
                 {formatCurrency(row.original.discountPrice)}
+                {row.original.unit && (
+                  <span className="text-[10px] font-normal text-slate-400 ml-0.5">
+                    / {row.original.unit}
+                  </span>
+                )}
               </p>
               <p className="text-xs text-slate-500 line-through">
                 {formatCurrency(row.original.price)}
@@ -376,6 +392,11 @@ export function ProductsContent() {
           ) : (
             <p className="text-xs font-semibold text-slate-200">
               {formatCurrency(row.original.price)}
+              {row.original.unit && (
+                <span className="text-[10px] font-normal text-slate-400 ml-0.5">
+                  / {row.original.unit}
+                </span>
+              )}
             </p>
           )}
         </div>
@@ -384,7 +405,7 @@ export function ProductsContent() {
     {
       accessorKey: "totalStock",
       header: "Tồn kho",
-      cell: ({ getValue }) => {
+      cell: ({ row, getValue }) => {
         const stock = getValue<number>();
         return (
           <span
@@ -396,7 +417,7 @@ export function ProductsContent() {
                 : "text-slate-300"
             }`}
           >
-            {stock.toLocaleString("vi-VN")}
+            {stock.toLocaleString("vi-VN")} {row.original.unit}
           </span>
         );
       },
@@ -567,16 +588,20 @@ export function ProductsContent() {
                 <div className="mt-4 space-y-5">
                   {/* Images */}
                   <div className="flex gap-3 overflow-x-auto pb-2">
-                    <img
+                    <Image
                       src={productDetail.thumbnail}
                       alt={productDetail.name}
+                      width={96}
+                      height={96}
                       className="h-24 w-24 shrink-0 rounded-xl object-cover border border-slate-700"
                     />
                     {productDetail.imageUrls.map((url, i) => (
-                      <img
+                      <Image
                         key={i}
                         src={url}
                         alt={`img-${i}`}
+                        width={96}
+                        height={96}
                         className="h-24 w-24 shrink-0 rounded-xl object-cover border border-slate-700"
                       />
                     ))}
@@ -594,13 +619,17 @@ export function ProductsContent() {
                     </div>
                     <div>
                       <p className="text-slate-500">Giá gốc</p>
-                      <p className="mt-1 font-semibold text-slate-200">{formatCurrency(productDetail.price)}</p>
+                      <p className="mt-1 font-semibold text-slate-200">{formatCurrency(productDetail.price)} / {productDetail.unit ?? "kg"}</p>
                     </div>
                     <div>
                       <p className="text-slate-500">Giá khuyến mãi</p>
                       <p className="mt-1 font-semibold text-pine-400">
-                        {productDetail.discountPrice ? formatCurrency(productDetail.discountPrice) : "—"}
+                        {productDetail.discountPrice ? `${formatCurrency(productDetail.discountPrice)} / ${productDetail.unit ?? "kg"}` : "—"}
                       </p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500">Đơn vị tính</p>
+                      <p className="mt-1 font-medium text-slate-300">{productDetail.unit ?? "kg"}</p>
                     </div>
                     <div>
                       <p className="text-slate-500">Tồn kho</p>
@@ -744,28 +773,40 @@ export function ProductsContent() {
                   )}
                 </div>
 
-                {/* Prices */}
-                <div className="grid grid-cols-2 gap-3">
+                {/* Prices & Unit */}
+                <div className="grid grid-cols-3 gap-3">
                   <div>
                     <label className="text-xs font-medium text-slate-400">Giá bán (VND) *</label>
                     <input
                       type="number"
                       {...register("price")}
                       placeholder="50000"
-                      className="mt-1 h-9 w-full rounded-lg border border-slate-700 bg-slate-800 px-3 text-sm text-slate-200 outline-none focus:border-pine-500"
+                      className="mt-1 h-9 w-full rounded-lg border border-slate-700 bg-slate-800 px-2 text-sm text-slate-200 outline-none focus:border-pine-500"
                     />
                     {errors.price && (
                       <p className="mt-1 text-xs text-red-400">{errors.price.message}</p>
                     )}
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-slate-400">Giá khuyến mãi</label>
+                    <label className="text-xs font-medium text-slate-400">Giá KM (VND)</label>
                     <input
                       type="number"
                       {...register("discountPrice")}
                       placeholder="40000"
-                      className="mt-1 h-9 w-full rounded-lg border border-slate-700 bg-slate-800 px-3 text-sm text-slate-200 outline-none focus:border-pine-500"
+                      className="mt-1 h-9 w-full rounded-lg border border-slate-700 bg-slate-800 px-2 text-sm text-slate-200 outline-none focus:border-pine-500"
                     />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-400">Đơn vị tính *</label>
+                    <input
+                      type="text"
+                      {...register("unit")}
+                      placeholder="kg, hộp, quả..."
+                      className="mt-1 h-9 w-full rounded-lg border border-slate-700 bg-slate-800 px-2.5 text-sm text-slate-200 outline-none focus:border-pine-500"
+                    />
+                    {errors.unit && (
+                      <p className="mt-1 text-xs text-red-400">{errors.unit.message}</p>
+                    )}
                   </div>
                 </div>
 
@@ -786,10 +827,11 @@ export function ProductsContent() {
                             isThumbnail ? "border-pine-500 ring-2 ring-pine-500/20" : "border-slate-700 hover:border-slate-500"
                           }`}
                         >
-                          <img
+                          <Image
                             src={url}
                             alt={`Preview ${index}`}
-                            className="h-full w-full object-cover"
+                            fill
+                            className="object-cover"
                           />
                           
                           {/* Thumbnail Indicator/Button */}

@@ -42,6 +42,9 @@ public class CreateProductRequest {
     @Size(max = 100)
     private String origin;
 
+    @Size(max = 50)
+    private String unit;
+
     private Boolean isOrganic = false;
 
     @NotBlank(message = "Thumbnail không được để trống")

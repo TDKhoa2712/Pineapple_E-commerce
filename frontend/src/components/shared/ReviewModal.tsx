@@ -79,8 +79,9 @@ export function ReviewModal({ product, orderId, onClose }: ReviewModalProps) {
         setImages((prev) => [...prev, { url: res.data.url, publicId: res.data.publicId }])
       }
       toast.success('Đã tải ảnh lên thành công!')
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Tải ảnh lên thất bại')
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      toast.error(error.response?.data?.message || 'Tải ảnh lên thất bại')
     } finally {
       setUploading(false)
     }
@@ -109,8 +110,9 @@ export function ReviewModal({ product, orderId, onClose }: ReviewModalProps) {
         onSuccess: () => {
           onClose()
         },
-        onError: (err: any) => {
-          toast.error(err?.response?.data?.message || 'Gửi đánh giá thất bại')
+        onError: (err: unknown) => {
+          const error = err as { response?: { data?: { message?: string } } };
+          toast.error(error.response?.data?.message || 'Gửi đánh giá thất bại')
         },
       }
     )

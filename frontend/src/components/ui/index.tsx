@@ -284,8 +284,13 @@ export function ProductCard({ product, onAddToCart, addingToCart }: ProductCardP
 
         <div className="flex items-center justify-between gap-2">
           <div>
-            <p className="price-main text-base">
-              {formatPrice(product.discountPrice ?? product.price)}
+            <p className="price-main text-base flex items-baseline gap-0.5">
+              <span>{formatPrice(product.discountPrice ?? product.price)}</span>
+              {product.unit && (
+                <span className="text-xs font-normal text-[var(--color-text-muted)] ml-0.5">
+                  / {product.unit}
+                </span>
+              )}
             </p>
             {product.discountPrice && (
               <p className="price-original text-xs">

@@ -35,6 +35,6 @@ export const ROUTES = {
 
   // Farmer
   FARMER: {
-    FARMS: "/farmer/farms",
+    FARMS: "/my-farms",
   },
 } as const;

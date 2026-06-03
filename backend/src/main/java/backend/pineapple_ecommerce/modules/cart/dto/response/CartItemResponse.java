@@ -23,4 +23,6 @@ public class CartItemResponse {
     private Integer    availableStock;
     // FIX: thêm productStatus để FE biết sản phẩm còn active không
     private String     productStatus;
+    // FIX: thêm productUnit để FE biết đơn vị tính của sản phẩm
+    private String     productUnit;
 }

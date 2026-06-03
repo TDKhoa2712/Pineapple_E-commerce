@@ -23,6 +23,7 @@ public interface OrderMapper {
     @Mapping(target = "productThumbnail", source = "productThumbnail")
     @Mapping(target = "batchId", source = "batch.id")
     @Mapping(target = "batchCode", source = "batchCode")
+    @Mapping(target = "productUnit", source = "product.unit")
     OrderItemResponse toItemResponse(OrderItem item);
 
     List<OrderItemResponse> toItemResponseList(List<OrderItem> items);
@@ -61,6 +62,7 @@ public interface OrderMapper {
                         .quantity(totalQty)
                         .unitPrice(first.getUnitPrice())
                         .subtotal(totalSubtotal)
+                        .productUnit(first.getProduct() != null ? first.getProduct().getUnit() : null)
                         .batches(batches)
                         .build());
             }
