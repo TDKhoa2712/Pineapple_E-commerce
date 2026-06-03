@@ -100,26 +100,34 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean }
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401) {
       const serverMessage: string = error.response?.data?.message || ''
+      const isLoginRequest = originalRequest.url?.includes('/auth/login')
+      const isUnverified = serverMessage.includes('chưa được xác thực') || serverMessage.includes('xác thực email')
 
-      // Nếu tài khoản bị khoá hoặc chưa kích hoạt → không refresh, logout luôn
-      const isBanned = serverMessage.includes('bị khoá') || serverMessage.includes('bi khoa')
-      const isInactive = serverMessage.includes('chưa được kích hoạt')
-
-      if (isBanned || isInactive) {
-        tokenStorage.remove()
-        processQueue(error, null)
-        const { useAuthStore } = await import('@/stores/auth-store')
-        useAuthStore.getState().logout()
-        toast.error(serverMessage || 'Tài khoản của bạn không thể đăng nhập.', {
-          id: 'account-blocked',
-        })
-        if (typeof window !== 'undefined') {
-          window.location.href = '/login'
-        }
+      // Do not attempt token refresh for login requests or unverified email accounts
+      if (isLoginRequest || isUnverified) {
         return Promise.reject(error)
       }
+
+      if (!originalRequest._retry) {
+        // Nếu tài khoản bị khoá hoặc chưa kích hoạt → không refresh, logout luôn
+        const isBanned = serverMessage.includes('bị khoá') || serverMessage.includes('bi khoa')
+        const isInactive = serverMessage.includes('chưa được kích hoạt')
+
+        if (isBanned || isInactive) {
+          tokenStorage.remove()
+          processQueue(error, null)
+          const { useAuthStore } = await import('@/stores/auth-store')
+          useAuthStore.getState().logout()
+          toast.error(serverMessage || 'Tài khoản của bạn không thể đăng nhập.', {
+            id: 'account-blocked',
+          })
+          if (typeof window !== 'undefined') {
+            window.location.href = '/login'
+          }
+          return Promise.reject(error)
+        }
 
       if (isRefreshing) {
         return new Promise<string>((resolve, reject) => {
@@ -176,6 +184,7 @@ apiClient.interceptors.response.use(
         isRefreshing = false
       }
     }
+  }
 
     // Handle other HTTP errors
     const status = error.response?.status
