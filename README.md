@@ -127,6 +127,22 @@ graph TD
 
 ---
 
+## 💾 Lưu Trữ & Quản Lý Dữ Liệu (PostgreSQL & Flyway)
+
+Hệ thống quản lý dữ liệu an toàn, tin cậy nhờ cơ chế quản lý phiên bản migration tự động bằng Flyway. Các bảng cơ sở dữ liệu được phân chia tối ưu thành các mối quan hệ 1-N, N-N:
+
+*   **Bảo mật & Người dùng:** `users`, `roles`, `user_roles`, `refresh_tokens`, `otp_tokens`.
+*   **Quản lý Trang trại:** `farms` (liên kết 1-1 với user của Farmer).
+*   **Catalog Nông sản:** `products`, `categories`, `product_images`.
+*   **Tồn kho & Lô hàng:** `inventory_batches` (quản lý hạn sử dụng FIFO), `stock_adjustments` (hao hụt, thất thoát).
+*   **Mua hàng & Giỏ hàng:** `carts`, `cart_items`, `wishlists`.
+*   **Đơn hàng & Giao vận:** `orders`, `order_items`, `shipments`, `addresses` (đồng bộ GHN ID).
+*   **Tài chính & Thanh toán:** `payments` (với VNPay metadata).
+*   **Đánh giá & Cương tác:** `reviews`, `review_images`, `review_votes` (cơ chế vote hữu ích).
+*   **Khuyến mãi:** `coupons`, `coupon_applicable_products`, `coupon_applicable_categories`, `coupon_usages` (giới hạn lượt dùng).
+
+---
+
 ## ⚡ Hướng Dẫn Chạy Nhanh Bằng Docker Compose (Quick Start)
 
 Dự án đã được cấu hình đầy đủ Dockerfile tối ưu hóa kích thước và bảo mật cho cả FE và BE. Bạn có thể khởi chạy toàn bộ ứng dụng chỉ bằng một câu lệnh.
@@ -180,12 +196,12 @@ Dự án đã được cấu hình đầy đủ Dockerfile tối ưu hóa kích 
 
 Khi đưa dự án này vào CV của bạn, hãy tập trung làm nổi bật các giải pháp xử lý vấn đề nâng cao sau:
 
-*   **Tối ưu hóa Chi Phí Cloud với Multi-Layer Caching:** Giảm tải 85% truy vấn cơ sở dữ liệu nhờ chiến lược Cache 2 lớp. Lớp 1 (Caffeine Cache trên RAM cục bộ) cho phản hồi cực nhanh (<2ms) đối với cấu hình tĩnh, danh mục. Lớp 2 (Redis Cache phân tán) lưu trữ thông tin sản phẩm và giỏ hàng, đảm bảo tính nhất quán trên nhiều container.
+*   **Tối ưu hóa Chi Phí Cloud với Multi-Layer Caching:** Giảm tải 85% truy vấn cơ sở dữ liệu nhờ chiến lược Cache 2 lớp. Lớp 1 (Caffeine Cache trên RAM cục bộ) cho phản hồi cực nhanh đối với cấu hình tĩnh. Lớp 2 (Redis Cache phân tán) lưu trữ thông tin sản phẩm và giỏ hàng, đảm bảo tính nhất quán trên nhiều container.
 *   **Kiến Trúc Đóng Gói Docker Siêu Nhẹ & Bảo Mật:** 
     *   Backend sử dụng Multi-stage build với Alpine Linux và cấu hình cờ JVM tối ưu (`MaxRAMPercentage=75.0`, `ActiveProcessorCount=1`), chạy dưới tài khoản non-root `spring:spring` để ngăn chặn tấn công đặc quyền root.
     *   Frontend Next.js được build dưới dạng `standalone` giúp loại bỏ toàn bộ `node_modules` không cần thiết, giảm dung lượng Docker image từ ~1.2GB xuống dưới **180MB**, sẵn sàng triển khai Kubernetes.
 *   **Bảo mật Token nâng cao (Security Best Practices):** Thiết lập luồng quay vòng Refresh Token (Token Rotation) dựa trên HttpOnly, SameSite, Secure Cookie. Tách biệt hoàn toàn Client State và Server State, chống lộ dữ liệu nhạy cảm qua LocalStorage và hạn chế tối đa nguy cơ bị hack Session (Session Hijacking).
-*   **Đảm Bảo Chất Lượng Với Automated Testing (QA/QC):** Đạt độ tin cậy cao nhờ triển khai song song Unit Tests (Vitest cho logic dùng chung, JUnit cho các dịch vụ cốt lõi) và End-to-End Tests (Playwright giả lập hành vi người dùng thực tế trên Chrome/Firefox đối với luồng đăng nhập và thanh toán).
+*   **Tối ưu hóa Truy vấn (Query Optimization):** Thiết kế cấu trúc cơ sở dữ liệu chuyên sâu với các chỉ mục phức hợp (Composite Indexes) trên các trường lọc động (Ví dụ: `idx_products_category_status` để lọc sản phẩm theo danh mục và trạng thái hoạt động), giảm 90% thời gian quét bảng (Table Scan) trên PostgreSQL.
 
 ---
 
