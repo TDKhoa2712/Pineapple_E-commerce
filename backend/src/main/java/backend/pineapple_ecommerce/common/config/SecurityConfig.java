@@ -6,6 +6,7 @@ import backend.pineapple_ecommerce.security.OAuth2AuthenticationFailureHandler;
 import backend.pineapple_ecommerce.security.OAuth2AuthenticationSuccessHandler;
 import backend.pineapple_ecommerce.modules.user.service.UserDetailsServiceImpl;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -54,6 +55,7 @@ import java.util.List;
  * File này dùng IF_REQUIRED — session chỉ tạo khi cần (OAuth2 flow), JWT filter
  * vẫn là primary auth mechanism cho mọi API call khác.
  */
+@Slf4j
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -134,23 +136,18 @@ public class SecurityConfig {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()));
 
-        if (!cookieSecure) {
-            http.csrf(AbstractHttpConfigurer::disable);
-        } else {
-            http.csrf(csrf -> csrf
-                    .ignoringRequestMatchers(
-                            AntPathRequestMatcher.antMatcher("/api/v1/webhooks/**"),
-                            AntPathRequestMatcher.antMatcher("/api/v1/webhooks/ghn"),
-                            AntPathRequestMatcher.antMatcher("/api/v1/payments/vnpay-ipn"),
-                            AntPathRequestMatcher.antMatcher("/api/v1/auth/**"),
-                            AntPathRequestMatcher.antMatcher("/api/v1/shipping/calculate-fee"),
-                            AntPathRequestMatcher.antMatcher("/v3/api-docs/**"),
-                            AntPathRequestMatcher.antMatcher("/swagger-ui/**"),
-                            AntPathRequestMatcher.antMatcher("/swagger-ui.html")
-                    )
-                    .csrfTokenRepository(csrfTokenRepository())
-            );
-        }
+        // CSRF: Disabled for all /api/** because:
+        // 1. Authentication is stateless (JWT in HttpOnly cookie, not session)
+        // 2. CORS is locked to specific allowed origins (FRONTEND_URL env var)
+        // 3. The combination of SameSite cookie + CORS provides equivalent CSRF protection
+        // Keeping CSRF for non-API paths (e.g., OAuth2 form-based flows) would require
+        // passing the token through Next.js proxy which creates cross-site cookie issues.
+        http.csrf(csrf -> csrf
+                .ignoringRequestMatchers(
+                        AntPathRequestMatcher.antMatcher("/api/**")
+                )
+                .csrfTokenRepository(csrfTokenRepository())
+        );
 
         http
                 // IF_REQUIRED: session chỉ tạo khi cần (OAuth2 state param)
@@ -163,6 +160,18 @@ public class SecurityConfig {
                                 new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED),
                                 new AntPathRequestMatcher("/api/**")
                         )
+                        .accessDeniedHandler((request, response, ex) -> {
+                            log.warn("[Security] 403 Access Denied: uri={} user={} roles={}",
+                                    request.getRequestURI(),
+                                    request.getUserPrincipal() != null ? request.getUserPrincipal().getName() : "anonymous",
+                                    request.getUserPrincipal() != null
+                                            ? org.springframework.security.core.context.SecurityContextHolder
+                                                    .getContext().getAuthentication().getAuthorities()
+                                            : "[]"  );
+                            response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_FORBIDDEN);
+                            response.setContentType("application/json;charset=UTF-8");
+                            response.getWriter().write("{\"success\":false,\"message\":\"Bạn không có quyền thực hiện hành động này\"}");
+                        })
                 )
 
                 .authorizeHttpRequests(auth -> auth
