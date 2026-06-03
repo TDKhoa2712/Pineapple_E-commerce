@@ -114,7 +114,7 @@ export default function OrderDetailPage() {
                     {item.productName}
                   </Link>
                   <p className="text-xs text-[var(--color-text-muted)] mb-1">
-                    {formatPrice(item.unitPrice)} × {item.quantity}
+                    {formatPrice(item.unitPrice)} {item.productUnit && `/ ${item.productUnit}`} × {item.quantity}
                   </p>
                   {order.status === 'DELIVERED' && (
                     <button

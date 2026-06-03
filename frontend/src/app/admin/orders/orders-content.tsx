@@ -877,8 +877,17 @@ export function OrdersContent() {
                                 />
                                 <span className="font-medium text-slate-200">{item.productName}</span>
                               </td>
-                              <td className="px-4 py-2.5 text-center font-medium">{item.quantity}</td>
-                              <td className="px-4 py-2.5 text-right font-medium">{formatCurrency(item.unitPrice)}</td>
+                              <td className="px-4 py-2.5 text-center font-medium">
+                                {item.quantity} {item.productUnit}
+                              </td>
+                              <td className="px-4 py-2.5 text-right font-medium">
+                                {formatCurrency(item.unitPrice)}
+                                {item.productUnit && (
+                                  <span className="text-[10px] text-slate-500 ml-0.5">
+                                    / {item.productUnit}
+                                  </span>
+                                )}
+                              </td>
                               <td className="px-4 py-2.5 text-right font-semibold text-slate-100">
                                 {formatCurrency(item.subtotal)}
                               </td>

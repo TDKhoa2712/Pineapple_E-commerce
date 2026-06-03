@@ -246,21 +246,7 @@ function HeroBanner() {
             </Button>
           </form>
 
-          {/* Stats */}
-          <div className="flex items-center gap-8 mt-10">
-            {[
-              { value: '200+', label: 'Sản phẩm' },
-              { value: '50+', label: 'Trang trại' },
-              { value: '10K+', label: 'Khách hàng' },
-            ].map(({ value, label }) => (
-              <div key={label}>
-                <p className="text-2xl font-bold text-white" style={{ fontFamily: 'var(--font-display)' }}>
-                  {value}
-                </p>
-                <p className="text-xs text-[var(--color-brown-300)] mt-0.5">{label}</p>
-              </div>
-            ))}
-          </div>
+
         </motion.div>
       </div>
 

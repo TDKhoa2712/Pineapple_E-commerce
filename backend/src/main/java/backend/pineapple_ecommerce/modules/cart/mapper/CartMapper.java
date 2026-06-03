@@ -21,6 +21,8 @@ public interface CartMapper {
     @Mapping(target = "subtotal",         expression = "java(calcSubtotal(item))")
     // FIX: thêm productStatus để FE biết sản phẩm còn active không
     @Mapping(target = "productStatus",    expression = "java(item.getProduct().getStatus() != null ? item.getProduct().getStatus().name() : null)")
+    // FIX: thêm productUnit để FE biết đơn vị tính của sản phẩm
+    @Mapping(target = "productUnit",      expression = "java(item.getProduct().getUnit())")
     @Mapping(target = "availableStock",   ignore = true)  // Service tính từ batches
     CartItemResponse toItemResponse(CartItem item);
 

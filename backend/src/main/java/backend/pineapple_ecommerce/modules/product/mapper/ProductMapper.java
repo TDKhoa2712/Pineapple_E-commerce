@@ -39,7 +39,6 @@ public interface ProductMapper {
     @Mapping(target = "reviewCount",   ignore = true)   // Service tính từ reviews
     @Mapping(target = "farmId",        ignore = true)   // TODO: khi có farm relationship trên Product
     @Mapping(target = "farmName",      ignore = true)   // TODO: khi có farm relationship trên Product
-    @Mapping(target = "unit",          ignore = true)   // TODO: khi có unit field trên Product
     @Mapping(target = "soldCount",     ignore = true)   // TODO: tính từ order items
     ProductSummaryResponse toSummaryResponse(Product product);
 
@@ -55,7 +54,6 @@ public interface ProductMapper {
     @Mapping(target = "reviewCount",   ignore = true)
     @Mapping(target = "farmId",        ignore = true)   // TODO: khi có farm relationship trên Product
     @Mapping(target = "farmName",      ignore = true)   // TODO: khi có farm relationship trên Product
-    @Mapping(target = "unit",          ignore = true)   // TODO: khi có unit field trên Product
     @Mapping(target = "soldCount",     ignore = true)   // TODO: tính từ order items
     ProductDetailResponse toDetailResponse(Product product);
 

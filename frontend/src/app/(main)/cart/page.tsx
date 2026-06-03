@@ -114,8 +114,13 @@ export default function CartPage() {
                       className="font-semibold text-sm text-[var(--color-brown-900)] hover:text-[var(--color-gold-600)] line-clamp-2">
                       {item.productName}
                     </Link>
-                    <p className="text-[var(--color-orange-500)] font-bold mt-1">
-                      {formatPrice(item.unitPrice)}
+                    <p className="text-[var(--color-orange-500)] font-bold mt-1 flex items-baseline gap-0.5">
+                      <span>{formatPrice(item.unitPrice)}</span>
+                      {item.productUnit && (
+                        <span className="text-xs font-normal text-[var(--color-text-muted)] ml-0.5">
+                          / {item.productUnit}
+                        </span>
+                      )}
                     </p>
                     {item.productStatus === 'OUT_OF_STOCK' && (
                       <p className="text-xs text-red-500 mt-1">Sản phẩm hết hàng</p>

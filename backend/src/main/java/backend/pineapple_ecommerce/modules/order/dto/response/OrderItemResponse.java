@@ -16,6 +16,7 @@ public class OrderItemResponse {
     private Integer quantity;
     private BigDecimal unitPrice;
     private BigDecimal subtotal;
+    private String     productUnit;
     private Long batchId;
     private String batchCode;
     private List<BatchAllocationResponse> batches;

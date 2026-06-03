@@ -80,7 +80,7 @@ export function Navbar() {
                   : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-brown-50)]'
               )}
             >
-              Tất cả sản phẩm
+              Sản phẩm
             </Link>
             <Link
               href={ROUTES.FARMS}
@@ -194,7 +194,7 @@ export function Navbar() {
                           <UserMenuItem href={ROUTES.WISHLIST} icon={<Heart className="w-4 h-4" />} label="Danh sách yêu thích" />
                           <UserMenuItem href={ROUTES.ADDRESSES} icon={<MapPin className="w-4 h-4" />} label="Địa chỉ của tôi" />
                           {user?.roles?.includes('ROLE_FARMER') && (
-                            <UserMenuItem href={ROUTES.FARMER.FARMS} icon={<Leaf className="w-4 h-4" />} label="Quản lý trang trại" />
+                            <UserMenuItem href={ROUTES.FARMER.FARMS} icon={<Leaf className="w-4 h-4" />} label="Trang trại của tôi" />
                           )}
                           {user?.roles?.includes('ROLE_ADMIN') && (
                             <UserMenuItem href={ROUTES.ADMIN.DASHBOARD} icon={<Settings className="w-4 h-4" />} label="Quản trị" />
@@ -256,7 +256,7 @@ export function Navbar() {
                   />
                 </div>
               </form>
-              <MobileNavItem href={ROUTES.PRODUCTS} label="Tất cả sản phẩm" />
+              <MobileNavItem href={ROUTES.PRODUCTS} label="Sản phẩm" />
               <MobileNavItem href={ROUTES.FARMS} label="Trang trại" />
               {!isAuthenticated && (
                 <div className="pt-2 border-t border-[var(--color-border)]">

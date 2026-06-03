@@ -17,5 +17,6 @@ public class WishlistResponse {
     private BigDecimal productPrice;
     private BigDecimal productDiscountPrice;
     private String     productStatus;
+    private String     productUnit;
     private LocalDateTime createdAt;
 }

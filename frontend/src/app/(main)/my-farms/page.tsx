@@ -45,7 +45,7 @@ const STATUS_INFO: Record<FarmStatus, { icon: React.ReactNode; color: string; bg
     icon: <CheckCircle className="w-4 h-4" />,
     color: 'text-green-600',
     bg: 'bg-green-50 border-green-200',
-    text: 'Nông trại đang hoạt động và hiển thị công khai trên hệ thống.',
+    text: 'Trang trại đang hoạt động và hiển thị công khai trên hệ thống.',
   },
   REJECTED: {
     icon: <XCircle className="w-4 h-4" />,
@@ -57,7 +57,7 @@ const STATUS_INFO: Record<FarmStatus, { icon: React.ReactNode; color: string; bg
     icon: <AlertCircle className="w-4 h-4" />,
     color: 'text-slate-600',
     bg: 'bg-slate-50 border-slate-200',
-    text: 'Nông trại đang tạm ngưng hoạt động.',
+    text: 'Trang trại đang tạm ngưng hoạt động.',
   },
   PENDING_DEACTIVATION: {
     icon: <Clock className="w-4 h-4" />,
@@ -150,18 +150,18 @@ export default function MyFarmsPage() {
               <p className="text-[var(--color-green-100)] text-sm mb-2 flex items-center gap-2">
                 <span onClick={() => router.push('/profile')} className="hover:underline cursor-pointer">Tài khoản</span>
                 <ChevronRight className="w-3 h-3" />
-                <span>Nông trại của tôi</span>
+                <span>Trang trại của tôi</span>
               </p>
               <h1 className="text-3xl font-bold text-white" style={{ fontFamily: 'var(--font-display)' }}>
-                🌾 Nông trại của tôi
+                🌾 Trang trại của tôi
               </h1>
               <p className="text-[var(--color-green-100)] text-sm mt-1">
-                {farms.length} nông trại đã đăng ký
+                {farms.length} trang trại đã đăng ký
               </p>
             </motion.div>
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
               <Button onClick={openCreate} className="gap-2">
-                <Plus className="w-4 h-4" /> Đăng ký nông trại mới
+                <Plus className="w-4 h-4" /> Đăng ký trang trại mới
               </Button>
             </motion.div>
           </div>
@@ -182,10 +182,10 @@ export default function MyFarmsPage() {
             <div className="text-6xl mb-4">🌱</div>
             <h2 className="text-xl font-bold text-[var(--color-brown-900)] mb-2"
               style={{ fontFamily: 'var(--font-display)' }}>
-              Chưa có nông trại nào
+              Chưa có trang trại nào
             </h2>
             <p className="text-sm text-[var(--color-text-muted)] mb-6 max-w-sm mx-auto">
-              Đăng ký nông trại của bạn để bắt đầu bán sản phẩm trên Pineapple.
+              Đăng ký trang trại của bạn để bắt đầu bán sản phẩm trên Pineapple.
             </p>
             <Button onClick={openCreate} className="gap-2">
               <Plus className="w-4 h-4" /> Đăng ký ngay
@@ -234,7 +234,7 @@ export default function MyFarmsPage() {
                       <span className="mt-0.5 shrink-0">{statusInfo.icon}</span>
                       <span>
                         {farm.status === 'REJECTED'
-                          ? <>Nông trại bị từ chối. {farm.rejectionReason && <><br /><strong>Lý do:</strong> {farm.rejectionReason}</>}</>
+                          ? <>Trang trại bị từ chối. {farm.rejectionReason && <><br /><strong>Lý do:</strong> {farm.rejectionReason}</>}</>
                           : statusInfo.text}
                       </span>
                     </div>
@@ -303,7 +303,7 @@ export default function MyFarmsPage() {
               <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-border)]">
                 <h2 className="text-lg font-bold text-[var(--color-brown-900)]"
                   style={{ fontFamily: 'var(--font-display)' }}>
-                  {editTarget ? '✏️ Chỉnh sửa nông trại' : '🌱 Đăng ký nông trại mới'}
+                  {editTarget ? '✏️ Chỉnh sửa trang trại' : '🌱 Đăng ký trang trại mới'}
                 </h2>
                 <button onClick={() => setFormOpen(false)} className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-cream)]">
                   <X className="w-5 h-5" />
@@ -314,10 +314,10 @@ export default function MyFarmsPage() {
                 {/* Name */}
                 <div>
                   <label className="block text-sm font-medium text-[var(--color-brown-900)] mb-1.5">
-                    Tên nông trại <span className="text-red-500">*</span>
+                    Tên trang trại <span className="text-red-500">*</span>
                   </label>
                   <input {...register('name')}
-                    placeholder="VD: Nông trại hữu cơ Đà Lạt"
+                    placeholder="VD: Trang trại hữu cơ Đà Lạt"
                     className="w-full h-10 px-3 rounded-xl border border-[var(--color-border)] bg-white text-sm focus:outline-none focus:border-[var(--color-gold-500)] transition" />
                   {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name.message}</p>}
                 </div>
@@ -355,7 +355,7 @@ export default function MyFarmsPage() {
                 {!editTarget && (
                   <div className="rounded-xl bg-amber-50 border border-amber-200 p-4 text-xs text-amber-700 flex items-start gap-2">
                     <Clock className="w-4 h-4 mt-0.5 shrink-0" />
-                    <p>Sau khi gửi, nông trại sẽ ở trạng thái <strong>Chờ duyệt</strong>. Admin sẽ xem xét và phê duyệt trong vòng 1-3 ngày làm việc.</p>
+                    <p>Sau khi gửi, trang trại sẽ ở trạng thái <strong>Chờ duyệt</strong>. Admin sẽ xem xét và phê duyệt trong vòng 1-3 ngày làm việc.</p>
                   </div>
                 )}
 
@@ -387,7 +387,7 @@ export default function MyFarmsPage() {
                   <Trash2 className="w-5 h-5 text-red-500" />
                 </div>
                 <div>
-                  <h2 className="font-bold text-[var(--color-brown-900)]">Xóa nông trại?</h2>
+                  <h2 className="font-bold text-[var(--color-brown-900)]">Xóa trang trại?</h2>
                   <p className="text-xs text-[var(--color-text-muted)]">Hành động này không thể hoàn tác</p>
                 </div>
               </div>
@@ -399,7 +399,7 @@ export default function MyFarmsPage() {
                 <button onClick={() => { deleteFarm.mutate(deleteTarget.id); setDeleteTarget(null) }}
                   disabled={deleteFarm.isPending}
                   className="flex-1 rounded-xl bg-red-500 text-white text-sm font-medium py-2 hover:bg-red-600 disabled:opacity-50 transition">
-                  {deleteFarm.isPending ? 'Đang xóa...' : 'Xóa nông trại'}
+                  {deleteFarm.isPending ? 'Đang xóa...' : 'Xóa trang trại'}
                 </button>
               </div>
             </motion.div>
