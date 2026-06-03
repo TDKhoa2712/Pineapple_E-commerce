@@ -37,17 +37,22 @@ function OAuth2CallbackContent() {
               toast.warning(`"${item.productName}" không thể thêm: ${item.reason}`)
             )
             guestCartStorage.clear()
-          } catch { /* ignore */ }
+          } catch (error) {
+            console.error('[OAuth2Callback] Failed to merge cart:', error)
+          }
         }
 
         try {
           const cartRes = await cartApi.getCart()
           setCart(cartRes.data)
-        } catch { /* ignore */ }
+        } catch (error) {
+          console.error('[OAuth2Callback] Failed to fetch cart:', error)
+        }
 
         toast.success('Đăng nhập thành công!')
         router.replace('/')
-      } catch {
+      } catch (error) {
+        console.error('[OAuth2Callback] OAuth2 callback exchange/me error:', error)
         toast.error('Đăng nhập thất bại. Vui lòng thử lại.')
         router.replace('/login')
       }

@@ -77,7 +77,7 @@ public class SecurityConfig {
     private static final String[] PUBLIC_GET = {
             "/api/v1/products/**",
             "/api/v1/categories/**",
-            "/api/v1/reviews/**",
+            "/api/v1/reviews/product/**",
             "/api/v1/payments/vnpay-return",
             "/api/v1/payments/vnpay-ipn",
             "/api/v1/shipping/provinces",

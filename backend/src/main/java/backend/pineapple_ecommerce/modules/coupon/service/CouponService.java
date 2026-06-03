@@ -27,7 +27,7 @@ public interface CouponService {
 
     CouponResponse updateCoupon(Long id, UpdateCouponRequest request);
 
-    List<CouponResponse> getAllCoupons(Boolean active, Boolean expired, CouponType type, String sortBy, String sortDirection);
+    backend.pineapple_ecommerce.common.dto.response.PageResponse<CouponResponse> getAllCoupons(Boolean active, Boolean expired, CouponType type, String sortBy, String sortDirection, int page, int size);
 
     List<CouponUsageResponse> getCouponUsageHistory(Long couponId);
 }

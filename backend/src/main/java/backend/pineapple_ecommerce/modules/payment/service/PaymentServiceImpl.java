@@ -82,6 +82,10 @@ public class PaymentServiceImpl implements PaymentService {
 
             paymentUrl = buildVnPayUrl(payment.getAmount(), txnRef, request);
             log.info("[VNPAY] Payment URL generated — orderId={}, txnRef={}", orderId, txnRef);
+        } else if (order.getPaymentMethod() == PaymentMethod.MOMO) {
+            throw new BusinessException("Phương thức thanh toán MoMo hiện chưa được hỗ trợ.");
+        } else if (order.getPaymentMethod() == PaymentMethod.BANK_TRANSFER) {
+            throw new BusinessException("Phương thức thanh toán chuyển khoản ngân hàng hiện chưa được hỗ trợ.");
         }
 
         return toResponse(payment, paymentUrl);
@@ -245,9 +249,19 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional(readOnly = true)
-    public PaymentResponse getPaymentByOrderId(Long orderId) {
+    public PaymentResponse getPaymentByOrderId(Long orderId, Long currentUserId) {
         Payment payment = paymentRepository.findByOrderId(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Payment", "orderId", orderId));
+
+        Order order = payment.getOrder();
+        boolean isAdmin = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication()
+                .getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+        if (!order.getUser().getId().equals(currentUserId) && !isAdmin) {
+            throw new UnauthorizedException("Bạn không có quyền xem thông tin thanh toán của đơn hàng này");
+        }
+
         return toResponse(payment, null);
     }
 

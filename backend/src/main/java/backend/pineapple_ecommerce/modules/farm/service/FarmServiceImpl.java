@@ -168,7 +168,7 @@ public class FarmServiceImpl implements FarmService {
             farm.setStatus(FarmStatus.INACTIVE);
         } else {
             if (farm.getStatus() != FarmStatus.ACTIVE) {
-                throw new BusinessException("Chi co the xin ngung hoat dong khi farm dang ACTIVE.");
+                throw new BusinessException("Chỉ có thể xin ngừng hoạt động khi farm đang ACTIVE.");
             }
             farm.setStatus(FarmStatus.PENDING_DEACTIVATION);
         }
@@ -190,7 +190,7 @@ public class FarmServiceImpl implements FarmService {
             farm.setStatus(FarmStatus.INACTIVE);
         } else {
             if (farm.getStatus() != FarmStatus.ACTIVE) {
-                throw new BusinessException("Chi co the xin ngung hoat dong khi farm dang ACTIVE.");
+                throw new BusinessException("Chỉ có thể xin ngừng hoạt động khi farm đang ACTIVE.");
             }
             farm.setStatus(FarmStatus.PENDING_DEACTIVATION);
         }
@@ -209,7 +209,7 @@ public class FarmServiceImpl implements FarmService {
             farm.setRejectionReason(null);
         } else {
             if (farm.getStatus() != FarmStatus.INACTIVE) {
-                throw new BusinessException("Chi co the xin hoat dong lai khi farm dang INACTIVE.");
+                throw new BusinessException("Chỉ có thể xin hoạt động lại khi farm đang INACTIVE.");
             }
             farm.setStatus(FarmStatus.PENDING_REACTIVATION);
         }

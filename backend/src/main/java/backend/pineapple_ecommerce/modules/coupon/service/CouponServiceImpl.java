@@ -25,6 +25,9 @@ import backend.pineapple_ecommerce.modules.user.repository.UserRepository;
 import backend.pineapple_ecommerce.modules.coupon.specification.CouponSpecification;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import backend.pineapple_ecommerce.common.dto.response.PageResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -184,7 +187,7 @@ public class CouponServiceImpl implements CouponService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<CouponResponse> getAllCoupons(Boolean active, Boolean expired, CouponType type, String sortBy, String sortDirection) {
+    public PageResponse<CouponResponse> getAllCoupons(Boolean active, Boolean expired, CouponType type, String sortBy, String sortDirection, int page, int size) {
         Specification<Coupon> spec = Specification.allOf(
                 CouponSpecification.fetchCreatedBy(),
                 CouponSpecification.isActive(active),
@@ -198,10 +201,9 @@ public class CouponServiceImpl implements CouponService {
             sort = Sort.by(direction, sortBy);
         }
 
-        List<Coupon> coupons = couponRepository.findAll(spec, sort);
-        return coupons.stream()
-                .map(couponMapper::toResponse)
-                .toList();
+        PageRequest pageable = PageRequest.of(page, size, sort);
+        Page<Coupon> couponPage = couponRepository.findAll(spec, pageable);
+        return PageResponse.of(couponPage.map(couponMapper::toResponse));
     }
 
     @Override

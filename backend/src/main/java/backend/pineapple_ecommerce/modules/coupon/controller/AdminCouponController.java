@@ -52,25 +52,7 @@ public class AdminCouponController {
             @RequestParam(required = false) String sortDirection,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        List<CouponResponse> all = couponService.getAllCoupons(active, expired, type, sortBy, sortDirection);
-
-        int totalElements = all.size();
-        int fromIndex = Math.min(page * size, totalElements);
-        int toIndex = Math.min((page + 1) * size, totalElements);
-        List<CouponResponse> content = all.subList(fromIndex, toIndex);
-
-        boolean last = toIndex >= totalElements;
-        int totalPages = (int) Math.ceil((double) totalElements / size);
-
-        PageResponse<CouponResponse> response = PageResponse.<CouponResponse>builder()
-                .content(content)
-                .page(page)
-                .size(size)
-                .totalElements(totalElements)
-                .totalPages(totalPages)
-                .last(last)
-                .build();
-
+        PageResponse<CouponResponse> response = couponService.getAllCoupons(active, expired, type, sortBy, sortDirection, page, size);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 

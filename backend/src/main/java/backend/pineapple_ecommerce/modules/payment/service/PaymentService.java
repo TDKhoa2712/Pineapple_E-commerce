@@ -56,5 +56,5 @@ public interface PaymentService {
     PaymentResponse confirmCodPayment(Long orderId);
 
     /** Lấy thông tin thanh toán của một đơn hàng. */
-    PaymentResponse getPaymentByOrderId(Long orderId);
+    PaymentResponse getPaymentByOrderId(Long orderId, Long userId);
 }

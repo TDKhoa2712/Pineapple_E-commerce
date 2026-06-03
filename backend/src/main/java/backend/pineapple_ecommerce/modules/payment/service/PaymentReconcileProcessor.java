@@ -36,7 +36,7 @@ public class PaymentReconcileProcessor {
     public void processSinglePayment(String txnRef) {
         // 1. Lấy dữ liệu và khóa row lại
         Payment payment = paymentRepository.findByTransactionCodeForUpdate(txnRef)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy giao dịch: " + txnRef));
+                .orElseThrow(() -> new backend.pineapple_ecommerce.common.exception.ResourceNotFoundException("Payment", "transactionCode", txnRef));
         if (payment.getReconcileCount() >= 5) {
             log.warn("[Processor] Giao dịch {} đã retry {} lần, bỏ qua.",
                     txnRef, payment.getReconcileCount());
