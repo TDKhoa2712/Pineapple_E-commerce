@@ -142,7 +142,7 @@ cp .env.local.example .env.local
 ```
 Cập nhật URL API của Backend nếu cổng chạy của bạn khác mặc định:
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
 ```
 
 ### 2. Chạy Ứng Dụng

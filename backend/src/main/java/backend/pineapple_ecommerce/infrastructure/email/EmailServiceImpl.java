@@ -235,6 +235,7 @@ public class EmailServiceImpl implements EmailService {
     private void send(String toEmail, String subject, String templateName, Context ctx, String plainText) {
 
         try {
+            ctx.setVariable("baseUrl", mailProperties.getBaseUrl());
 
             String htmlContent = templateEngine.process(templateName, ctx);
 

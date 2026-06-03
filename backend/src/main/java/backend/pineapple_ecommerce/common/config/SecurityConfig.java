@@ -139,24 +139,14 @@ public class SecurityConfig {
         } else {
             http.csrf(csrf -> csrf
                     .ignoringRequestMatchers(
-                            // Webhooks & Payment notifications
-                            "/api/v1/webhooks/**",
-                            "/api/v1/webhooks/ghn",
-                            "/api/v1/payments/vnpay-ipn",
-                            // Public Auth endpoints
-                            "/api/v1/auth/login",
-                            "/api/v1/auth/register",
-                            "/api/v1/auth/verify-email",
-                            "/api/v1/auth/resend-verification",
-                            "/api/v1/auth/refresh",
-                            "/api/v1/auth/oauth2/exchange",
-                            "/api/v1/auth/logout",
-                            "/api/v1/auth/password-reset/**",
-                            "/api/v1/shipping/calculate-fee",
-                            // Swagger/Docs
-                            "/v3/api-docs/**",
-                            "/swagger-ui/**",
-                            "/swagger-ui.html"
+                            AntPathRequestMatcher.antMatcher("/api/v1/webhooks/**"),
+                            AntPathRequestMatcher.antMatcher("/api/v1/webhooks/ghn"),
+                            AntPathRequestMatcher.antMatcher("/api/v1/payments/vnpay-ipn"),
+                            AntPathRequestMatcher.antMatcher("/api/v1/auth/**"),
+                            AntPathRequestMatcher.antMatcher("/api/v1/shipping/calculate-fee"),
+                            AntPathRequestMatcher.antMatcher("/v3/api-docs/**"),
+                            AntPathRequestMatcher.antMatcher("/swagger-ui/**"),
+                            AntPathRequestMatcher.antMatcher("/swagger-ui.html")
                     )
                     .csrfTokenRepository(csrfTokenRepository())
             );

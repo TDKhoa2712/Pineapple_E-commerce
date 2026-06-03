@@ -85,7 +85,7 @@
         </div>
       </div>
 
-      <a href="https://localhost:3000/farmer/dashboard" class="btn-approved">Vào trang quản lý Farm</a>
+      <a th:href="${baseUrl} + '/farmer/dashboard'" class="btn-approved">Vào trang quản lý Farm</a>
     </div>
 
     <!-- REJECTED -->
@@ -120,7 +120,7 @@
         </div>
       </div>
 
-      <a href="https://localhost:3000/farmer/farms" class="btn-rejected">Cập nhật thông tin Farm</a>
+      <a th:href="${baseUrl} + '/farmer/farms'" class="btn-rejected">Cập nhật thông tin Farm</a>
     </div>
 
   </div>
