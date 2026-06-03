@@ -5,158 +5,158 @@
 [![Tailwind CSS](https://img.shields.io/badge/TailwindCSS-v4-38bdf8?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 [![Playwright](https://img.shields.io/badge/Playwright-E2E%20Tests-orange?logo=playwright&logoColor=white)](https://playwright.dev/)
 
-Tài liệu này cung cấp chi tiết kiến trúc, các giải pháp kỹ thuật Frontend, hướng dẫn cài đặt và các tính năng nâng cao của trang quản trị (**Admin Dashboard**) và giao diện người dùng thuộc hệ thống Pineapple E-Commerce.
+This repository contains the administrative control center (**Admin Dashboard**) and client storefront interface for the Pineapple E-Commerce platform, built using modern React structures.
 
 ---
 
-## 🛠️ Công Nghệ và Thư Viện Sử Dụng (Technical Stack)
+## 🛠️ Technology Stack & Libraries
 
-| Hạng mục | Công nghệ | Chi tiết sử dụng |
+| Category | Technology | Usage Description |
 |---|---|---|
-| **Framework** | **Next.js 15** (App Router) | Tối ưu SEO, Server Components (RSC) kết hợp Client Components, sử dụng Turbopack cho quá trình phát triển (Dev Server). |
-| **Ngôn ngữ** | **TypeScript** | Strict mode, đồng bộ toàn bộ Type/Interface từ DTO đặc tả của Backend. |
-| **Styling** | **TailwindCSS v4** | Sử dụng cú pháp `@theme` mới, các biến Design Tokens tùy chỉnh cho màu sắc Organic và Dark Mode-First. |
-| **Server State** | **TanStack Query v5** | Quản lý đồng bộ dữ liệu API, cơ chế tự động cache, revalidation ngầm, retry khi lỗi và giải phóng cache (`invalidateQueries`). |
-| **Client State** | **Zustand v5** | Store gọn nhẹ cho trạng thái Đăng nhập/Quyền hạn (`useAuthStore` kèm persistence lưu trữ) và UI State (`useUIStore` quản lý Sidebar). |
-| **Forms** | **React Hook Form v7** | Quản lý form với hiệu năng tối đa (hạn chế re-render), tích hợp Zod resolver. |
-| **Validation** | **Zod v3** | Định nghĩa Schema Validation đồng bộ dữ liệu chặt chẽ từ phía client. |
-| **Animations** | **Framer Motion v11** | Tạo chuyển động mượt mà cho Sidebar (spring physics), Modal Drawers, hiệu ứng chuyển trang và thanh chỉ mục menu hoạt hoạt. |
-| **Tables** | **TanStack Table v8** | Hỗ trợ hiển thị dữ liệu bảng lớn với phân trang phía server (Server-side Pagination), sắp xếp và tìm kiếm động. |
-| **Charts** | **Recharts v2** | Vẽ biểu đồ thống kê trực quan: AreaChart (Doanh thu), PieChart (Trạng thái đơn hàng), BarChart (Báo cáo tồn kho). |
-| **Unit Testing** | **Vitest v2** | Kiểm thử các hàm tiện ích (utils) và logic hiển thị của các Component trong môi trường giả lập `jsdom`. |
-| **E2E Testing** | **Playwright v1.49** | Kiểm thử tích hợp toàn trình (End-to-End) các luồng quan trọng: Luồng đăng nhập, bảo vệ tuyến đường (Guard Routes) và Dashboard Admin. |
-| **Code Quality** | **ESLint 9 & Prettier 3** | Ràng buộc chuẩn code phẳng, tự động định dạng mã nguồn và sắp xếp class Tailwind. |
-| **Git Hooks** | **Husky & Commitlint** | Kiểm tra cú pháp commit (Conventional Commits) và tự động chạy lint trước khi đẩy code lên Git (`pre-commit`). |
+| **Core Framework** | **Next.js 15** (App Router) | Tối ưu hóa SEO, React Server Components (RSC) integrated with interactive client views, utilizing Turbopack in development. |
+| **Language** | **TypeScript** | Strict mode compilation, mirroring all database structures and backend DTOs. |
+| **Styling** | **TailwindCSS v4** | Clean utility structure using the new `@theme` API, custom organic design tokens, and dark mode optimizations. |
+| **Server State** | **TanStack Query v5** | API request state management, automated query caching, silent revalidation, mutations tracking, and global cache invalidation. |
+| **Client State** | **Zustand v5** | Lightweight client-side store managing session state (`useAuthStore` with local persistence) and navigation drawer state (`useUIStore`). |
+| **Forms & State** | **React Hook Form v7** | Uncontrolled form inputs minimizing re-renders, integrated with Zod validation adapters. |
+| **Validation** | **Zod v3** | Strongly typed client-side schema validation matching backend DTO schemas. |
+| **Animations** | **Framer Motion v11** | Spring-based physics for collapsable components, modal layouts, and navigation indicator trails. |
+| **Grids & Tables** | **TanStack Table v8** | High-density tables with built-in hooks for server-side pagination, remote sorting, and filtering. |
+| **Charts** | **Recharts v2** | Interactive metrics widgets: Area charts (Revenue dynamics), Pie charts (Order allocations), and Bar charts (Inventory volume). |
+| **Unit Testing** | **Vitest v2** | Executed in a virtual `jsdom` sandbox testing utilities, hooks, and presentation badges. |
+| **E2E Testing** | **Playwright v1.49** | Automated browser flows simulating authentication guards, route protections, and CRUD operations. |
+| **Code Quality** | **ESLint 9 & Prettier 3** | Automated style consistency checks and class sort algorithms. |
+| **Git Hooks** | **Husky & Commitlint** | Checks commit formatting (Conventional Commits) and runs pre-push linters. |
 
 ---
 
-## 📁 Cấu Trúc Thư Mục Dự Án (Folder Structure)
+## 📁 Directory Structure
 
-Mã nguồn Frontend được tổ chức khoa học theo mô hình Modular của Next.js:
+The application follows the Next.js App Router modular directory pattern:
 
 ```
 frontend/
 ├── src/
-│   ├── app/                    # Thư mục chứa các trang & Layouts (App Router)
-│   │   ├── (auth)/             # Route Group cho Đăng nhập, Đăng ký, Đổi mật khẩu
-│   │   ├── admin/              # Dashboard điều hành, quản lý đơn hàng, duyệt nông trại
-│   │   ├── globals.css         # TailwindCSS v4 directives & cấu hình design tokens
-│   │   └── layout.tsx          # Root Layout chứa các Providers (QueryClient, Theme)
+│   ├── app/                    # Next.js routes, layouts, and page structures
+│   │   ├── (auth)/             # Route Group for Login, Register, Verification
+│   │   ├── admin/              # Admin panels, orders tables, farm moderation
+│   │   ├── globals.css         # CSS imports, Tailwind directives, and design tokens
+│   │   └── layout.tsx          # Root layout defining context providers
 │   │
-│   ├── components/             # Các Component tái sử dụng
-│   │   ├── admin/              # Header, Sidebar, Thẻ thống kê KPI, Khóa bảo vệ Admin (AdminGuard)
-│   │   └── shared/             # DataTable (TanStack Table dùng chung), StatusBadge, Toast
+│   ├── components/             # Reusable UI elements
+│   │   ├── admin/              # Layout structures, sidebar drawers, route locks (AdminGuard)
+│   │   └── shared/             # DataTable wrapper, StatusBadge, toast triggers
 │   │
-│   ├── lib/                    # Cấu hình lõi và Tiện ích dùng chung
-│   │   ├── api-client.ts       # Axios instance cấu hình Silent Refresh Token Interceptor
-│   │   ├── query-keys.ts       # Factory tạo key truy vấn động cho TanStack Query
-│   │   └── utils.ts            # Các hàm định dạng tiền tệ, ngày tháng, cn class merge
+│   ├── lib/                    # Core configuration and helpers
+│   │   ├── api-client.ts       # Axios instance with silent refresh token interceptors
+│   │   ├── query-keys.ts       # Dynamic TanStack Query cache key factory
+│   │   └── utils.ts            # Formatting functions (currency, dates)
 │   │
-│   ├── services/               # Lớp gọi API kết nối đến Backend
-│   │   ├── auth.service.ts     # Các API xác thực (login, logout, refresh, OTP)
-│   │   └── admin.service.ts    # Các API quản trị đơn hàng, người dùng, nông trại, coupon
+│   ├── services/               # REST API connector classes
+│   │   ├── auth.service.ts     # User sessions and credentials verification
+│   │   └── admin.service.ts    # Dashboard metrics, approval forms, inventory updates
 │   │
-│   ├── store/                  # Trạng thái toàn cục của ứng dụng (Zustand)
-│   │   ├── auth.store.ts       # Lưu thông tin user, accessToken, vai trò (Role)
-│   │   └── ui.store.ts             # Lưu trạng thái đóng/mở Sidebar
+│   ├── store/                  # Client state stores (Zustand)
+│   │   ├── auth.store.ts       # Persistence logic for access tokens and user roles
+│   │   └── ui.store.ts         # Global sidebar drawers display states
 │   │
-│   ├── types/                  # Định nghĩa kiểu dữ liệu tĩnh (DTOs & Enums)
-│   │   └── index.ts            # Toàn bộ interface từ API specification
+│   ├── types/                  # TypeScript interface mappings
+│   │   └── index.ts            # Generated type structures mirroring backend DTO specs
 │   │
-│   └── tests/                  # Các bài kiểm thử Unit & Component
-│       ├── setup.ts            # Khởi tạo môi trường Vitest
-│       └── status-badge.test.tsx # Kiểm thử hiển thị màu sắc theo trạng thái đơn hàng
+│   └── tests/                  # Unit and component test specifications
+│       ├── setup.ts            # Vitest initialization script
+│       └── status-badge.test.tsx # Status badges presentation tests
 │
-├── e2e/                        # Các bài kiểm thử End-to-End (Playwright)
-│   ├── login.spec.ts           # Kiểm thử luồng đăng nhập thành công/thất bại
-│   └── dashboard.spec.ts       # Kiểm thử giao diện và quyền truy cập Admin Dashboard
+├── e2e/                        # End-to-End tests (Playwright)
+│   ├── login.spec.ts           # Login verification workflows
+│   └── dashboard.spec.ts       # Audit and permission verification checks
 │
-└── tsconfig.json               # Cấu hình TypeScript compiler
+└── tsconfig.json               # TypeScript compiler config
 ```
 
 ---
 
-## 📡 Các Điểm Nhấn Kỹ Thuật Nâng Cao (Advanced Engineering Practices)
+## 📡 Core Frontend Architecture Highlights
 
-### 1. Đồng Bộ Luồng Trạng Thái & Form Kiểm Duyệt Hợp Lệ
-Màn hình quản trị tích hợp sâu các workflows trạng thái của Backend thông qua các luồng tương tác an toàn:
-*   **Duyệt/Từ chối Nông trại & Lô hàng:** Khi Admin nhấp "Từ chối" (`REJECTED`) một nông trại đăng ký mới hoặc một lô hàng nông sản của Farmer gửi lên, Frontend sẽ hiển thị một Dialog yêu cầu nhập lý do từ chối (`rejection_reason`/`status_reason`). Form này được quản lý bằng `React Hook Form` kết hợp schema `Zod` bắt buộc độ dài ký tự từ `10` đến `500` để đảm bảo Farmer nhận được phản hồi rõ ràng.
-*   **Trực Quan Hóa Tồn Kho:** Cột "Đơn vị tính" (`unit` - nhận giá trị `kg` hoặc các đơn vị đo lường tương đương từ migration V7) được hiển thị thống nhất trên cả catalog bán hàng lẫn bảng báo cáo Excel, giúp tính toán trọng lượng giao hàng chính xác qua API Giao Hàng Nhanh.
-*   **Status Badge Động:** Sử dụng component `<StatusBadge>` được kiểm thử tự động bằng Vitest, tự động ánh xạ mã màu tương ứng với các trạng thái nghiệp vụ phức tạp của Backend như `PENDING_DEACTIVATION` (vàng ấm), `EXPIRED` (đỏ xám), `AVAILABLE` (xanh lá cây hữu cơ).
+### 1. Unified Auditing Interface & Form Validation
+The admin interface bridges with backend validation rules for entity workflows:
+*   **Farm & Batch Approvals:** When an administrator clicks to reject a farm certification or inventory batch, the frontend displays an overlay dialog requesting justification (`rejection_reason` / `status_reason`). This form is validated by a `Zod` schema enforcing character boundaries (between `10` and `500` characters) before launching the query mutation.
+*   **Measurement Standardizations:** The frontend dynamically renders the custom unit field (`unit` - e.g., `kg` or custom counts added in migration V7) across product listings and Excel summaries, facilitating weight calculations sent to Giao Hàng Nhanh (GHN) API clients.
+*   **Dynamic Presentation Badges:** Component `<StatusBadge>` maps status strings (e.g., `PENDING_DEACTIVATION`, `EXPIRED`, `AVAILABLE`) to organic theme colors. The component's rendering logic is fully verified by Vitest unit tests.
 
-### 2. Cơ Chế Xử Lý Lỗi Xác Thực Ngầm (Axios Silent Token Refresh)
-Ứng dụng sử dụng cấu hình Axios Interceptor đặc biệt tại [api-client.ts](file:///d:/Self_Study/Java/Project_CV/Pineapple_E-commerce/frontend/src/lib/api-client.ts) để giải quyết bài toán trải nghiệm người dùng không bị ngắt quãng khi token hết hạn:
-*   Mọi API request đi từ Client đều tự động đính kèm `accessToken` vào header.
-*   Nếu nhận được phản hồi lỗi `401 Unauthorized` từ Backend (do token hết hạn), Interceptor sẽ tạm dừng (queue) request hiện tại.
-*   Gọi ngầm API `POST /api/v1/auth/refresh` bằng phương thức `withCredentials: true` để trình duyệt tự động gửi kèm cookie chứa Refresh Token bảo mật.
-*   Nếu làm mới thành công, Access Token mới sẽ được ghi đè vào RAM và localStorage, sau đó tự động kích hoạt lại (retry) tất cả các request đang bị xếp hàng chờ với token mới.
-*   Nếu refresh thất bại (Refresh Token hết hạn), hệ thống tự động xóa bộ nhớ đệm, đưa ra cảnh báo và chuyển hướng người dùng về trang `/login`.
+### 2. Silent Token Refresh Interceptor
+Utilizes Axios interceptors configured in [api-client.ts](file:///d:/Self_Study/Java/Project_CV/Pineapple_E-commerce/frontend/src/lib/api-client.ts) to manage JWT rotation behind the scenes:
+*   Requests inject the `accessToken` header automatically.
+*   Upon intercepting a `401 Unauthorized` response (due to access token expiration), the client queues pending requests.
+*   Issues a silent request to `POST /api/v1/auth/refresh` sending the browser's HttpOnly cookie (`withCredentials: true`).
+*   On refresh success, updates the local Access Token and automatically retries all queued requests.
+*   If the refresh token itself has expired (invalidated by backend DB validation), clears active sessions and redirects the user to `/login`.
 
-### 3. Tối Ưu Hóa Docker Standalone Build
-Đối với môi trường chạy thực tế, Next.js được cấu hình chế độ `output: 'standalone'` trong [next.config.ts](file:///d:/Self_Study/Java/Project_CV/Pineapple_E-commerce/frontend/next.config.ts):
-*   Khi chạy lệnh `npm run build`, Next.js sẽ tự động phân tích mã nguồn và gom các file runtime tối giản cần thiết vào thư mục `.next/standalone`.
-*   Giúp loại bỏ toàn bộ thư mục `node_modules` nặng nề của môi trường phát triển.
-*   Docker image được build bằng Multi-stage chỉ cần copy thư mục standalone này và chạy trực tiếp bằng lệnh `node server.js`. Dung lượng Image giảm thiểu tối đa (chỉ còn khoảng **180MB**), tăng tốc độ khởi động container và tiết kiệm bộ nhớ RAM trên máy chủ.
+### 3. Next.js Standalone Docker Deployment
+Configured with `output: 'standalone'` in [next.config.ts](file:///d:/Self_Study/Java/Project_CV/Pineapple_E-commerce/frontend/next.config.ts):
+*   `npm run build` generates a standalone Node.js server inside `.next/standalone`.
+*   Includes only the dependency files needed for runtime execution, excluding development node modules.
+*   Reduces the final Docker container size to approximately **180MB**, optimizing startup latencies and deployment speeds.
 
 ---
 
-## 🧪 Hệ Thống Kiểm Thử (Testing Guide)
+## 🧪 Testing Guidelines
 
-Dự án triển khai chiến lược kiểm thử nghiêm ngặt để đảm bảo chất lượng phần mềm không bị suy giảm khi nâng cấp mã nguồn:
+The codebase implements a dual testing strategy to maintain interface consistency:
 
-### 1. Chạy Unit Tests với Vitest
-Kiểm thử các hàm xử lý logic thuần túy và hiển thị component cơ bản:
+### 1. Vitest Unit & Integration Tests
+Tests utility functions and layout components:
 ```bash
-# Chạy toàn bộ unit tests
+# Run unit tests
 npm test
 
-# Chạy kiểm thử có theo dõi thay đổi (Watch mode)
+# Run tests in UI watch mode
 npm run test:ui
 
-# Xem báo cáo độ bao phủ mã nguồn (Code Coverage Report)
+# Generate test coverage reports
 npm run test:coverage
 ```
 
-### 2. Chạy E2E Tests với Playwright
-Kiểm thử giả lập hành vi người dùng trên các trình duyệt thực tế (Chromium, Firefox, WebKit):
-*Yêu cầu: Backend và Frontend đang chạy tại local.*
+### 2. Playwright E2E Integration Tests
+Runs simulated browser workflows across Chromium, Firefox, and WebKit:
+*Note: Requires local backend and frontend instances running.*
 ```bash
-# Chạy kiểm thử toàn trình
+# Execute playwright test files
 npm run test:e2e
 
-# Chạy kiểm thử ở chế độ giao diện trực quan (UI Mode)
+# Launch interactive UI mode
 npx playwright test --ui
 
-# Xem báo cáo kết quả kiểm thử dạng HTML trực quan
+# Open HTML test execution reports
 npx playwright show-report
 ```
 
 ---
 
-## 🚀 Cài Đặt & Khởi Chạy Local (Installation)
+## 🚀 Installation & Local Run
 
-### 1. Khởi Tạo Tệp Cấu Hình
-Sao chép tệp cấu hình mẫu và điền thông số API của bạn:
+### 1. Environment Configurations
+Create a `.env.local` file in the `/frontend` directory:
 ```bash
 cp .env.local.example .env.local
 ```
-Cập nhật URL API của Backend nếu cổng chạy của bạn khác mặc định:
+Configure your backend API base endpoint:
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1
 ```
 
-### 2. Chạy Ứng Dụng
+### 2. Running the Client
 ```bash
-# 1. Cài đặt các thư viện phụ thuộc
+# 1. Install required node dependencies
 npm install
 
-# 2. Khởi chạy máy chủ phát triển (sử dụng Turbopack)
+# 2. Start Next.js Turbopack dev server
 npm run dev
 ```
-Truy cập [http://localhost:3000](http://localhost:3000) trên trình duyệt của bạn.
-Để xây dựng ứng dụng cho Production và chạy thử:
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+To compile a production bundle and run the server locally:
 ```bash
 npm run build
 npm run start
 ```
-Ứng dụng sẽ được tối ưu hóa tĩnh và chạy trực tiếp tại cổng `3000`.
+The optimized bundle is served on port `3000`.
