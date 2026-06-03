@@ -114,6 +114,7 @@ public class OrderServiceImpl implements OrderService, OrderInternalService {
 
         BigDecimal subtotal = BigDecimal.ZERO;
         List<OrderItem> orderItems = new ArrayList<>();
+        int totalWeightGram = 0;
 
         // Sắp xếp theo productId để tránh deadlock
         List<CartItem> sortedCartItems = cart.getItems().stream()
@@ -124,6 +125,13 @@ public class OrderServiceImpl implements OrderService, OrderInternalService {
             Product product = cartItem.getProduct();
             int qty = cartItem.getQuantity();
             BigDecimal unitPrice = product.getEffectivePrice();
+
+            java.math.BigDecimal itemWeight = product.getWeight();
+            if (itemWeight != null) {
+                totalWeightGram += itemWeight.multiply(java.math.BigDecimal.valueOf(qty)).intValue();
+            } else {
+                totalWeightGram += 500 * qty;
+            }
 
             List<InventoryService.BatchAllocation> allocations = inventoryService.deductStockFifo(product.getId(), qty);
 
@@ -145,7 +153,10 @@ public class OrderServiceImpl implements OrderService, OrderInternalService {
             }
         }
 
-        BigDecimal shippingFee = calculateShippingFee(address, subtotal);
+        if (totalWeightGram <= 0) {
+            totalWeightGram = 500;
+        }
+        BigDecimal shippingFee = calculateShippingFee(address, subtotal, totalWeightGram);
         order.setItems(orderItems);
         order.setSubtotal(subtotal);
         order.setShippingFee(shippingFee);
@@ -386,7 +397,7 @@ public class OrderServiceImpl implements OrderService, OrderInternalService {
                 address.getDistrict(), address.getProvince());
     }
 
-    private BigDecimal calculateShippingFee(Address address, BigDecimal subtotal) {
+    private BigDecimal calculateShippingFee(Address address, BigDecimal subtotal, int weightGram) {
         if (subtotal.compareTo(new BigDecimal("500000")) >= 0) {
             return BigDecimal.ZERO;
         }
@@ -401,7 +412,7 @@ public class OrderServiceImpl implements OrderService, OrderInternalService {
                         null,
                         districtId,
                         wardCode,
-                        500, // weightGram
+                        weightGram, // weightGram
                         20,  // lengthCm
                         20,  // widthCm
                         10,  // heightCm

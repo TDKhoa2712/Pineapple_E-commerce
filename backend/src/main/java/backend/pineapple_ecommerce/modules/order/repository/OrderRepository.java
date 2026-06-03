@@ -96,4 +96,29 @@ public interface OrderRepository extends JpaRepository<Order, Long>,
     java.util.List<Object[]> getMonthlyRevenueAndCount(
             @Param("cutoff") java.time.LocalDateTime cutoff,
             @Param("cancelledStatus") OrderStatus cancelledStatus);
+
+    @Query("""
+        SELECT COALESCE(SUM(oi.quantity), 0) FROM OrderItem oi
+        WHERE oi.product.id = :productId
+          AND oi.order.status IN (
+              backend.pineapple_ecommerce.common.enums.OrderStatus.CONFIRMED,
+              backend.pineapple_ecommerce.common.enums.OrderStatus.PROCESSING,
+              backend.pineapple_ecommerce.common.enums.OrderStatus.SHIPPING,
+              backend.pineapple_ecommerce.common.enums.OrderStatus.DELIVERED
+          )
+    """)
+    Integer getSoldCountByProductId(@Param("productId") Long productId);
+
+    @Query("""
+        SELECT oi.product.id, COALESCE(SUM(oi.quantity), 0) FROM OrderItem oi
+        WHERE oi.product.id IN :productIds
+          AND oi.order.status IN (
+              backend.pineapple_ecommerce.common.enums.OrderStatus.CONFIRMED,
+              backend.pineapple_ecommerce.common.enums.OrderStatus.PROCESSING,
+              backend.pineapple_ecommerce.common.enums.OrderStatus.SHIPPING,
+              backend.pineapple_ecommerce.common.enums.OrderStatus.DELIVERED
+          )
+        GROUP BY oi.product.id
+    """)
+    java.util.List<Object[]> getSoldCountByProductIds(@Param("productIds") java.util.List<Long> productIds);
 }

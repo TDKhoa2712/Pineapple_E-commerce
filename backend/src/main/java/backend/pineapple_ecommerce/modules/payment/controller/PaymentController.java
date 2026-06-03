@@ -94,8 +94,18 @@ public class PaymentController {
     @Operation(summary = "Lấy thông tin thanh toán của đơn hàng")
     @GetMapping("/order/{orderId}")
     public ResponseEntity<ApiResponse<PaymentResponse>> getPaymentByOrder(
+            @PathVariable Long orderId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(
+                ApiResponse.success(paymentService.getPaymentByOrderId(orderId, userDetails.getUserId())));
+    }
+
+    @Operation(summary = "Xác nhận thanh toán COD (Admin)")
+    @PostMapping("/admin/orders/{orderId}/confirm-cod")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<PaymentResponse>> confirmCodPayment(
             @PathVariable Long orderId) {
         return ResponseEntity.ok(
-                ApiResponse.success(paymentService.getPaymentByOrderId(orderId)));
+                ApiResponse.success(paymentService.confirmCodPayment(orderId), "Xác nhận thanh toán COD thành công"));
     }
 }

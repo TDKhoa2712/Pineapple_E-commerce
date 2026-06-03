@@ -6,6 +6,7 @@ import backend.pineapple_ecommerce.common.dto.response.PageResponse;
 import backend.pineapple_ecommerce.common.dto.response.UploadResponse;
 import backend.pineapple_ecommerce.modules.product.mapper.ProductMapper;
 import backend.pineapple_ecommerce.modules.product.repository.ProductRepository;
+import backend.pineapple_ecommerce.modules.order.repository.OrderRepository;
 import backend.pineapple_ecommerce.common.enums.ProductStatus;
 import backend.pineapple_ecommerce.common.enums.FarmStatus;
 import backend.pineapple_ecommerce.modules.product.models.Product;
@@ -58,6 +59,7 @@ public class ProductServiceImpl implements ProductService {
     private final CacheManager cacheManager;
     private final FarmRepository farmRepository;
     private final UserService userService;
+    private final OrderRepository orderRepository;
 
     // ─────────────────────────────────────────────
     // CREATE
@@ -504,6 +506,9 @@ public class ProductServiceImpl implements ProductService {
         int reviewCount = reviewRepository.countByProductId(product.getId());
         response.setReviewCount(reviewCount);
 
+        Integer soldCount = orderRepository.getSoldCountByProductId(product.getId());
+        response.setSoldCount(soldCount != null ? soldCount : 0);
+
         if (product.getCreatedBy() != null) {
             farmRepository.findByOwnerIdAndIsDeletedFalse(product.getCreatedBy().getId())
                     .stream().findFirst().ifPresent(farm -> {
@@ -527,10 +532,18 @@ public class ProductServiceImpl implements ProductService {
                         row -> ((Number) row[1]).intValue()
                 ));
 
+        List<Object[]> soldCountResults = orderRepository.getSoldCountByProductIds(ids);
+        java.util.Map<Long, Integer> soldCountMap = soldCountResults.stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        row -> (Long) row[0],
+                        row -> ((Number) row[1]).intValue()
+                ));
+
         return products.stream()
                 .map(p -> {
                     ProductSummaryResponse summary = productMapper.toSummaryResponse(p);
                     summary.setTotalStock(stockMap.getOrDefault(p.getId(), 0));
+                    summary.setSoldCount(soldCountMap.getOrDefault(p.getId(), 0));
 
                     if (p.getCreatedBy() != null) {
                         farmRepository.findByOwnerIdAndIsDeletedFalse(p.getCreatedBy().getId())

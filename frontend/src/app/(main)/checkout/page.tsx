@@ -85,12 +85,17 @@ export default function CheckoutPage() {
       return
     }
 
+    const totalWeight = items.reduce((acc, item) => {
+      const itemWeight = item.product?.weight ?? 500
+      return acc + (itemWeight * item.quantity)
+    }, 0)
+
     setIsLoadingShippingFee(true)
     calculateShippingFee.mutate({
       data: {
         toDistrictId: String(ghnMeta.districtId),
         toWardCode: String(ghnMeta.wardCode),
-        weight: 500,
+        weight: totalWeight > 0 ? totalWeight : 500,
       }
     }, {
       onSuccess: (res) => {
@@ -106,7 +111,7 @@ export default function CheckoutPage() {
         setShippingFee(30000)
       }
     })
-  }, [activeAddressId, addresses, subtotal])
+  }, [activeAddressId, addresses, subtotal, items, calculateShippingFee])
 
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) return

@@ -314,32 +314,7 @@ export const userApi = {
   },
 
   changePassword: (currentPassword: string, newPassword: string): AR<void> =>
-    apiClient.patch('/api/v1/users/me/password', { currentPassword, newPassword }).then((r) => r.data),
-}
-
-// ─── Admin ────────────────────────────────────────────────────────────────────
-// FIX: Admin order routes are under /api/v1/orders/admin (not /api/v1/admin/orders)
-export const adminApi = {
-  getAllOrders: (params?: object): PAR<OrderResponse> =>
-    apiClient.get('/api/v1/orders/admin', { params }).then((r) => r.data),
-
-  updateOrderStatus: (id: number, status: string): AR<OrderResponse> =>
-    apiClient.patch(`/api/v1/orders/admin/${id}/status`, { status }).then((r) => r.data),
-
-  getAllUsers: (params?: object): PAR<UserResponse> =>
-    apiClient.get('/api/v1/admin/users', { params }).then((r) => r.data),
-
-  toggleUserBan: (id: number): AR<UserResponse> =>
-    apiClient.patch(`/api/v1/admin/users/${id}/ban`).then((r) => r.data),
-
-  getAllFarms: (params?: object): PAR<FarmResponse> =>
-    apiClient.get('/api/v1/farms/admin', { params }).then((r) => r.data),
-
-  approveFarm: (id: number): AR<FarmResponse> =>
-    apiClient.patch(`/api/v1/farms/admin/${id}/approve`).then((r) => r.data),
-
-  getStatistics: (): AR<AdminStatisticsResponse> =>
-    apiClient.get('/api/v1/orders/admin/statistics').then((r) => r.data),
+    apiClient.post('/api/v1/users/me/change-password', { currentPassword, newPassword }).then((r) => r.data),
 }
 
 // ─── Shipping ────────────────────────────────────────────────────────────────

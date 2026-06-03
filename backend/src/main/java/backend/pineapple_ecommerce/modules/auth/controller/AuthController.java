@@ -89,10 +89,8 @@ public class AuthController {
     public ResponseEntity<ApiResponse<AuthResponse>> verifyEmail(
             @Valid @RequestBody VerifyEmailRequest request,
             HttpServletResponse servletResponse) {
-        log.info("verify email run controller 1");
         // 1. Xác thực OTP, set emailVerified = true
         emailVerificationService.verifyEmail(request.getEmail(), request.getOtp());
-        log.info("verify email run controller 2");
 
         // 2. Tự động login — cấp JWT ngay sau khi verify thành công
         //    Dùng lại buildAuthResponse nội bộ qua login không cần password

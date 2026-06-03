@@ -83,6 +83,9 @@ public class InventoryServiceImpl implements InventoryService {
             if (!farm.getOwner().getId().equals(currentUserId)) {
                 throw new UnauthorizedException("Bạn không có quyền thêm lô hàng vào trang trại này");
             }
+            if (product.getCreatedBy() == null || !product.getCreatedBy().getId().equals(currentUserId)) {
+                throw new UnauthorizedException("Bạn không có quyền thêm lô hàng cho sản phẩm của người khác");
+            }
         }
 
         if (farm != null && farm.getStatus() == FarmStatus.INACTIVE) {

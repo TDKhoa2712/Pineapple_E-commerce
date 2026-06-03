@@ -135,6 +135,24 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error("Đường dẫn không tồn tại: " + ex.getResourcePath()));
     }
 
+    // 400 — Malformed JSON
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleHttpMessageNotReadable(org.springframework.http.converter.HttpMessageNotReadableException ex) {
+        log.warn("Malformed JSON body: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error("Yêu cầu không hợp lệ: Định dạng JSON sai hoặc thiếu body"));
+    }
+
+    // 405 — Method Not Allowed
+    @ExceptionHandler(org.springframework.web.HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMethodNotAllowed(org.springframework.web.HttpRequestMethodNotSupportedException ex) {
+        log.warn("HTTP method not supported: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.METHOD_NOT_ALLOWED)
+                .body(ApiResponse.error(String.format("Phương thức %s không được hỗ trợ cho đường dẫn này", ex.getMethod())));
+    }
+
     // 500 — Catch-all
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneral(Exception ex) {
