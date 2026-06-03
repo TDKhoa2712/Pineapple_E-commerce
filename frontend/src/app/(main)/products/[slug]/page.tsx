@@ -187,7 +187,7 @@ export default function ProductDetailPage() {
               )}
             </div>
 
-            {product.farmName && (
+            {product.farmName && product.farmId && (
               <div className="flex items-center gap-2 mb-4 p-3 bg-[var(--color-green-50)] rounded-xl border border-[var(--color-green-100)]">
                 <span className="text-xl">🌾</span>
                 <div>
