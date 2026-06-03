@@ -600,6 +600,7 @@ export interface CartItemResponse {
   stockQuantity?: number  // alias for availableStock (legacy compat)
   productStatus?: ProductStatus
   productUnit?: string
+  productWeight?: number
 }
 
 // CartResponse matches backend CartResponse.java

@@ -23,6 +23,7 @@ public interface CartMapper {
     @Mapping(target = "productStatus",    expression = "java(item.getProduct().getStatus() != null ? item.getProduct().getStatus().name() : null)")
     // FIX: thêm productUnit để FE biết đơn vị tính của sản phẩm
     @Mapping(target = "productUnit",      expression = "java(item.getProduct().getUnit())")
+    @Mapping(target = "productWeight",    expression = "java(item.getProduct().getWeight())")
     @Mapping(target = "availableStock",   ignore = true)  // Service tính từ batches
     CartItemResponse toItemResponse(CartItem item);
 

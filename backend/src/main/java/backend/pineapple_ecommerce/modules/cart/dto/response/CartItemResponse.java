@@ -25,4 +25,5 @@ public class CartItemResponse {
     private String     productStatus;
     // FIX: thêm productUnit để FE biết đơn vị tính của sản phẩm
     private String     productUnit;
+    private BigDecimal productWeight;
 }

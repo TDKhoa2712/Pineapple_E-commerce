@@ -86,7 +86,7 @@ export default function CheckoutPage() {
     }
 
     const totalWeight = items.reduce((acc, item) => {
-      const itemWeight = item.product?.weight ?? 500
+      const itemWeight = item.productWeight ?? 500
       return acc + (itemWeight * item.quantity)
     }, 0)
 
