@@ -33,6 +33,8 @@ public class UpdateProductRequest {
     private BigDecimal calories;
     private String brand;
     private String origin;
+    @Size(max = 50)
+    private String unit;
     private Boolean isOrganic;
     private String thumbnail;
     private Long categoryId;

@@ -64,6 +64,9 @@ public class Product extends BaseEntity {
     @Column(length = 100)
     private String origin;              // Xuất xứ
 
+    @Column(length = 50)
+    private String unit;                // Đơn vị tính (kg, hộp, quả...)
+
     @Column(name = "is_organic", nullable = false)
     @Builder.Default
     private Boolean isOrganic = false;

@@ -41,6 +41,7 @@ const productSchema = z.object({
   calories: z.coerce.number().min(0).max(9999.99, 'Calories tối đa 9,999.99 kcal').optional(),
   brand: z.string().optional(),
   origin: z.string().optional(),
+  unit: z.string().min(1, 'Đơn vị tính là bắt buộc').max(50),
   isOrganic: z.boolean().default(false),
   thumbnail: z.string().min(1, 'Vui lòng chọn hoặc tải lên một ảnh làm thumbnail'),
   categoryId: z.coerce.number().positive('Vui lòng chọn danh mục'),
@@ -179,7 +180,7 @@ export default function FarmerPortalPage() {
     register, handleSubmit, reset, setValue, watch, formState: { errors }
   } = useForm<ProductForm>({
     resolver: zodResolver(productSchema),
-    defaultValues: { isOrganic: false, imageUrls: [], thumbnail: '' }
+    defaultValues: { isOrganic: false, imageUrls: [], thumbnail: '', unit: 'kg' }
   })
 
   // Set values when editing
@@ -194,6 +195,7 @@ export default function FarmerPortalPage() {
         calories: editProductTarget.calories ?? 0,
         brand: editProductTarget.brand ?? '',
         origin: editProductTarget.origin ?? '',
+        unit: editProductTarget.unit ?? 'kg',
         isOrganic: editProductTarget.isOrganic,
         thumbnail: editProductTarget.thumbnail,
         categoryId: editProductTarget.categoryId ?? 0,
@@ -507,7 +509,7 @@ export default function FarmerPortalPage() {
                             </h4>
                             <div className="flex items-center gap-1.5 mt-2">
                               <span className="text-sm font-bold text-[var(--color-green-700)]">
-                                {formatPrice(product.discountPrice ?? product.price)}
+                                {formatPrice(product.discountPrice ?? product.price)} {product.unit && `/ ${product.unit}`}
                               </span>
                               {product.discountPrice && (
                                 <span className="text-[10px] line-through text-[var(--color-text-muted)]">
@@ -516,7 +518,7 @@ export default function FarmerPortalPage() {
                               )}
                             </div>
                             <p className="text-[10px] text-[var(--color-text-muted)] mt-1">
-                              Tồn kho khả dụng: <span className="font-bold text-[var(--color-text)]">{product.totalStock}</span>
+                              Tồn kho khả dụng: <span className="font-bold text-[var(--color-text)]">{product.totalStock} {product.unit}</span>
                             </p>
                           </div>
 
@@ -803,13 +805,17 @@ export default function FarmerPortalPage() {
                   </div>
                   <div>
                     <p className="text-xs text-[var(--color-text-muted)]">Giá bán công bố</p>
-                    <p className="font-bold mt-1 text-[var(--color-text)]">{formatPrice(detailProductTarget.price)}</p>
+                    <p className="font-bold mt-1 text-[var(--color-text)]">{formatPrice(detailProductTarget.price)} / {detailProductTarget.unit ?? 'kg'}</p>
                   </div>
                   <div>
                     <p className="text-xs text-[var(--color-text-muted)]">Giá khuyến mãi</p>
                     <p className="font-bold mt-1 text-[var(--color-green-700)]">
-                      {detailProductTarget.discountPrice ? formatPrice(detailProductTarget.discountPrice) : '—'}
+                      {detailProductTarget.discountPrice ? `${formatPrice(detailProductTarget.discountPrice)} / ${detailProductTarget.unit ?? 'kg'}` : '—'}
                     </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-[var(--color-text-muted)]">Đơn vị tính</p>
+                    <p className="font-semibold mt-1 text-[var(--color-text)]">{detailProductTarget.unit ?? 'kg'}</p>
                   </div>
                   <div>
                     <p className="text-xs text-[var(--color-text-muted)]">Tổng lượng trong kho</p>
@@ -907,9 +913,16 @@ export default function FarmerPortalPage() {
                   {errors.categoryId && <p className="text-xs text-red-500">{errors.categoryId.message}</p>}
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <Input label="Giá bán (VND) *" type="number" error={errors.price?.message} {...register('price')} placeholder="50000" />
-                  <Input label="Giá khuyến mãi (VND)" type="number" {...register('discountPrice')} placeholder="45000" />
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="col-span-1">
+                    <Input label="Giá bán (VND) *" type="number" error={errors.price?.message} {...register('price')} placeholder="50000" />
+                  </div>
+                  <div className="col-span-1">
+                    <Input label="Giá KM (VND)" type="number" {...register('discountPrice')} placeholder="45000" />
+                  </div>
+                  <div className="col-span-1">
+                    <Input label="Đơn vị tính *" error={errors.unit?.message} {...register('unit')} placeholder="kg, hộp..." />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

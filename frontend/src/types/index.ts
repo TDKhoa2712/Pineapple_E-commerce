@@ -137,6 +137,7 @@ export interface OrderItemResponse {
   quantity: number;
   unitPrice: number;
   subtotal: number;
+  productUnit?: string;
 }
 
 export interface OrderResponse {
@@ -355,6 +356,7 @@ export interface CreateProductRequest {
   calories?: number;
   brand?: string;
   origin?: string;
+  unit?: string;
   isOrganic?: boolean;
   thumbnail: string;
   categoryId: number;
@@ -370,6 +372,7 @@ export interface UpdateProductRequest {
   calories?: number;
   brand?: string;
   origin?: string;
+  unit?: string;
   isOrganic?: boolean;
   thumbnail?: string;
   categoryId?: number;
@@ -392,6 +395,7 @@ export interface ProductSummaryResponse {
   totalStock: number;
   averageRating?: number;
   reviewCount?: number;
+  unit?: string;
   createdAt: string;
 }
 
@@ -416,6 +420,7 @@ export interface ProductDetailResponse {
   totalStock: number;
   averageRating?: number;
   reviewCount?: number;
+  unit?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -542,6 +547,10 @@ export interface ProductResponse {
   status: ProductStatus
   averageRating?: number
   reviewCount?: number
+  weight?: number
+  calories?: number
+  brand?: string
+  origin?: string
   categoryId?: number
   categoryName: string
   farmId?: number
@@ -590,6 +599,7 @@ export interface CartItemResponse {
   availableStock: number
   stockQuantity?: number  // alias for availableStock (legacy compat)
   productStatus?: ProductStatus
+  productUnit?: string
 }
 
 // CartResponse matches backend CartResponse.java
@@ -692,6 +702,7 @@ export interface WishlistResponse {
   productPrice: number
   productDiscountPrice?: number
   productStatus: ProductStatus
+  productUnit?: string
   createdAt: string
 }
 
