@@ -35,6 +35,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import backend.pineapple_ecommerce.security.CustomUserDetails;
+import org.springframework.cache.CacheManager;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -51,6 +52,7 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder   passwordEncoder;
     private final FileValidator fileValidator;
     private final RefreshTokenService refreshTokenService;
+    private final CacheManager cacheManager;
 
     // ─────────────────────────────────────────────
     // USER — TỰ QUẢN LÝ TÀI KHOẢN
@@ -84,6 +86,7 @@ public class UserServiceImpl implements UserService {
 
         User saved = userRepository.save(user);
         log.info("User {} updated profile", userId);
+        evictUserCache(saved.getEmail());
         return userMapper.toResponse(saved);
     }
 
@@ -108,6 +111,7 @@ public class UserServiceImpl implements UserService {
         userRepository.save(user);
 
         log.info("User {} uploaded new avatar", userId);
+        evictUserCache(user.getEmail());
         return userMapper.toResponse(user);
     }
 
@@ -140,6 +144,7 @@ public class UserServiceImpl implements UserService {
 
         refreshTokenService.revokeByUserId(user.getId());
         log.info("User {} changed their password", userId);
+        evictUserCache(user.getEmail());
     }
 
     // ─────────────────────────────────────────────
@@ -208,6 +213,7 @@ public class UserServiceImpl implements UserService {
         log.info("Admin {} changed user {} status: {} → {} | reason: {}",
                 adminId, targetUserId, oldStatus, request.getStatus(),
                 request.getReason() != null ? request.getReason() : "N/A");
+        evictUserCache(saved.getEmail());
 
         return userMapper.toResponse(saved);
     }
@@ -258,6 +264,7 @@ public class UserServiceImpl implements UserService {
                 .collect(java.util.stream.Collectors.toSet());
         log.info("Admin {} updated roles for user {}: {} → {}",
                 adminId, targetUserId, oldRoleNames, newRoleNames);
+        evictUserCache(saved.getEmail());
 
         return userMapper.toResponse(saved);
     }
@@ -274,6 +281,7 @@ public class UserServiceImpl implements UserService {
         userRepository.save(user);
         refreshTokenService.revokeByUserId(user.getId());
         log.info("Admin reset password for userId={}", targetUserId);
+        evictUserCache(user.getEmail());
     }
 
     // ─────────────────────────────────────────────
@@ -306,6 +314,7 @@ public class UserServiceImpl implements UserService {
 
         User saved = userRepository.save(user);
         log.info("Admin updated user {} info", targetUserId);
+        evictUserCache(saved.getEmail());
         return userMapper.toResponse(saved);
     }
 
@@ -334,6 +343,7 @@ public class UserServiceImpl implements UserService {
         userRepository.save(user);
 
         log.info("Admin uploaded avatar for user {}", targetUserId);
+        evictUserCache(user.getEmail());
         return userMapper.toResponse(user);
     }
 
@@ -361,9 +371,10 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public UserResponse getUserByEmail(String email) {
         log.info("Get user by email: {}", email);
-        return userRepository.findByEmail(email).map(userMapper::toResponse)
+        return userRepository.findByEmailWithRoles(email).map(userMapper::toResponse)
                 .orElseThrow(()-> new ResourceNotFoundException("User", "email", email));
     }
 
@@ -375,6 +386,19 @@ public class UserServiceImpl implements UserService {
     // ─────────────────────────────────────────────
     // INTERNAL HELPER
     // ─────────────────────────────────────────────
+
+    private void evictUserCache(String email) {
+        if (email == null) return;
+        try {
+            org.springframework.cache.Cache cache = cacheManager.getCache("user_details");
+            if (cache != null) {
+                cache.evict(email);
+                log.info("Evicted user_details cache for email: {}", email);
+            }
+        } catch (Exception e) {
+            log.error("Failed to evict user_details cache for email: {}", email, e);
+        }
+    }
 
     private User findUserById(Long userId) {
         return userRepository.findById(userId)
