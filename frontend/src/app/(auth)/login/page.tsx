@@ -69,6 +69,14 @@ function LoginContent() {
     } catch (err: unknown) {
       const apiErr = err as { response?: { data?: { message?: string; errors?: Record<string, string> } } }
       const msg = apiErr?.response?.data?.message
+      
+      // Redirect if account is not verified
+      if (msg && (msg.includes('chưa được xác thực') || msg.includes('xác thực email') || msg.includes('chưa kích hoạt'))) {
+        toast.error(msg)
+        router.push(`/verify-email?email=${encodeURIComponent(data.email)}`)
+        return
+      }
+
       const fieldErrors = apiErr?.response?.data?.errors
       if (fieldErrors) {
         Object.entries(fieldErrors).forEach(([k, v]) =>

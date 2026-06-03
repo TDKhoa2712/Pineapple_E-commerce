@@ -4,20 +4,28 @@ import { useState, useRef, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
+import { Mail } from 'lucide-react'
 import { authApi } from '@/services/api'
-import { Button } from '@/components/ui'
+import { Button, Input } from '@/components/ui'
 import Link from 'next/link'
 
 function VerifyEmailContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const email = searchParams.get('email') || ''
+  const initialEmail = searchParams.get('email') || ''
 
+  const [email, setEmail] = useState('')
   const [otp, setOtp] = useState(['', '', '', '', '', ''])
   const [loading, setLoading] = useState(false)
   const [resending, setResending] = useState(false)
   const [countdown, setCountdown] = useState(0)
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
+
+  useEffect(() => {
+    if (initialEmail) {
+      setEmail(initialEmail)
+    }
+  }, [initialEmail])
 
   useEffect(() => {
     if (countdown > 0) {
@@ -49,8 +57,15 @@ function VerifyEmailContent() {
   }
 
   const handleVerify = async () => {
+    if (!email) {
+      toast.error('Vui lòng nhập email')
+      return
+    }
     const code = otp.join('')
-    if (code.length !== 6) { toast.error('Vui lòng nhập đủ 6 chữ số'); return }
+    if (code.length !== 6) {
+      toast.error('Vui lòng nhập đủ 6 chữ số')
+      return
+    }
     setLoading(true)
     try {
       await authApi.verifyEmail({ email, otp: code })
@@ -65,6 +80,10 @@ function VerifyEmailContent() {
   }
 
   const handleResend = async () => {
+    if (!email) {
+      toast.error('Vui lòng nhập email để nhận mã OTP')
+      return
+    }
     if (countdown > 0) return
     setResending(true)
     try {
@@ -89,21 +108,43 @@ function VerifyEmailContent() {
           <span className="text-3xl">🍍</span>
         </Link>
 
-        <div className="bg-[var(--color-green-50)] border border-[var(--color-green-100)] rounded-2xl p-4 mb-8 flex items-center gap-3">
-          <span className="text-2xl">📧</span>
-          <div className="text-left">
-            <p className="text-sm font-semibold text-[var(--color-green-700)]">Kiểm tra hộp thư</p>
-            <p className="text-xs text-[var(--color-text-muted)]">Mã OTP đã gửi tới <strong>{email}</strong></p>
+        {initialEmail && (
+          <div className="bg-[var(--color-green-50)] border border-[var(--color-green-100)] rounded-2xl p-4 mb-6 flex items-center gap-3">
+            <span className="text-2xl">📧</span>
+            <div className="text-left">
+              <p className="text-sm font-semibold text-[var(--color-green-700)]">Kiểm tra hộp thư</p>
+              <p className="text-xs text-[var(--color-text-muted)]">
+                Mã OTP đã được gửi tới <strong>{initialEmail}</strong>
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
         <h1 className="text-3xl font-bold text-[var(--color-brown-900)] mb-2"
           style={{ fontFamily: 'var(--font-display)' }}>
-          Xác nhận email
+          Xác nhận tài khoản
         </h1>
-        <p className="text-[var(--color-text-muted)] mb-8">Nhập mã 6 chữ số</p>
+        <p className="text-[var(--color-text-muted)] mb-6">Nhập email và mã xác thực 6 chữ số</p>
+
+        {/* Email input field */}
+        <div className="text-left mb-6">
+          <Input
+            label="Địa chỉ Email"
+            type="email"
+            placeholder="ten@email.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={loading || resending}
+            leftIcon={<Mail className="w-4 h-4" />}
+          />
+        </div>
 
         {/* OTP inputs */}
+        <div className="text-left mb-2">
+          <label className="block text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wide mb-1.5">
+            Mã xác thực (OTP)
+          </label>
+        </div>
         <div className="flex justify-center gap-3 mb-8" onPaste={handlePaste}>
           {otp.map((digit, i) => (
             <input
@@ -131,7 +172,7 @@ function VerifyEmailContent() {
           <button
             onClick={handleResend}
             disabled={countdown > 0 || resending}
-            className="text-sm text-[var(--color-gold-600)] hover:underline disabled:opacity-50 disabled:no-underline"
+            className="text-sm text-[var(--color-gold-600)] hover:underline disabled:opacity-50 disabled:no-underline font-medium"
           >
             {countdown > 0 ? `Gửi lại sau ${countdown}s` : 'Gửi lại mã OTP'}
           </button>

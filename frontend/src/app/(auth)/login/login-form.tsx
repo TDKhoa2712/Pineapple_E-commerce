@@ -33,6 +33,11 @@ export function LoginForm() {
     try {
       const res = await authService.login(form);
       if (!res.success) {
+        if (res.message && (res.message.includes('chưa được xác thực') || res.message.includes('xác thực email') || res.message.includes('chưa kích hoạt'))) {
+          toast.error(res.message);
+          router.push(`/verify-email?email=${encodeURIComponent(form.email)}`);
+          return;
+        }
         toast.error(res.message);
         return;
       }
@@ -49,7 +54,13 @@ export function LoginForm() {
       router.push("/admin/dashboard");
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } } };
-      toast.error(axiosErr?.response?.data?.message ?? "Đăng nhập thất bại");
+      const msg = axiosErr?.response?.data?.message;
+      if (msg && (msg.includes('chưa được xác thực') || msg.includes('xác thực email') || msg.includes('chưa kích hoạt'))) {
+        toast.error(msg);
+        router.push(`/verify-email?email=${encodeURIComponent(form.email)}`);
+        return;
+      }
+      toast.error(msg ?? "Đăng nhập thất bại");
     }
   };
 
