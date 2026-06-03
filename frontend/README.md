@@ -142,7 +142,7 @@ cp .env.local.example .env.local
 ```
 Configure your backend API base endpoint:
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:8080/api/v1
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
 ```
 
 ### 2. Running the Client
