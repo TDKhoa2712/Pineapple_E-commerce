@@ -276,10 +276,10 @@ export function OrdersContent() {
             checked={allSelected || false}
             onChange={() => {
               if (allSelected) {
-                const pageIds = data?.content.map((o) => o.id) || [];
+                const pageIds = (data?.content ?? []).map((o) => o.id);
                 setSelectedIds((prev) => prev.filter((id) => !pageIds.includes(id)));
               } else {
-                const pageIds = data?.content.map((o) => o.id) || [];
+                const pageIds = (data?.content ?? []).map((o) => o.id);
                 setSelectedIds((prev) => Array.from(new Set([...prev, ...pageIds])));
               }
             }}

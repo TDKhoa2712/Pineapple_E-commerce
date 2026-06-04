@@ -69,6 +69,7 @@ public class PasswordResetServiceImpl implements PasswordResetService {
         OtpToken token = OtpToken.builder()
                 .user(user)
                 .otp(otp)
+                .type(OtpType.PASSWORD_RESET)
                 .expiresAt(LocalDateTime.now().plusMinutes(OTP_EXPIRY_MINUTES))
                 .used(false)
                 .build();
