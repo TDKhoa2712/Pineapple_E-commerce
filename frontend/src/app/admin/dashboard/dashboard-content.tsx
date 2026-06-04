@@ -478,7 +478,7 @@ export function DashboardContent() {
                     className="h-12 animate-pulse rounded-lg bg-slate-800"
                   />
                 ))
-              : recentOrders?.content.map((order) => (
+              : (recentOrders?.content ?? []).map((order) => (
                   <div
                     key={order.id}
                     className="flex items-center justify-between rounded-lg bg-slate-800/50 px-3 py-2.5"
@@ -523,13 +523,13 @@ export function DashboardContent() {
                     className="h-12 animate-pulse rounded-lg bg-slate-800"
                   />
                 ))
-              : pendingFarms?.content.length === 0 ? (
+              : (pendingFarms?.content ?? []).length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 text-slate-500">
                   <Package className="mb-2 h-8 w-8 opacity-40" />
                   <p className="text-sm">Không có nông trại nào chờ duyệt</p>
                 </div>
               ) : (
-                pendingFarms?.content.map((farm) => (
+                (pendingFarms?.content ?? []).map((farm) => (
                   <div
                     key={farm.id}
                     className="flex items-center justify-between rounded-lg bg-slate-800/50 px-3 py-2.5"

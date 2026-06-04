@@ -85,7 +85,7 @@ export function ReviewsContent() {
   });
 
   // Client-side filter for isHidden since BE /admin/all doesn't support it as param
-  const filteredContent = data?.content.filter((r) => {
+  const filteredContent = data?.content?.filter((r) => {
     if (hiddenFilter === "visible") return !r.isHidden;
     if (hiddenFilter === "hidden") return r.isHidden;
     return true;
@@ -324,7 +324,7 @@ export function ReviewsContent() {
           </h1>
           <p className="mt-1 text-sm text-slate-500">
             {data?.totalElements ?? 0} đánh giá
-            {filteredContent.length !== (data?.content.length ?? 0) && (
+            {filteredContent.length !== (data?.content?.length ?? 0) && (
               <> · hiển thị {filteredContent.length}</>
             )}
           </p>

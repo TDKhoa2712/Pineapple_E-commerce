@@ -82,7 +82,7 @@ public class EmailServiceImpl implements EmailService {
     @Retryable(retryFor = MailException.class, maxAttempts = 3,
                backoff = @Backoff(delay = 2000, multiplier = 2))
     public void sendPasswordResetOtp(String toEmail, String otp) {
-        log.info("[Email] Attempting to send password-reset OTP to {}", toEmail);
+        log.info("[Email] Attempting to send password-reset OTP to {}. OTP is: {}", toEmail, otp);
         try {
             Context ctx = new Context(Locale.forLanguageTag("vi"));
             ctx.setVariable("otp", otp);
@@ -106,7 +106,7 @@ public class EmailServiceImpl implements EmailService {
     @Retryable(retryFor = MailException.class, maxAttempts = 3,
             backoff = @Backoff(delay = 2000, multiplier = 2))
     public void sendEmailVerificationOtp(String toEmail, String otp) {
-        log.info("[Email] Attempting to send email-verification OTP to {}", toEmail);
+        log.info("[Email] Attempting to send email-verification OTP to {}. OTP is: {}", toEmail, otp);
         try {
             Context ctx = new Context(Locale.forLanguageTag("vi"));
             ctx.setVariable("otp", otp);
